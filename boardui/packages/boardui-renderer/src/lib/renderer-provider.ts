@@ -4,6 +4,7 @@ import {
   Component,
   Contour,
   Hole,
+  Line,
   Oval,
   Pad,
   Pin,
@@ -21,6 +22,7 @@ import {
   HoleRenderer,
   ProfileContourRenderer,
   OvalRenderer,
+  LineRenderer,
 } from './renderers';
 import { PadRenderer } from './renderers/pad-renderer';
 
@@ -36,6 +38,7 @@ export class RendererProvider {
     [Hole.prototype.constructor, new HoleRenderer()],
     [Pad.prototype.constructor, new PadRenderer()],
     [Oval.prototype.constructor, new OvalRenderer()],
+    [Line.prototype.constructor, new LineRenderer()]
   ]);
 
   private static _profileContourRenderer = new ProfileContourRenderer();

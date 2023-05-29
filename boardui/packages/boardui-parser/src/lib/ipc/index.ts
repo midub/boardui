@@ -67,3 +67,4 @@ export * from './ref-des';
 export * from './silk-screen';
 export * from './textual';
 export * from './oval';
+export * from './line';
