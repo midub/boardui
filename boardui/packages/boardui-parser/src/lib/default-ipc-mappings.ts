@@ -74,7 +74,7 @@ const defaultIPCMappings = new Array<XMLtoJSMapping>(
   ['LayerFeature', LayerFeature.prototype, ['layerFeatures']],
   ['LayerRef', LayerRef.prototype, ['layerRefs']],
   ['Step', Step.prototype, ['steps']],
-  ['Profile', Contour.prototype, ['profile']],
+  ['Profile', Contour.prototype, ['profile', 'profiles']],
   ['Polygon', Polygon.prototype, ['polygon']],
   ['PolyBegin', PolyBegin.prototype, ['polyBegin']],
   ['PolyStepSegment', PolyStepSegment.prototype, ['polySteps']],
