@@ -1,3 +1,4 @@
+import { Contour } from './contour';
 import { LayerFunction } from './layer-function';
 import { Polarity } from './polarity';
 import { Side } from './side';
@@ -9,4 +10,5 @@ export class Layer {
   side: Side = null!;
   polarity: Polarity = null!;
   span: Span | null = null;
+  profiles: Contour[] = [];
 }
