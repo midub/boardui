@@ -8,4 +8,5 @@ export interface RenderDoneEvent {
   step: string;
   elementMap: ElementMap;
   renderProperties: RenderProperties;
+  error?: any;
 }

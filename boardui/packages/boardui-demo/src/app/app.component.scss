@@ -133,3 +133,30 @@ h1 {
     grid-template-columns: 2fr 5fr;
   }
 }
+
+.loading-indicator {
+  position: fixed;
+  z-index: 999;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0.1, 0.1, 0.1, 0.3);
+  backdrop-filter: blur(5px);
+
+  mat-spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  span {
+    position: absolute;
+    top: calc(50% + 85px);
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: 500;
+    font-size: 16pt;
+  }
+}

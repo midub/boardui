@@ -12,7 +12,12 @@
 <h1>BoardUI demo</h1>
 
 <div style="margin: 1rem">
-  <button type="button" mat-raised-button (click)="fileInput.click()">
+  <button
+    type="button"
+    mat-raised-button
+    (click)="fileInput.click()"
+    [disabled]="loading"
+  >
     Choose Test Case
   </button>
   <input
@@ -179,4 +184,9 @@
       </mat-tab-group>
     </div>
   </div>
+</div>
+
+<div *ngIf="loading" class="loading-indicator">
+  <mat-spinner></mat-spinner>
+  <span>Loading</span>
 </div>

@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { AfterViewInit, Component, ViewChild } from '@angular/core';
+import { AfterContentInit, Component, ViewChild } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import {
   ElementEvent,
   RenderDoneEvent,
@@ -8,13 +9,14 @@ import {
 import { RenderProperties, Side } from 'boardui-core';
 import { CreateSAXParser, IPC2581, IPC2581Parser } from 'boardui-parser';
 import { firstValueFrom } from 'rxjs';
+import { ErrorDialogComponent } from './error-dialog.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })
-export class AppComponent implements AfterViewInit {
+export class AppComponent implements AfterContentInit {
   @ViewChild('pcbviewer') pcbviewer!: ViewerComponent;
 
   title = 'pcb-viewer';
@@ -24,6 +26,8 @@ export class AppComponent implements AfterViewInit {
   pcb: IPC2581 | null = null;
   side: Side = 'TOP';
   zoom = 1.0;
+
+  loading = false;
 
   get step(): string | null {
     return this.pcb?.content.stepRefs.at(0)?.name ?? null;
@@ -106,9 +110,10 @@ export class AppComponent implements AfterViewInit {
     ],
   };
 
-  constructor(private httpClient: HttpClient) {}
+  constructor(private httpClient: HttpClient, private dialog: MatDialog) {}
 
-  async ngAfterViewInit(): Promise<void> {
+  async ngAfterContentInit(): Promise<void> {
+    this.loading = true;
     const testcaseReq = this.httpClient.get(
       './assets/testcase10-RevC-Assembly.xml',
       {
@@ -136,14 +141,15 @@ export class AppComponent implements AfterViewInit {
     this.pcb = await this.parser.parse(fileStream);
   }
 
-  async onFileInputChange(e: Event) {
+  async onFileInputChange(e: Event): Promise<void> {
+    this.loading = true;
     const element = e.currentTarget as HTMLInputElement;
     const file: File | null | undefined = element.files?.item(0);
     if (!file) {
       throw new Error('Invalid input.');
     }
 
-    this.loadPCB(file.stream());
+    await this.loadPCB(file.stream());
   }
 
   onElementClick(e: ElementEvent) {
@@ -155,7 +161,16 @@ export class AppComponent implements AfterViewInit {
   }
 
   onRenderDone(e: RenderDoneEvent) {
-    console.log(e);
+    this.loading = false;
+
+    if (e.error) {
+      this.dialog.open(ErrorDialogComponent, {
+        data: {
+          title: 'Error during rendering',
+          message: e.error.message,
+        },
+      });
+    }
   }
 
   zoomIn() {
