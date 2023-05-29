@@ -66,3 +66,4 @@ export * from './ranged';
 export * from './ref-des';
 export * from './silk-screen';
 export * from './textual';
+export * from './oval';

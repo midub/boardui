@@ -52,6 +52,7 @@ import {
   Ranged,
   RefDes,
   Textual,
+  Oval,
 } from './ipc';
 import { XMLtoJSMapping } from './xml-to-js-mapping';
 
@@ -106,6 +107,7 @@ const defaultIPCMappings = new Array<XMLtoJSMapping>(
   ['FillDesc', FillDesc.prototype, ['content', 'fillDesc']],
   ['FillDescRef', FillDescRef.prototype, ['fillDesc']],
   ['Circle', Circle.prototype, ['content']],
+  ['Oval', Oval.prototype, ['content']],
   ['RectCenter', RectCenter.prototype, ['content']],
   ['Component', Component.prototype, ['components']],
   ['Xform', XForm.prototype, ['xform']],

@@ -6,3 +6,4 @@ export * from './pin-renderer';
 export * from './polyline-renderer';
 export * from './profile-contour-renderer';
 export * from './rect-center-renderer';
+export * from './oval-renderer';
