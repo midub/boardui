@@ -53,6 +53,7 @@ import {
   RefDes,
   Textual,
   Oval,
+  Line,
 } from './ipc';
 import { XMLtoJSMapping } from './xml-to-js-mapping';
 
@@ -128,7 +129,8 @@ const defaultIPCMappings = new Array<XMLtoJSMapping>(
   ['Textual', Textual.prototype, ['textual']],
   ['RefDes', RefDes.prototype, ['refDes']],
   ['Characteristics', Characteristics.prototype, ['characteristics']],
-  ['FunctionMode', FunctionMode.prototype, ['functionMode']]
+  ['FunctionMode', FunctionMode.prototype, ['functionMode']],
+  ['Line', Line.prototype, ['features']]
 );
 
 export const DefaultIPCMappings = defaultIPCMappings;
