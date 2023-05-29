@@ -9,6 +9,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { MatDialogModule } from '@angular/material/dialog';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
@@ -23,6 +24,7 @@ describe('AppComponent', () => {
         MatTableModule,
         MatTabsModule,
         MatExpansionModule,
+        MatDialogModule
       ],
       declarations: [AppComponent],
     }).compileComponents();

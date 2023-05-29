@@ -148,20 +148,27 @@ export class ViewerComponent implements AfterViewInit, OnDestroy {
         this._reusablesProvider!,
         renderProperties
       );
-
-      const pcbElement = pcbRenderer.render(pcb, step, side, elementMap);
-      this._elementMap = elementMap;
-      this._pcbHtml = this._domSanitizer.bypassSecurityTrustHtml(
-        pcbElement.outerHTML
-      );
-      this._transformChange.emit();
-      this.renderDone.emit({
-        pcb,
-        step,
-        side,
-        elementMap,
-        renderProperties: this._renderProperties!,
-      });
+      let error = null;
+      try {
+        const pcbElement = pcbRenderer.render(pcb, step, side, elementMap);
+        this._elementMap = elementMap;
+        this._pcbHtml = this._domSanitizer.bypassSecurityTrustHtml(
+          pcbElement.outerHTML
+        );
+        this._transformChange.emit();
+      } catch (e) {
+        console.error(e);
+        error = e;
+      } finally {
+        this.renderDone.emit({
+          pcb,
+          step,
+          side,
+          elementMap,
+          renderProperties: this._renderProperties!,
+          error,
+        });
+      }
     } else {
       this._pcbHtml = null;
     }
