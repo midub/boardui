@@ -133,4 +133,4 @@ const defaultIPCMappings = new Array<XMLtoJSMapping>(
   ['Line', Line.prototype, ['features']]
 );
 
-export const DefaultIPCMappings = defaultIPCMappings;
+export const DEFAULT_IPC_MAPPINGS = defaultIPCMappings;

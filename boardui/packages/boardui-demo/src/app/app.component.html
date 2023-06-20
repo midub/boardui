@@ -66,15 +66,17 @@
             [side]="side"
             [renderProperties]="renderProperties"
             [(zoom)]="zoom"
+            [zoomMin]="0.5"
+            [zoomMax]="5"
             (elementClick)="onElementClick($event)"
             (elementHover)="onElementHover($event)"
             (renderDone)="onRenderDone($event)"
           >
             <div *buiTemplate="let data of 'toolbar'" class="toolbar">
-              <button mat-fab title="Zoom In" (click)="zoomIn()">
+              <button mat-fab title="Zoom In" (pointerdown)="zoomIn()">
                 <mat-icon>zoom_in</mat-icon>
               </button>
-              <button mat-fab title="Zoom Out" (click)="zoomOut()">
+              <button mat-fab title="Zoom Out" (pointerdown)="zoomOut()">
                 <mat-icon>zoom_out</mat-icon>
               </button>
               <button mat-fab title="Flip side" (pointerdown)="flipSide()">
@@ -88,6 +90,12 @@
               {{ data.refDes }}
             </div>
           </bui-viewer>
+        </mat-tab>
+        <mat-tab label="Source HTML">
+          <pre><code>{{demoHtml}}</code></pre>
+        </mat-tab>
+        <mat-tab label="Source TypeScript">
+          <pre><code>{{demoTS}}</code></pre>
         </mat-tab>
       </mat-tab-group>
     </div>

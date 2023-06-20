@@ -6,3 +6,5 @@ export * from './lib/layer-type-render-properties';
 export * from './lib/render-context';
 export * from './lib/render-properties';
 export * from './lib/side';
+export * from './lib/default-render-properties';
+export * from './lib/buffer-helper';

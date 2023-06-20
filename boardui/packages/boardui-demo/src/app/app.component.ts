@@ -6,10 +6,11 @@ import {
   RenderDoneEvent,
   ViewerComponent,
 } from 'boardui-angular';
-import { RenderProperties, Side } from 'boardui-core';
-import { CreateSAXParser, IPC2581, IPC2581Parser } from 'boardui-parser';
+import { DEFAULT_RENDER_PROPERTIES, RenderProperties, Side, arrayBufferToStream } from 'boardui-core';
+import { createSAXParser, IPC2581, IPC2581Parser } from 'boardui-parser';
 import { firstValueFrom } from 'rxjs';
 import { ErrorDialogComponent } from './error-dialog.component';
+import { ElementDialogComponent } from './element-dialog.component';
 
 @Component({
   selector: 'app-root',
@@ -19,96 +20,18 @@ import { ErrorDialogComponent } from './error-dialog.component';
 export class AppComponent implements AfterContentInit {
   @ViewChild('pcbviewer') pcbviewer!: ViewerComponent;
 
-  title = 'pcb-viewer';
-
   parser: IPC2581Parser | null = null;
 
   pcb: IPC2581 | null = null;
   side: Side = 'TOP';
-  zoom = 1.0;
-
+  zoom = 1;
   loading = false;
 
   get step(): string | null {
     return this.pcb?.content.stepRefs.at(0)?.name ?? null;
   }
 
-  renderProperties: RenderProperties = {
-    padding: 0.5,
-    dropShadow: {
-      dx: 0,
-      dy: 0,
-      stdDeviation: 0.02,
-    },
-    layerTypesRenderProperties: [
-      {
-        layerType: 'PROFILE',
-        color: {
-          r: 26,
-          g: 80,
-          b: 26,
-        },
-      },
-      {
-        layerType: 'SIGNAL',
-        color: {
-          r: 55,
-          g: 105,
-          b: 48,
-        },
-      },
-      {
-        layerType: 'COMPONENT',
-        color: {
-          r: 200,
-          g: 140,
-          b: 48,
-        },
-      },
-      {
-        layerType: 'SILKSCREEN',
-        color: {
-          r: 255,
-          g: 255,
-          b: 255,
-        },
-      },
-      {
-        layerType: 'DRILL',
-      },
-    ],
-    componentRenderProperties: [
-      {
-        selectors: [['mountType', 'SMT']],
-        outlineColor: {
-          r: 255,
-          g: 255,
-          b: 255,
-        },
-      },
-      {
-        selectors: [['mountType', 'THMT']],
-        outlineColor: {
-          r: 255,
-          g: 0,
-          b: 0,
-        },
-      },
-      {
-        selectors: [['refDes', 'U1']],
-        fillColor: {
-          r: 30,
-          g: 30,
-          b: 30,
-        },
-        outlineColor: {
-          r: 30,
-          g: 30,
-          b: 30,
-        },
-      },
-    ],
-  };
+  renderProperties: RenderProperties = DEFAULT_RENDER_PROPERTIES;
 
   constructor(private httpClient: HttpClient, private dialog: MatDialog) {}
 
@@ -122,23 +45,6 @@ export class AppComponent implements AfterContentInit {
     );
     const testcase = await firstValueFrom(testcaseReq);
     this.loadPCB(arrayBufferToStream(testcase));
-
-    function arrayBufferToStream(ab: ArrayBuffer) {
-      return new ReadableStream<Uint8Array>({
-        start(controller) {
-          controller.enqueue(new Uint8Array(ab));
-          controller.close();
-        },
-      });
-    }
-  }
-
-  private async loadPCB(fileStream: ReadableStream<Uint8Array>) {
-    this.parser ??= new IPC2581Parser(
-      await CreateSAXParser('./assets/sax-wasm.wasm')
-    );
-
-    this.pcb = await this.parser.parse(fileStream);
   }
 
   async onFileInputChange(e: Event): Promise<void> {
@@ -152,15 +58,34 @@ export class AppComponent implements AfterContentInit {
     await this.loadPCB(file.stream());
   }
 
-  onElementClick(e: ElementEvent) {
-    console.log(e);
+  async loadPCB(fileStream: ReadableStream<Uint8Array>) {
+    try {
+      this.parser ??= new IPC2581Parser(
+        await createSAXParser('./assets/sax-wasm.wasm')
+      );
+  
+      this.pcb = await this.parser.parse(fileStream);
+    }
+    catch (e: any) {
+      this.dialog.open(ErrorDialogComponent, {
+        data: {
+          title: 'Error during loading',
+          message: e.message,
+        },
+      });
+    }
   }
 
-  onElementHover(e: ElementEvent) {
-    console.log(e);
-  }
+  onElementClick =(e: ElementEvent) => this.dialog.open(ElementDialogComponent, {
+      data: {
+        type: e.element.constructor.name,
+        json: JSON.stringify(e.element, null, 2),
+      },
+    });
 
-  onRenderDone(e: RenderDoneEvent) {
+  onElementHover = (e: ElementEvent) => console.log(e);
+
+  onRenderDone(e: RenderDoneEvent): void {
     this.loading = false;
 
     if (e.error) {
@@ -173,15 +98,42 @@ export class AppComponent implements AfterContentInit {
     }
   }
 
-  zoomIn() {
-    this.zoom *= 1.5;
-  }
+  zoomIn = () => this.zoom *= 1.5;
 
-  zoomOut() {
-    this.zoom /= 1.5;
-  }
+  zoomOut = () => this.zoom /= 1.5;
 
-  flipSide() {
-    this.side = this.side === 'TOP' ? 'BOTTOM' : 'TOP';
-  }
+  flipSide = () => this.side = this.side === 'TOP' ? 'BOTTOM' : 'TOP';
+
+  demoHtml = `
+  <bui-viewer
+    #pcbviewer
+    [pcb]="pcb"
+    [step]="step"
+    [side]="side"
+    [renderProperties]="renderProperties"
+    [(zoom)]="zoom"
+    (elementClick)="onElementClick($event)"
+    (elementHover)="onElementHover($event)"
+    (renderDone)="onRenderDone($event)"
+  >
+    <div *buiTemplate="let data of 'toolbar'" class="toolbar">
+      <button mat-fab title="Zoom In" (pointerdown)="zoomIn()">
+        <mat-icon>zoom_in</mat-icon>
+      </button>
+      <button mat-fab title="Zoom Out" (pointerdown)="zoomOut()">
+        <mat-icon>zoom_out</mat-icon>
+      </button>
+      <button mat-fab title="Flip side" (pointerdown)="flipSide()">
+        <mat-icon>flip</mat-icon>
+      </button>
+    </div>
+    <div *buiTemplate="let data of 'padTooltip'" class="tooltip">
+      {{ data.padstackDefRef }}
+    </div>
+    <div *buiTemplate="let data of 'componentTooltip'" class="tooltip">
+      {{ data.refDes }}
+    </div>
+  </bui-viewer>`;
+
+  demoTS = ``;
 }
