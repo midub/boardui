@@ -16,6 +16,12 @@
       filter: invert(1) contrast(1.25);
       cursor: pointer;
     }
+
+    svg g[component]:hover {
+      *[outline] {
+        stroke-width: 0.1%;
+      }
+    }
   }
 }
 
