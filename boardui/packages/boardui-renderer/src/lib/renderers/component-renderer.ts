@@ -51,6 +51,7 @@ export class ComponentRenderer extends RendererBase<Component> {
         'http://www.w3.org/2000/svg',
         'path'
       );
+      outlineEle.toggleAttribute('outline');
       const lineDesc =
         pckg.outline.lineDesc instanceof LineDescRef
           ? reusablesProvider.getLineDescById(pckg.outline.lineDesc.id)
