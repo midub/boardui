@@ -1,10 +1,9 @@
 import { HttpClient } from '@angular/common/http';
-import { AfterContentInit, Component, ViewChild } from '@angular/core';
+import { AfterContentInit, Component } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import {
   ElementEvent,
   RenderDoneEvent,
-  ViewerComponent,
 } from 'boardui-angular';
 import { DEFAULT_RENDER_PROPERTIES, RenderProperties, Side, arrayBufferToStream } from 'boardui-core';
 import { createSAXParser, IPC2581, IPC2581Parser } from 'boardui-parser';
@@ -18,9 +17,8 @@ import { ElementDialogComponent } from './element-dialog.component';
   styleUrls: ['./app.component.scss'],
 })
 export class AppComponent implements AfterContentInit {
-  @ViewChild('pcbviewer') pcbviewer!: ViewerComponent;
-
-  parser: IPC2581Parser | null = null;
+  private _parser: IPC2581Parser | null = null;
+  renderProperties: RenderProperties = DEFAULT_RENDER_PROPERTIES;
 
   pcb: IPC2581 | null = null;
   side: Side = 'TOP';
@@ -31,13 +29,11 @@ export class AppComponent implements AfterContentInit {
     return this.pcb?.content.stepRefs.at(0)?.name ?? null;
   }
 
-  renderProperties: RenderProperties = DEFAULT_RENDER_PROPERTIES;
+  constructor(private _httpClient: HttpClient, private _dialog: MatDialog) { }
 
-  constructor(private httpClient: HttpClient, private dialog: MatDialog) {}
-
-  async ngAfterContentInit(): Promise<void> {
+  async ngAfterContentInit() {
     this.loading = true;
-    const testcaseReq = this.httpClient.get(
+    const testcaseReq = this._httpClient.get(
       './assets/testcase10-RevC-Assembly.xml',
       {
         responseType: 'arraybuffer',
@@ -47,7 +43,7 @@ export class AppComponent implements AfterContentInit {
     this.loadPCB(arrayBufferToStream(testcase));
   }
 
-  async onFileInputChange(e: Event): Promise<void> {
+  async onFileInputChange(e: Event) {
     this.loading = true;
     const element = e.currentTarget as HTMLInputElement;
     const file: File | null | undefined = element.files?.item(0);
@@ -60,14 +56,14 @@ export class AppComponent implements AfterContentInit {
 
   async loadPCB(fileStream: ReadableStream<Uint8Array>) {
     try {
-      this.parser ??= new IPC2581Parser(
+      this._parser ??= new IPC2581Parser(
         await createSAXParser('./assets/sax-wasm.wasm')
       );
-  
-      this.pcb = await this.parser.parse(fileStream);
+
+      this.pcb = await this._parser.parse(fileStream);
     }
     catch (e: any) {
-      this.dialog.open(ErrorDialogComponent, {
+      this._dialog.open(ErrorDialogComponent, {
         data: {
           title: 'Error during loading',
           message: e.message,
@@ -76,20 +72,20 @@ export class AppComponent implements AfterContentInit {
     }
   }
 
-  onElementClick =(e: ElementEvent) => this.dialog.open(ElementDialogComponent, {
-      data: {
-        type: e.element.constructor.name,
-        json: JSON.stringify(e.element, null, 2),
-      },
-    });
+  onElementClick = (e: ElementEvent) => this._dialog.open(ElementDialogComponent, {
+    data: {
+      type: e.element.constructor.name,
+      json: JSON.stringify(e.element, null, 2),
+    },
+  });
 
   onElementHover = (e: ElementEvent) => console.log(e);
 
-  onRenderDone(e: RenderDoneEvent): void {
+  onRenderDone(e: RenderDoneEvent) {
     this.loading = false;
 
     if (e.error) {
-      this.dialog.open(ErrorDialogComponent, {
+      this._dialog.open(ErrorDialogComponent, {
         data: {
           title: 'Error during rendering',
           message: e.error.message,
@@ -106,12 +102,13 @@ export class AppComponent implements AfterContentInit {
 
   demoHtml = `
   <bui-viewer
-    #pcbviewer
     [pcb]="pcb"
     [step]="step"
     [side]="side"
     [renderProperties]="renderProperties"
     [(zoom)]="zoom"
+    [zoomMin]="0.5"
+    [zoomMax]="5"
     (elementClick)="onElementClick($event)"
     (elementHover)="onElementHover($event)"
     (renderDone)="onRenderDone($event)"
@@ -135,5 +132,95 @@ export class AppComponent implements AfterContentInit {
     </div>
   </bui-viewer>`;
 
-  demoTS = ``;
+  demoTS = `
+  @Component({
+    selector: 'app-root',
+    templateUrl: './app.component.html',
+    styleUrls: ['./app.component.scss'],
+  })
+  export class AppComponent implements AfterContentInit {
+    private _parser: IPC2581Parser | null = null;
+    renderProperties: RenderProperties = DEFAULT_RENDER_PROPERTIES;
+  
+    pcb: IPC2581 | null = null;
+    side: Side = 'TOP';
+    zoom = 1;
+    loading = false;
+  
+    get step(): string | null {
+      return this.pcb?.content.stepRefs.at(0)?.name ?? null;
+    }
+  
+    constructor(private _httpClient: HttpClient, private _dialog: MatDialog) { }
+  
+    async ngAfterContentInit() {
+      this.loading = true;
+      const testcaseReq = this._httpClient.get(
+        './assets/testcase10-RevC-Assembly.xml',
+        {
+          responseType: 'arraybuffer',
+        }
+      );
+      const testcase = await firstValueFrom(testcaseReq);
+      this.loadPCB(arrayBufferToStream(testcase));
+    }
+  
+    async onFileInputChange(e: Event) {
+      this.loading = true;
+      const element = e.currentTarget as HTMLInputElement;
+      const file: File | null | undefined = element.files?.item(0);
+      if (!file) {
+        throw new Error('Invalid input.');
+      }
+  
+      await this.loadPCB(file.stream());
+    }
+  
+    async loadPCB(fileStream: ReadableStream<Uint8Array>) {
+      try {
+        this._parser ??= new IPC2581Parser(
+          await createSAXParser('./assets/sax-wasm.wasm')
+        );
+  
+        this.pcb = await this._parser.parse(fileStream);
+      }
+      catch (e: any) {
+        this._dialog.open(ErrorDialogComponent, {
+          data: {
+            title: 'Error during loading',
+            message: e.message,
+          },
+        });
+      }
+    }
+  
+    onElementClick = (e: ElementEvent) => this._dialog.open(ElementDialogComponent, {
+      data: {
+        type: e.element.constructor.name,
+        json: JSON.stringify(e.element, null, 2),
+      },
+    });
+  
+    onElementHover = (e: ElementEvent) => console.log(e);
+  
+    onRenderDone(e: RenderDoneEvent) {
+      this.loading = false;
+  
+      if (e.error) {
+        this._dialog.open(ErrorDialogComponent, {
+          data: {
+            title: 'Error during rendering',
+            message: e.error.message,
+          },
+        });
+      }
+    }
+  
+    zoomIn = () => this.zoom *= 1.5;
+  
+    zoomOut = () => this.zoom /= 1.5;
+  
+    flipSide = () => this.side = this.side === 'TOP' ? 'BOTTOM' : 'TOP';
+  }  
+`;
 }
