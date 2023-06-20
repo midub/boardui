@@ -60,7 +60,6 @@
       >
         <mat-tab label="Demo">
           <bui-viewer
-            #pcbviewer
             [pcb]="pcb"
             [step]="step"
             [side]="side"
@@ -91,10 +90,10 @@
             </div>
           </bui-viewer>
         </mat-tab>
-        <mat-tab label="Source HTML">
+        <mat-tab label="Snippet HTML">
           <pre><code>{{demoHtml}}</code></pre>
         </mat-tab>
-        <mat-tab label="Source TypeScript">
+        <mat-tab label="Snippet TypeScript">
           <pre><code>{{demoTS}}</code></pre>
         </mat-tab>
       </mat-tab-group>
