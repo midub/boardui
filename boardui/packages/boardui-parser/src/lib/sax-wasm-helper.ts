@@ -1,6 +1,6 @@
 import { SaxEventType, SAXParser } from 'sax-wasm';
 
-export async function CreateSAXParser(saxWasmUrl: string): Promise<SAXParser> {
+export async function createSAXParser(saxWasmUrl: string): Promise<SAXParser> {
   const saxWasmResponse = await fetch(saxWasmUrl);
   const saxWasmbuffer = await saxWasmResponse.arrayBuffer();
   const parser = new SAXParser(

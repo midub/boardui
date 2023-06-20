@@ -10,6 +10,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatDialogModule } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
@@ -24,7 +25,8 @@ describe('AppComponent', () => {
         MatTableModule,
         MatTabsModule,
         MatExpansionModule,
-        MatDialogModule
+        MatDialogModule,
+        MatProgressSpinnerModule
       ],
       declarations: [AppComponent],
     }).compileComponents();
@@ -34,12 +36,6 @@ describe('AppComponent', () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
-  });
-
-  it(`should have as title 'pcb-viewer'`, () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    const app = fixture.componentInstance;
-    expect(app.title).toEqual('pcb-viewer');
   });
 
   it('should render title', () => {

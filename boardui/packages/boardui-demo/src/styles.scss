@@ -12,6 +12,10 @@
   font-display: swap;
 }
 
+html {
+  overflow: hidden !important;
+}
+
 html,
 body {
   height: 100%;
@@ -52,4 +56,8 @@ body {
 }
 ::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+mat-dialog-container {
+  max-width: 600px !important;
 }
