@@ -43,6 +43,8 @@ export class ViewerComponent implements AfterViewInit, OnDestroy {
   private _step: string | null = null;
   private _renderProperties: RenderProperties | null = null;
   private _zoom = 1;
+  private _zoomMin = 0;
+  private _zoomMax = Number.MAX_VALUE;
   private _elementMap: ElementMap = new ElementMap();
   private _reusablesProvider: ReusablesProvider | null = null;
   public _pcbHtml: SafeHtml | null = null;
@@ -84,9 +86,22 @@ export class ViewerComponent implements AfterViewInit, OnDestroy {
   }
 
   @Input()
-  public set zoom(zoom: number) {
-    this._zoom = zoom;
-    this.transformPCB();
+  public set zoom(value: number) {
+    if (value < this._zoomMin) value = this._zoomMin;
+    if (value > this._zoomMax) value = this._zoomMax;
+    
+    this._zoom = value;
+    this._transformChange.emit();
+  }
+
+  @Input()
+  public set zoomMin(value: number) {
+    this._zoomMin = value;
+  }
+
+  @Input()
+  public set zoomMax(value: number) {
+    this._zoomMax = value;
   }
 
   /* #endregion */
@@ -254,7 +269,6 @@ export class ViewerComponent implements AfterViewInit, OnDestroy {
   /* #endregion */
 
   private setZoom(step: number, centerX: number, centerY: number): void {
-    this._zoom *= 1 + step;
     const viewerBounds =
       this._viewerElement.nativeElement.getBoundingClientRect();
     const viewerCenterX =
@@ -267,7 +281,7 @@ export class ViewerComponent implements AfterViewInit, OnDestroy {
     const movementY = centerOffsetY / this._zoom;
     this._translate[0] += movementX * step * 2;
     this._translate[1] -= movementY * step * 2;
-    this._transformChange.emit();
+    this.zoom = this._zoom *= 1 + step;
   }
 
   /* #region templates */
