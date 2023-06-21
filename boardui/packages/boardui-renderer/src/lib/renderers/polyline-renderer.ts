@@ -1,10 +1,8 @@
-import '../extensions/line-desc.extensions';
-import '../extensions/polyline.extensions';
 import { Polyline, LineDescRef, LineDesc } from 'boardui-parser';
 import { RendererBase } from './renderer-base';
 import { ReusablesProvider } from '../reusables-provider';
 import { getLineDescSVGAttributes } from '../extensions/line-desc.extensions';
-import { getPolylinePath } from '../extensions/polyline.extensions';
+import { getPolygonPath } from '../extensions/polygon.extensions';
 
 export class PolylineRenderer extends RendererBase<Polyline> {
   constructor() {
@@ -16,7 +14,7 @@ export class PolylineRenderer extends RendererBase<Polyline> {
     partElement: SVGElement,
     reusablesProvider: ReusablesProvider
   ): void {
-    partElement.setAttribute('d', getPolylinePath(part));
+    partElement.setAttribute('d', getPolygonPath(part, []));
 
     if (part.lineDesc) {
       const lineDesc =
