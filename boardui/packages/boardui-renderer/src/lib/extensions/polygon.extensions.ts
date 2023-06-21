@@ -1,12 +1,13 @@
 import {
   PolyBegin,
   Polygon,
+  Polyline,
   PolyStepCurve,
   PolyStepSegment,
 } from 'boardui-parser';
 import { Bounds } from '../bounds';
 
-export function getPolygonPath(polygon: Polygon, cutouts: Polygon[]): string {
+export function getPolygonPath(polygon: Polygon | Polyline, cutouts: Polygon[]): string {
   const strArr = new Array<string>(1 + cutouts.length);
   strArr[0] = getPolygonPath(polygon);
   let i = 1;
@@ -15,7 +16,7 @@ export function getPolygonPath(polygon: Polygon, cutouts: Polygon[]): string {
   }
   return strArr.join(' ');
 
-  function getPolygonPath(polygon: Polygon) {
+  function getPolygonPath(polygon: Polygon | Polyline) {
     const strArr = new Array<string>(polygon.polySteps.length + 1);
     strArr[0] = `M ${polygon.polyBegin.x} ${polygon.polyBegin.y}`;
     let lastStep: PolyBegin = polygon.polyBegin;
@@ -27,55 +28,11 @@ export function getPolygonPath(polygon: Polygon, cutouts: Polygon[]): string {
         strArr[i + 1] = getSVGArc(step, lastStep);
       }
       lastStep = step;
-      // TODO: Handle curves
     }
 
     return strArr.join(' ');
   }
-
-  function getSVGArc(curve: PolyStepCurve, lastStep: PolyBegin): string {
-    const rx = getDistance(+curve.x, +curve.y, +curve.centerX, +curve.centerY);
-    const ry = getDistance(
-      +lastStep.x,
-      +lastStep.y,
-      +curve.centerX,
-      +curve.centerY
-    );
-    // TODO: Calculate correct arc.
-    const xAxisRotation = 0;
-    const largeArcFlag: 0 | 1 = 0;
-    const sweepFlag: 0 | 1 = curve.clockwise === 'true' ? 0 : 1;
-
-    return `A ${rx} ${ry} ${xAxisRotation} ${largeArcFlag} ${sweepFlag} ${curve.x} ${curve.y}`;
-
-    function getDistance(x1: number, y1: number, x2: number, y2: number) {
-      const y = x2 - x1;
-      const x = y2 - y1;
-
-      return Math.sqrt(x * x + y * y);
-    }
-  }
 }
-
-/* DOES NOT WORK :(
-        const rx = curve.clockwise === "true" ?  radiusA(+lastStep.x, +lastStep.y, +curve.x, +curve.y, +curve.centerX, +curve.centerY) : radiusB(+lastStep.x, +lastStep.y, +curve.x, +curve.y, +curve.centerX, +curve.centerY);
-        const ry = curve.clockwise === "true" ?  radiusB(+lastStep.x, +lastStep.y, +curve.x, +curve.y, +curve.centerX, +curve.centerY) : radiusA(+lastStep.x, +lastStep.y, +curve.x, +curve.y, +curve.centerX, +curve.centerY);
-        // TODO: Calculate correct arc.
-        const xAxisRotation = 0;
-        const largeArcFlag: 0 | 1 = 0;
-        const sweepFlag: 0 | 1 = curve.clockwise === "true" ? 0 : 1;
-
-        return `A ${rx} ${ry} ${xAxisRotation} ${largeArcFlag} ${sweepFlag} ${curve.x} ${curve.y}`;
-
-        function radiusA(p: number, q: number, m: number, n: number, h: number, k: number) {
-            return Math.sqrt((((p - h) ^ 2) * (n - q) * (n + q - (2 * k)) / (p - m) * (p + m - (2 * h))) + ((q - k) ^ 2))
-                * Math.sqrt(((p - m) * (p + m - (2 * h))) / ((n - q) * (n + q - (2 * k))));
-        }
-
-        function radiusB(p: number, q: number, m: number, n: number, h: number, k: number) {
-            return Math.sqrt(((p - h) ^ 2) * (n - q) * (n + q - (2 * k)) / ((p - m) * (p + m - (2 * h))) + ((q - k) ^ 2));
-        }
-*/
 
 export function getPolygonBounds(polygon: Polygon): Bounds {
   const sections = [polygon.polyBegin, ...polygon.polySteps];
@@ -89,4 +46,45 @@ export function getPolygonBounds(polygon: Polygon): Bounds {
     width,
     height,
   };
+}
+
+export function getSVGArc(curve: PolyStepCurve, lastStep: PolyBegin): string {
+  const start: Point = { x: lastStep.x, y: lastStep.y };
+  const center: Point = { x: curve.centerX, y: curve.centerY };
+  const end: Point = { x: curve.x, y: curve.y };
+  const clockwise = curve.clockwise === 'true';
+  const distance = getDistance(end, center);
+
+  const [startAngle, endAngle] = getAngles(start, center, end);
+
+  let angleDiff = clockwise ? startAngle - endAngle : endAngle - startAngle;
+  if (angleDiff < 0) {
+    angleDiff += 2 * Math.PI;
+  }
+  const largeArcFlag = angleDiff > Math.PI ? "1" : "0";
+  const sweepFlag = clockwise ? "0" : "1";
+  const rotationAngle = endAngle - startAngle;
+
+  return `A ${distance} ${distance} ${rotationAngle} ${largeArcFlag} ${sweepFlag} ${curve.x} ${curve.y}`;
+
+  function getAngles(start: Point, center: Point, end: Point): [number, number] {
+    if (Math.abs(start.x - end.x) < 1E-09 && Math.abs(start.y - end.y) < 1E-09) {
+      return [0, 0];
+    }
+    else {
+      return [
+        Math.atan2(start.y - center.y, start.x - center.x),
+        Math.atan2(end.y - center.y, end.x - center.x)
+      ];
+    }
+  }
+
+  function getDistance(start: Point, end: Point): number {
+    const y = end.x - start.x;
+    const x = end.y - start.y;
+
+    return Math.sqrt(x * x + y * y);
+  }
+
+  interface Point { x: number, y: number }
 }
