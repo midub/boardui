@@ -19,3 +19,5 @@ export type LayerType =
 
   /** Component layer. */
   | 'COMPONENT';
+
+export const LAYER_TYPES: LayerType[] = ['PROFILE', 'SIGNAL', 'SILKSCREEN', 'DOCUMENTATION', 'DRILL', 'COMPONENT'];

@@ -10,6 +10,7 @@ import { createSAXParser, IPC2581, IPC2581Parser } from 'boardui-parser';
 import { firstValueFrom } from 'rxjs';
 import { ErrorDialogComponent } from './error-dialog.component';
 import { ElementDialogComponent } from './element-dialog.component';
+import { LayersDialogComponent } from './layers-dialog.component';
 
 @Component({
   selector: 'app-root',
@@ -99,6 +100,12 @@ export class AppComponent implements AfterContentInit {
   zoomOut = () => this.zoom /= 1.5;
 
   flipSide = () => this.side = this.side === 'TOP' ? 'BOTTOM' : 'TOP';
+
+  openLayersDialog = () => this._dialog.open(LayersDialogComponent, { data: { 
+    renderProperties: this.renderProperties, 
+    pcb: this.pcb,
+    renderPropertiesChange: (renderProperties: RenderProperties) => this.renderProperties = {...renderProperties},
+  } });
 
   demoHtml = `
   <bui-viewer

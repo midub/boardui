@@ -81,6 +81,9 @@
               <button mat-fab title="Flip side" (pointerdown)="flipSide()">
                 <mat-icon>flip</mat-icon>
               </button>
+              <button mat-fab title="Layers" (pointerdown)="openLayersDialog()">
+                <mat-icon>layers</mat-icon>
+              </button>
             </div>
             <div *buiTemplate="let data of 'padTooltip'" class="tooltip">
               {{ data.padstackDefRef }}
