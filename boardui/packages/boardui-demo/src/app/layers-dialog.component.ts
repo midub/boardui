@@ -23,7 +23,7 @@ export interface LayersDialogData {
   selector: 'app-layers-dialog',
   template: `
     <h1 mat-dialog-title>Layers</h1>
-    <div mat-dialog-content style="min-width: 40vw;">
+    <div mat-dialog-content style="min-width: 40vw; display: flex; flex-direction: column;">
       <span *ngFor="let layerType of layerTypes">
         <mat-checkbox class="example-margin" [checked]="isChecked(layerType)" (change)="toggleLayerType(layerType)">
           {{ layerType }}
