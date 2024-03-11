@@ -19,14 +19,14 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/othneildrew/Best-README-Template">
+  <a href="https://github.com/midub/boardui">
     <img src="logo.svg" alt="Logo" width="80" height="80">
   </a>
 
   <h3 align="center">BoardUI</h3>
 
   <p align="center">
-    An PCB web viewer component for IPC-2581 format.
+    A PCB web viewer component for IPC-2581 format.
     <br />
     <a href="https://demo.boardui.com">View Demo</a>
     ·
@@ -66,22 +66,20 @@
 
 
 <!-- ABOUT THE PROJECT -->
-<!--
-## About The Project
+## About BoardUI
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+<div align="left">
+    <img src="boardui-screenshot-1.webp" alt="Logo" width="400">
+</div>
 
-There are many great README templates available on GitHub; however, I didn't find one that really suited my needs so I created this enhanced one. I want to create a README template so amazing that it'll be the last one you ever need -- I think this is it.
+BoardUI is a set of libraries for visualization of printed circuit boards in format IPC-2581 in browser.
 
-Here's why:
-* Your time should be focused on creating something amazing. A project that solves a problem and helps others
-* You shouldn't be doing the same tasks over and over like creating a README from scratch
-* You should implement DRY principles to the rest of your life :smile:
-
-Of course, no one template will serve all projects since your needs may be different. So I'll be adding more in the near future. You may also suggest changes by forking this repo and creating a pull request or opening an issue. Thanks to all the people have contributed to expanding this template!
-
-Use the `BLANK_README.md` to get started.
--->
+The project consists of 5 packages:
+- boardui-parser - Parser for IPC-2581 and data model classes.
+- boardui-renderer - Renderer of IPC-2581 to SVG.
+- boardui-angular - Angular component to easily integrate parser and renderer with regular controls into Angular app.
+- boardui-core - Shared lib
+- boardui-demo - Demo angular app - also available at [demo.boardui.com](https://demo.boardui.com/)
 
 ### Built With
 
@@ -165,6 +163,10 @@ Michal Dub
 <br />
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
+<br />
+
+This was built for my bachelor thesis in 2023.
+
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 * [IPC Consortium](https://www.ipc2581.com/)
@@ -184,7 +186,6 @@ Michal Dub
 [license-url]: https://github.com/midub/boardui/blob/master/LICENSE
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/michaldub
-[product-screenshot]: images/screenshot.png
 [Angular.io]: https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white
 [Angular-url]: https://angular.io/
 [typescriptlang]: https://img.shields.io/badge/Typescript-3178c6?style=for-the-badge&logo=typescript&logoColor=white
