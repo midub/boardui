@@ -21,10 +21,12 @@
         }
       },
       "defaultConfiguration": "production",
-      "dependsOn": [{
-        "dependencies": true,
-        "target": "build"
-      }]
+      "dependsOn": [
+        {
+          "dependencies": true,
+          "target": "build"
+        }
+      ]
     },
     "test": {
       "executor": "@nx/jest:jest",
@@ -41,7 +43,7 @@
       }
     },
     "lint": {
-      "executor": "@nx/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
         "lintFilePatterns": [

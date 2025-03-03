@@ -5,7 +5,6 @@ export async function createSAXParser(saxWasmUrl: string): Promise<SAXParser> {
   const saxWasmbuffer = await saxWasmResponse.arrayBuffer();
   const parser = new SAXParser(
     SaxEventType.Attribute | SaxEventType.OpenTagStart | SaxEventType.CloseTag,
-    { highWaterMark: 1024 * 1024 }
   );
 
   const ready = parser.prepareWasm(new Uint8Array(saxWasmbuffer));

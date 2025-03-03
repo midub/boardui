@@ -9,13 +9,13 @@
       "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/packages/boardui-core",
-        "main": "packages/boardui-core/src/index.ts", 
+        "main": "packages/boardui-core/src/index.ts",
         "tsConfig": "packages/boardui-core/tsconfig.lib.json",
         "assets": ["packages/boardui-core/*.md"]
       }
     },
     "lint": {
-      "executor": "@nx/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
         "lintFilePatterns": ["packages/boardui-core/**/*.ts"]
