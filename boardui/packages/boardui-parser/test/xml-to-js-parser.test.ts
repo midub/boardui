@@ -15,11 +15,11 @@ describe('XMLToJSParser processAttribute method test', () => {
         name: 'child',
       } as Tag,
       [],
-      new Map()
+      new Map(),
     );
     XmlToJsParser.processAttribute(
       { name: { value: 'child' }, value: { value: 'test' } } as Attribute,
-      stack
+      stack,
     );
 
     expect(stack.at(0)).toEqual({
@@ -28,10 +28,10 @@ describe('XMLToJSParser processAttribute method test', () => {
   });
 });
 
-let processOpenTagFuncHashSet = new Map(
+const processOpenTagFuncHashSet = new Map(
   [['child', Object.prototype, ['child']] as XMLtoJSMapping].map((x) =>
-    XmlToJsParser.getMappingFunc(...x)
-  )
+    XmlToJsParser.getMappingFunc(...x),
+  ),
 );
 
 describe('XMLToJSParser processOpenTag method test', () => {
@@ -47,7 +47,7 @@ describe('XMLToJSParser processOpenTag method test', () => {
         name: 'child',
       } as Tag,
       stack,
-      processOpenTagFuncHashSet
+      processOpenTagFuncHashSet,
     );
 
     expect(stack.at(0)).toEqual({
@@ -70,7 +70,7 @@ describe('XMLToJSParser processCloseTag method test', () => {
         name: 'child',
       },
       stack,
-      processOpenTagFuncHashSet
+      processOpenTagFuncHashSet,
     );
 
     expect(stack.length).toEqual(0);

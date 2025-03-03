@@ -1,5 +1,5 @@
 import { CircleRenderer } from '../src/lib/renderers/circle-renderer';
-import { Circle, FillDesc, LineDesc } from 'boardui-parser';
+import { Circle, FillDesc, LineDesc } from 'boardui-parser/src';
 import { ReusablesProviderMock } from './reusables-provider.mock';
 import { ElementIdProviderMock } from './element-id-provider.mock';
 import { RendererProvider } from '../src/lib/renderer-provider';
@@ -8,8 +8,8 @@ import '@testing-library/jest-dom';
 
 let circleRenderer: CircleRenderer;
 let targetElement: SVGElement;
-let testFillDesc: FillDesc = new FillDesc();
-let testLineDesc: LineDesc = {
+const testFillDesc: FillDesc = new FillDesc();
+const testLineDesc: LineDesc = {
   lineEnd: 'ROUND',
   lineWidth: '1',
   lineProperty: 'SOLID',

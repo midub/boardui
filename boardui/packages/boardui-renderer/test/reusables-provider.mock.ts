@@ -1,4 +1,4 @@
-import { FillDesc, Package } from '../../boardui-parser/src';
+import { FillDesc, Package } from 'boardui-parser/src';
 import { ReusablesProvider } from '../src/lib/reusables-provider';
 import { getPolygon } from './polygonUtils';
 

@@ -1,20 +1,14 @@
-import {
-  Component,
-  Contour,
-  FillDesc,
-  LineDesc,
-  PolyStepSegment,
-} from '../../boardui-parser/src';
+import { Component, FillDesc, PolyStepSegment } from 'boardui-parser/src';
 import { ReusablesProviderMock } from './reusables-provider.mock';
 import { ElementIdProviderMock } from './element-id-provider.mock';
 import { RendererProvider } from '../src/lib/renderer-provider';
 import { RenderPropertiesMock } from './render-properties.mock';
 import '@testing-library/jest-dom';
-import { ComponentRenderer, ContourRenderer } from '../src/lib/renderers';
+import { ComponentRenderer } from '../src/lib/renderers';
 
 let componentRenderer: ComponentRenderer;
 let targetElement: SVGElement;
-let testFillDesc: FillDesc = new FillDesc();
+const testFillDesc: FillDesc = new FillDesc();
 
 function render(component: Component): SVGElement {
   componentRenderer.render(component, targetElement, {
@@ -73,7 +67,7 @@ describe('ComponentRenderer render test', () => {
     expect(result).toHaveAttribute('component');
 
     const outline = Array.from(result.children).find(
-      (x) => x.tagName === 'path'
+      (x) => x.tagName === 'path',
     ) as SVGElement;
     expect(outline).toBeTruthy();
     expect(outline.tagName).toBe('path');

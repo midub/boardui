@@ -1,9 +1,4 @@
-import {
-  Contour,
-  FillDesc,
-  LineDesc,
-  PolyStepSegment,
-} from 'boardui-parser';
+import { Contour, FillDesc, PolyStepSegment } from 'boardui-parser/src';
 import { ReusablesProviderMock } from './reusables-provider.mock';
 import { ElementIdProviderMock } from './element-id-provider.mock';
 import { RendererProvider } from '../src/lib/renderer-provider';
@@ -13,7 +8,7 @@ import { ContourRenderer } from '../src/lib/renderers';
 
 let contourRenderer: ContourRenderer;
 let targetElement: SVGElement;
-let testFillDesc: FillDesc = new FillDesc();
+const testFillDesc: FillDesc = new FillDesc();
 
 function render(contour: Contour): SVGElement {
   contourRenderer.render(contour, targetElement, {
