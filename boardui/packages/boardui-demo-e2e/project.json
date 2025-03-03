@@ -3,6 +3,8 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/boardui-demo-e2e/src",
   "projectType": "application",
+  "tags": [],
+  "implicitDependencies": ["boardui-demo"],
   "targets": {
     "e2e": {
       "executor": "@nx/cypress:cypress",
@@ -27,7 +29,5 @@
         "lintFilePatterns": ["packages/boardui-demo-e2e/**/*.{js,ts}"]
       }
     }
-  },
-  "tags": [],
-  "implicitDependencies": ["boardui-demo"]
+  }
 }

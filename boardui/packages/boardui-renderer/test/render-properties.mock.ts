@@ -1,4 +1,4 @@
-import { RenderProperties } from '../../boardui-core/src';
+import { RenderProperties } from 'boardui-core/src';
 
 export const RenderPropertiesMock: RenderProperties = {
   padding: 1,

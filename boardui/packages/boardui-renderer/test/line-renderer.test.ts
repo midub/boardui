@@ -1,4 +1,4 @@
-import { FillDesc, Line, LineDesc } from '../../boardui-parser/src';
+import { FillDesc, Line, LineDesc } from 'boardui-parser/src';
 import { ReusablesProviderMock } from './reusables-provider.mock';
 import { ElementIdProviderMock } from './element-id-provider.mock';
 import { RendererProvider } from '../src/lib/renderer-provider';
@@ -8,8 +8,8 @@ import { LineRenderer } from '../src/lib/renderers';
 
 let lineRenderer: LineRenderer;
 let targetElement: SVGElement;
-let testFillDesc: FillDesc = new FillDesc();
-let testLineDesc: LineDesc = {
+const testFillDesc: FillDesc = new FillDesc();
+const testLineDesc: LineDesc = {
   lineEnd: 'ROUND',
   lineWidth: '1',
   lineProperty: 'SOLID',
@@ -39,11 +39,11 @@ beforeEach(() => {
 describe('LineRenderer render test', () => {
   it('should render basic line', async () => {
     const line: Line = {
-        startX: -1,
-        startY: -2,
-        endX: 1,
-        endY: 2,
-      lineDesc: testLineDesc
+      startX: -1,
+      startY: -2,
+      endX: 1,
+      endY: 2,
+      lineDesc: testLineDesc,
     };
 
     const result = render(line);

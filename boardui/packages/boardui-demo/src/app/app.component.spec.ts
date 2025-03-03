@@ -16,6 +16,7 @@ describe('AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [
+        AppComponent,
         HttpClientModule,
         NoopAnimationsModule,
         BoardUIModule,
@@ -26,9 +27,8 @@ describe('AppComponent', () => {
         MatTabsModule,
         MatExpansionModule,
         MatDialogModule,
-        MatProgressSpinnerModule
+        MatProgressSpinnerModule,
       ],
-      declarations: [AppComponent],
     }).compileComponents();
   });
 

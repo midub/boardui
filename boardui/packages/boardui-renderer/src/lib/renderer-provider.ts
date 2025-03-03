@@ -27,7 +27,7 @@ import {
 import { PadRenderer } from './renderers/pad-renderer';
 
 export class RendererProvider {
-  // eslint-disable-next-line @typescript-eslint/ban-types
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   private static _renderers = new Map<Function, Renderer<any>>([
     [Contour.prototype.constructor, new ContourRenderer()],
     [Polyline.prototype.constructor, new PolylineRenderer()],
@@ -38,7 +38,7 @@ export class RendererProvider {
     [Hole.prototype.constructor, new HoleRenderer()],
     [Pad.prototype.constructor, new PadRenderer()],
     [Oval.prototype.constructor, new OvalRenderer()],
-    [Line.prototype.constructor, new LineRenderer()]
+    [Line.prototype.constructor, new LineRenderer()],
   ]);
 
   private static _profileContourRenderer = new ProfileContourRenderer();

@@ -50,7 +50,8 @@
             "inputs": [
               "default",
               "{workspaceRoot}/.eslintrc.json",
-              "{workspaceRoot}/.eslintignore"
+              "{workspaceRoot}/.eslintignore",
+              "{workspaceRoot}/eslint.config.mjs"
             ]
           }
         }
@@ -125,7 +126,8 @@
             "inputs": [
               "default",
               "{workspaceRoot}/.eslintrc.json",
-              "{workspaceRoot}/.eslintignore"
+              "{workspaceRoot}/.eslintignore",
+              "{workspaceRoot}/eslint.config.mjs"
             ]
           },
           "test": {
@@ -250,7 +252,8 @@
             "inputs": [
               "default",
               "{workspaceRoot}/.eslintrc.json",
-              "{workspaceRoot}/.eslintignore"
+              "{workspaceRoot}/.eslintignore",
+              "{workspaceRoot}/eslint.config.mjs"
             ]
           }
         },
@@ -328,7 +331,8 @@
             "inputs": [
               "default",
               "{workspaceRoot}/.eslintrc.json",
-              "{workspaceRoot}/.eslintignore"
+              "{workspaceRoot}/.eslintignore",
+              "{workspaceRoot}/eslint.config.mjs"
             ]
           },
           "test": {
@@ -424,7 +428,8 @@
             "inputs": [
               "default",
               "{workspaceRoot}/.eslintrc.json",
-              "{workspaceRoot}/.eslintignore"
+              "{workspaceRoot}/.eslintignore",
+              "{workspaceRoot}/eslint.config.mjs"
             ]
           },
           "test": {
@@ -564,7 +569,8 @@
             "inputs": [
               "default",
               "{workspaceRoot}/.eslintrc.json",
-              "{workspaceRoot}/.eslintignore"
+              "{workspaceRoot}/.eslintignore",
+              "{workspaceRoot}/eslint.config.mjs"
             ]
           },
           "test": {
@@ -3388,6 +3394,15 @@
       "type": "npm",
       "name": "npm:@eslint/eslintrc",
       "data": {
+        "version": "2.1.4",
+        "packageName": "@eslint/eslintrc",
+        "hash": "sha512-269Z39MS6wVJtsoUl10L60WdkhJVdPG24Q4eZTH3nnF6lpvSShEK3wQjDX9JRWAUPvPh7COouPpU9IrqaZFvtQ=="
+      }
+    },
+    "npm:@eslint/eslintrc@3.3.0": {
+      "type": "npm",
+      "name": "npm:@eslint/eslintrc@3.3.0",
+      "data": {
         "version": "3.3.0",
         "packageName": "@eslint/eslintrc",
         "hash": "sha512-yaVPAiNAalnCZedKLdR21GOGILMLKPyqSLWaAjQFvYA2i/ciDi8ArYVr69Anohb6cH2Ukhqti4aFnYyPm8wdwQ=="
@@ -3429,13 +3444,31 @@
         "hash": "sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg=="
       }
     },
-    "npm:globals@14.0.0": {
+    "npm:espree@9.6.1": {
       "type": "npm",
-      "name": "npm:globals@14.0.0",
+      "name": "npm:espree@9.6.1",
       "data": {
-        "version": "14.0.0",
+        "version": "9.6.1",
+        "packageName": "espree",
+        "hash": "sha512-oruZaFkjorTpF32kDSI5/75ViwGeZginGGy2NoOSg3Q9bnwlnmDm4HLnkl0RE3n+njDXR037aY1+x58Z/zFdwQ=="
+      }
+    },
+    "npm:espree": {
+      "type": "npm",
+      "name": "npm:espree",
+      "data": {
+        "version": "10.3.0",
+        "packageName": "espree",
+        "hash": "sha512-0QYC8b24HWY8zjRnDTL6RiHfDbAWn63qb4LMj1Z4b076A4une81+z03Kg7l7mn/48PUTqoLptSXez8oknU8Clg=="
+      }
+    },
+    "npm:globals@13.24.0": {
+      "type": "npm",
+      "name": "npm:globals@13.24.0",
+      "data": {
+        "version": "13.24.0",
         "packageName": "globals",
-        "hash": "sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ=="
+        "hash": "sha512-AhO5QUcj8llrbG09iWhPU2B204J1xnPeL8kQmVorSsy+Sjj1sk8gIyh6cUocGmH4L0UuhAJy+hJMRA4mgA4mFQ=="
       }
     },
     "npm:globals@15.15.0": {
@@ -3445,6 +3478,15 @@
         "version": "15.15.0",
         "packageName": "globals",
         "hash": "sha512-7ACyT3wmyp3I61S4fG682L0VA2RGD9otkqGJIwNUMF1SWUombIIk+af1unuDYgMm082aHYwD+mzJvv9Iu8dsgg=="
+      }
+    },
+    "npm:globals@14.0.0": {
+      "type": "npm",
+      "name": "npm:globals@14.0.0",
+      "data": {
+        "version": "14.0.0",
+        "packageName": "globals",
+        "hash": "sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ=="
       }
     },
     "npm:globals": {
@@ -3492,9 +3534,36 @@
         "hash": "sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug=="
       }
     },
+    "npm:type-fest@0.20.2": {
+      "type": "npm",
+      "name": "npm:type-fest@0.20.2",
+      "data": {
+        "version": "0.20.2",
+        "packageName": "type-fest",
+        "hash": "sha512-Ne+eE4r0/iWnpAxD852z3A+N0Bt5RN//NjJwRd2VFHEmrywxf5vsZlh4R6lixl6B+wz/8d+maTSAkN1FIkI3LQ=="
+      }
+    },
+    "npm:type-fest": {
+      "type": "npm",
+      "name": "npm:type-fest",
+      "data": {
+        "version": "0.21.3",
+        "packageName": "type-fest",
+        "hash": "sha512-t0rzBq87m3fVcduHDUFhKmyyX+9eo6WQjZvf51Ea/M0Q7+T374Jp1aUiyUl0GKxp8M/OETVHSDvmkyPgvX+X2w=="
+      }
+    },
     "npm:@eslint/js": {
       "type": "npm",
       "name": "npm:@eslint/js",
+      "data": {
+        "version": "8.57.1",
+        "packageName": "@eslint/js",
+        "hash": "sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q=="
+      }
+    },
+    "npm:@eslint/js@9.21.0": {
+      "type": "npm",
+      "name": "npm:@eslint/js@9.21.0",
       "data": {
         "version": "9.21.0",
         "packageName": "@eslint/js",
@@ -9540,24 +9609,6 @@
         "hash": "sha512-2NxwbF/hZ0KpepYN0cNbo+FN6XoK7GaHlQhgx/hIZl6Va0bF45RQOOwhLIy8lQDbuCiadSLCBnH2CFYquit5bw=="
       }
     },
-    "npm:espree": {
-      "type": "npm",
-      "name": "npm:espree",
-      "data": {
-        "version": "10.3.0",
-        "packageName": "espree",
-        "hash": "sha512-0QYC8b24HWY8zjRnDTL6RiHfDbAWn63qb4LMj1Z4b076A4une81+z03Kg7l7mn/48PUTqoLptSXez8oknU8Clg=="
-      }
-    },
-    "npm:espree@9.6.1": {
-      "type": "npm",
-      "name": "npm:espree@9.6.1",
-      "data": {
-        "version": "9.6.1",
-        "packageName": "espree",
-        "hash": "sha512-oruZaFkjorTpF32kDSI5/75ViwGeZginGGy2NoOSg3Q9bnwlnmDm4HLnkl0RE3n+njDXR037aY1+x58Z/zFdwQ=="
-      }
-    },
     "npm:esprima": {
       "type": "npm",
       "name": "npm:esprima",
@@ -11239,6 +11290,15 @@
         "version": "29.5.0",
         "packageName": "jest-environment-node",
         "hash": "sha512-ExxuIK/+yQ+6PRGaHkKewYtg6hto2uGCgvKdb2nfJfKXgZ17DfXjvbZ+jA1Qt9A8EQSfPnt5FKIfnOO3u1h9qw=="
+      }
+    },
+    "npm:jest-fixed-jsdom": {
+      "type": "npm",
+      "name": "npm:jest-fixed-jsdom",
+      "data": {
+        "version": "0.0.9",
+        "packageName": "jest-fixed-jsdom",
+        "hash": "sha512-KPfqh2+sn5q2B+7LZktwDcwhCpOpUSue8a1I+BcixWLOQoEVyAjAGfH+IYZGoxZsziNojoHGRTC8xRbB1wDD4g=="
       }
     },
     "npm:jest-get-type": {
@@ -13842,15 +13902,6 @@
         "hash": "sha512-tyz7oR2Ke9iZeiyJv8qjkEYeZ7S3y0pS2FXuUC6TH1xRT8WPlUUHJI+f5v0+jzBnuc6+WbPpjfyxlcbXtNSMHQ=="
       }
     },
-    "npm:sax-wasm@2.3.2": {
-      "type": "npm",
-      "name": "npm:sax-wasm@2.3.2",
-      "data": {
-        "version": "2.3.2",
-        "packageName": "sax-wasm",
-        "hash": "sha512-Z+AkZ0/t3GHEewfsyoLFsM8kG+bWfYqP3+LyGo+wgzPZoEFLJk/PzrhIDzaihxMRsLs/qdwV0s5S2YhtOKf/8g=="
-      }
-    },
     "npm:saxes": {
       "type": "npm",
       "name": "npm:saxes",
@@ -14598,15 +14649,6 @@
         "hash": "sha512-0fr/mIH1dlO+x7TlcMy+bIDqKPsw/70tVyeHW787goQjhmqaZe10uwLujubK9q9Lg6Fiho1KUKDYz0Z7k7g5/g=="
       }
     },
-    "npm:type-fest": {
-      "type": "npm",
-      "name": "npm:type-fest",
-      "data": {
-        "version": "0.21.3",
-        "packageName": "type-fest",
-        "hash": "sha512-t0rzBq87m3fVcduHDUFhKmyyX+9eo6WQjZvf51Ea/M0Q7+T374Jp1aUiyUl0GKxp8M/OETVHSDvmkyPgvX+X2w=="
-      }
-    },
     "npm:type-is": {
       "type": "npm",
       "name": "npm:type-is",
@@ -14623,6 +14665,15 @@
         "version": "1.0.9",
         "packageName": "typed-assert",
         "hash": "sha512-KNNZtayBCtmnNmbo5mG47p1XsCyrx6iVqomjcZnec/1Y5GGARaxPs6r49RnSPeUP3YjNYiU9sQHAtY4BBvnZwg=="
+      }
+    },
+    "npm:typescript-eslint": {
+      "type": "npm",
+      "name": "npm:typescript-eslint",
+      "data": {
+        "version": "8.26.0",
+        "packageName": "typescript-eslint",
+        "hash": "sha512-PtVz9nAnuNJuAVeUFvwztjuUgSnJInODAUx47VDwWPXzd5vismPOtPtt83tzNXyOjVQbPRp786D6WFW/M2koIA=="
       }
     },
     "npm:undici-types": {
@@ -15164,6 +15215,16 @@
         "source": "boardui-demo-e2e",
         "target": "npm:@nx/cypress",
         "type": "static"
+      },
+      {
+        "source": "boardui-demo-e2e",
+        "target": "npm:@eslint/eslintrc",
+        "type": "static"
+      },
+      {
+        "source": "boardui-demo-e2e",
+        "target": "npm:@eslint/js",
+        "type": "static"
       }
     ],
     "boardui-renderer": [
@@ -15184,6 +15245,16 @@
       }
     ],
     "boardui-angular": [
+      {
+        "source": "boardui-angular",
+        "target": "npm:@eslint/eslintrc",
+        "type": "static"
+      },
+      {
+        "source": "boardui-angular",
+        "target": "npm:@eslint/js",
+        "type": "static"
+      },
       {
         "source": "boardui-angular",
         "target": "npm:@angular/common",
@@ -15233,17 +15304,22 @@
     "boardui-parser": [
       {
         "source": "boardui-parser",
-        "target": "npm:sax-wasm@2.3.2",
-        "type": "static"
-      },
-      {
-        "source": "boardui-parser",
         "target": "npm:sax-wasm",
         "type": "static"
       }
     ],
     "boardui-core": [],
     "boardui-demo": [
+      {
+        "source": "boardui-demo",
+        "target": "npm:@eslint/eslintrc",
+        "type": "static"
+      },
+      {
+        "source": "boardui-demo",
+        "target": "npm:@eslint/js",
+        "type": "static"
+      },
       {
         "source": "boardui-demo",
         "target": "npm:@angular/common",
@@ -19586,12 +19662,12 @@
       },
       {
         "source": "npm:@eslint/eslintrc",
-        "target": "npm:espree",
+        "target": "npm:espree@9.6.1",
         "type": "static"
       },
       {
         "source": "npm:@eslint/eslintrc",
-        "target": "npm:globals@14.0.0",
+        "target": "npm:globals@13.24.0",
         "type": "static"
       },
       {
@@ -19639,6 +19715,30 @@
       {
         "source": "npm:ajv@6.12.6",
         "target": "npm:uri-js",
+        "type": "static"
+      }
+    ],
+    "npm:espree@9.6.1": [
+      {
+        "source": "npm:espree@9.6.1",
+        "target": "npm:acorn",
+        "type": "static"
+      },
+      {
+        "source": "npm:espree@9.6.1",
+        "target": "npm:acorn-jsx",
+        "type": "static"
+      },
+      {
+        "source": "npm:espree@9.6.1",
+        "target": "npm:eslint-visitor-keys",
+        "type": "static"
+      }
+    ],
+    "npm:globals@13.24.0": [
+      {
+        "source": "npm:globals@13.24.0",
+        "target": "npm:type-fest@0.20.2",
         "type": "static"
       }
     ],
@@ -26896,12 +26996,12 @@
       },
       {
         "source": "npm:eslint",
-        "target": "npm:@eslint/eslintrc",
+        "target": "npm:@eslint/eslintrc@3.3.0",
         "type": "static"
       },
       {
         "source": "npm:eslint",
-        "target": "npm:@eslint/js",
+        "target": "npm:@eslint/js@9.21.0",
         "type": "static"
       },
       {
@@ -27073,6 +27173,53 @@
       {
         "source": "npm:eslint-scope",
         "target": "npm:estraverse",
+        "type": "static"
+      }
+    ],
+    "npm:@eslint/eslintrc@3.3.0": [
+      {
+        "source": "npm:@eslint/eslintrc@3.3.0",
+        "target": "npm:ajv@6.12.6",
+        "type": "static"
+      },
+      {
+        "source": "npm:@eslint/eslintrc@3.3.0",
+        "target": "npm:debug",
+        "type": "static"
+      },
+      {
+        "source": "npm:@eslint/eslintrc@3.3.0",
+        "target": "npm:espree",
+        "type": "static"
+      },
+      {
+        "source": "npm:@eslint/eslintrc@3.3.0",
+        "target": "npm:globals@14.0.0",
+        "type": "static"
+      },
+      {
+        "source": "npm:@eslint/eslintrc@3.3.0",
+        "target": "npm:ignore",
+        "type": "static"
+      },
+      {
+        "source": "npm:@eslint/eslintrc@3.3.0",
+        "target": "npm:import-fresh",
+        "type": "static"
+      },
+      {
+        "source": "npm:@eslint/eslintrc@3.3.0",
+        "target": "npm:js-yaml@4.1.0",
+        "type": "static"
+      },
+      {
+        "source": "npm:@eslint/eslintrc@3.3.0",
+        "target": "npm:minimatch@3.1.2",
+        "type": "static"
+      },
+      {
+        "source": "npm:@eslint/eslintrc@3.3.0",
+        "target": "npm:strip-json-comments",
         "type": "static"
       }
     ],
@@ -29175,6 +29322,13 @@
         "type": "static"
       }
     ],
+    "npm:jest-fixed-jsdom": [
+      {
+        "source": "npm:jest-fixed-jsdom",
+        "target": "npm:jest-environment-jsdom",
+        "type": "static"
+      }
+    ],
     "npm:jest-haste-map": [
       {
         "source": "npm:jest-haste-map",
@@ -30129,23 +30283,6 @@
       {
         "source": "npm:jsonc-eslint-parser",
         "target": "npm:semver",
-        "type": "static"
-      }
-    ],
-    "npm:espree@9.6.1": [
-      {
-        "source": "npm:espree@9.6.1",
-        "target": "npm:acorn",
-        "type": "static"
-      },
-      {
-        "source": "npm:espree@9.6.1",
-        "target": "npm:acorn-jsx",
-        "type": "static"
-      },
-      {
-        "source": "npm:espree@9.6.1",
-        "target": "npm:eslint-visitor-keys",
         "type": "static"
       }
     ],
@@ -34958,6 +35095,33 @@
         "type": "static"
       }
     ],
+    "npm:typescript-eslint": [
+      {
+        "source": "npm:typescript-eslint",
+        "target": "npm:eslint",
+        "type": "static"
+      },
+      {
+        "source": "npm:typescript-eslint",
+        "target": "npm:typescript",
+        "type": "static"
+      },
+      {
+        "source": "npm:typescript-eslint",
+        "target": "npm:@typescript-eslint/eslint-plugin",
+        "type": "static"
+      },
+      {
+        "source": "npm:typescript-eslint",
+        "target": "npm:@typescript-eslint/parser",
+        "type": "static"
+      },
+      {
+        "source": "npm:typescript-eslint",
+        "target": "npm:@typescript-eslint/utils",
+        "type": "static"
+      }
+    ],
     "npm:unicode-match-property-ecmascript": [
       {
         "source": "npm:unicode-match-property-ecmascript",
@@ -35836,5 +36000,5 @@
   },
   "version": "6.0",
   "errors": [],
-  "computedAt": 1741042000317
+  "computedAt": 1741044525759
 }
