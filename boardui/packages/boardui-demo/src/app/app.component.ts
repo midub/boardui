@@ -1,18 +1,41 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { AfterContentInit, Component } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { BoardUIModule, ElementEvent, RenderDoneEvent } from 'boardui-angular';
 import {
-  ElementEvent,
-  RenderDoneEvent,
-} from 'boardui-angular';
-import { DEFAULT_RENDER_PROPERTIES, RenderProperties, Side, arrayBufferToStream } from 'boardui-core';
+  DEFAULT_RENDER_PROPERTIES,
+  RenderProperties,
+  Side,
+  arrayBufferToStream,
+} from 'boardui-core';
 import { createSAXParser, IPC2581, IPC2581Parser } from 'boardui-parser';
 import { firstValueFrom } from 'rxjs';
 import { ErrorDialogComponent } from './error-dialog.component';
 import { ElementDialogComponent } from './element-dialog.component';
 import { LayersDialogComponent } from './layers-dialog.component';
+import { MatButtonModule } from '@angular/material/button';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTableModule } from '@angular/material/table';
+import { MatTabsModule } from '@angular/material/tabs';
+import { CommonModule } from '@angular/common';
 
 @Component({
+  imports: [
+    CommonModule,
+    HttpClientModule,
+    BoardUIModule,
+    MatButtonModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatTableModule,
+    MatTabsModule,
+    MatExpansionModule,
+    MatProgressSpinnerModule,
+    MatDialogModule,
+  ],
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
@@ -30,7 +53,10 @@ export class AppComponent implements AfterContentInit {
     return this.pcb?.content.stepRefs.at(0)?.name ?? null;
   }
 
-  constructor(private _httpClient: HttpClient, private _dialog: MatDialog) { }
+  constructor(
+    private _httpClient: HttpClient,
+    private _dialog: MatDialog,
+  ) {}
 
   async ngAfterContentInit() {
     this.loading = true;
@@ -38,7 +64,7 @@ export class AppComponent implements AfterContentInit {
       './assets/testcase10-RevC-Assembly.xml',
       {
         responseType: 'arraybuffer',
-      }
+      },
     );
     const testcase = await firstValueFrom(testcaseReq);
     this.loadPCB(arrayBufferToStream(testcase));
@@ -58,12 +84,11 @@ export class AppComponent implements AfterContentInit {
   async loadPCB(fileStream: ReadableStream<Uint8Array>) {
     try {
       this._parser ??= new IPC2581Parser(
-        await createSAXParser('./assets/sax-wasm.wasm')
+        await createSAXParser('./assets/sax-wasm.wasm'),
       );
 
       this.pcb = await this._parser.parse(fileStream);
-    }
-    catch (e: any) {
+    } catch (e: any) {
       this._dialog.open(ErrorDialogComponent, {
         data: {
           title: 'Error during loading',
@@ -73,12 +98,13 @@ export class AppComponent implements AfterContentInit {
     }
   }
 
-  onElementClick = (e: ElementEvent) => this._dialog.open(ElementDialogComponent, {
-    data: {
-      type: e.element.constructor.name,
-      json: JSON.stringify(e.element, null, 2),
-    },
-  });
+  onElementClick = (e: ElementEvent) =>
+    this._dialog.open(ElementDialogComponent, {
+      data: {
+        type: e.element.constructor.name,
+        json: JSON.stringify(e.element, null, 2),
+      },
+    });
 
   onElementHover = (e: ElementEvent) => console.log(e);
 
@@ -95,17 +121,21 @@ export class AppComponent implements AfterContentInit {
     }
   }
 
-  zoomIn = () => this.zoom *= 1.5;
+  zoomIn = () => (this.zoom *= 1.5);
 
-  zoomOut = () => this.zoom /= 1.5;
+  zoomOut = () => (this.zoom /= 1.5);
 
-  flipSide = () => this.side = this.side === 'TOP' ? 'BOTTOM' : 'TOP';
+  flipSide = () => (this.side = this.side === 'TOP' ? 'BOTTOM' : 'TOP');
 
-  openLayersDialog = () => this._dialog.open(LayersDialogComponent, { data: { 
-    renderProperties: this.renderProperties, 
-    pcb: this.pcb,
-    renderPropertiesChange: (renderProperties: RenderProperties) => this.renderProperties = {...renderProperties},
-  } });
+  openLayersDialog = () =>
+    this._dialog.open(LayersDialogComponent, {
+      data: {
+        renderProperties: this.renderProperties,
+        pcb: this.pcb,
+        renderPropertiesChange: (renderProperties: RenderProperties) =>
+          (this.renderProperties = { ...renderProperties }),
+      },
+    });
 
   demoHtml = `
   <bui-viewer
