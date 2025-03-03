@@ -1,0 +1,1162 @@
+{
+  "packages/boardui-angular": {
+    "root": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "packages/boardui-angular/package.json",
+      "nx/core/package-json"
+    ],
+    "tags.npm:public": [
+      "packages/boardui-angular/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups": [
+      "packages/boardui-angular/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js": [
+      "packages/boardui-angular/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageName": [
+      "packages/boardui-angular/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.isInPackageManagerWorkspaces": [
+      "packages/boardui-angular/package.json",
+      "nx/core/package-json"
+    ],
+    "targets": [
+      "packages/boardui-angular/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "packages/boardui-angular/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "packages/boardui-angular/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "packages/boardui-angular/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
+      "packages/boardui-angular/package.json",
+      "nx/core/package-json"
+    ],
+    "$schema": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "prefix": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.outputs": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.defaultConfiguration": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.dependsOn": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.project": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.production": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.production.tsConfig": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.development": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.development.tsConfig": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.executor": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.outputs": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.jestConfig": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.passWithNoTests": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci.ci": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci.codeCoverage": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.outputs": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.lintFilePatterns": [
+      "packages/boardui-angular/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "packages/boardui-core": {
+    "root": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "packages/boardui-core/package.json",
+      "nx/core/package-json"
+    ],
+    "tags.npm:public": [
+      "packages/boardui-core/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups": [
+      "packages/boardui-core/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js": [
+      "packages/boardui-core/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageName": [
+      "packages/boardui-core/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.isInPackageManagerWorkspaces": [
+      "packages/boardui-core/package.json",
+      "nx/core/package-json"
+    ],
+    "targets": [
+      "packages/boardui-core/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "packages/boardui-core/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "packages/boardui-core/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "packages/boardui-core/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
+      "packages/boardui-core/package.json",
+      "nx/core/package-json"
+    ],
+    "$schema": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.outputs": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.outputPath": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.main": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.tsConfig": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.assets": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.outputs": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.lintFilePatterns": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.executor": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.outputs": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.jestConfig": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.passWithNoTests": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci.ci": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci.codeCoverage": [
+      "packages/boardui-core/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.dependsOn": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "packages/boardui-parser": {
+    "root": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "packages/boardui-parser/package.json",
+      "nx/core/package-json"
+    ],
+    "tags.npm:public": [
+      "packages/boardui-parser/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups": [
+      "packages/boardui-parser/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js": [
+      "packages/boardui-parser/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageName": [
+      "packages/boardui-parser/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.isInPackageManagerWorkspaces": [
+      "packages/boardui-parser/package.json",
+      "nx/core/package-json"
+    ],
+    "targets": [
+      "packages/boardui-parser/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "packages/boardui-parser/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "packages/boardui-parser/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "packages/boardui-parser/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
+      "packages/boardui-parser/package.json",
+      "nx/core/package-json"
+    ],
+    "$schema": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.outputs": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.dependsOn": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.outputPath": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.main": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.tsConfig": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.assets": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.outputs": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.lintFilePatterns": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.executor": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.outputs": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.jestConfig": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.passWithNoTests": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci.ci": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci.codeCoverage": [
+      "packages/boardui-parser/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "packages/boardui-renderer": {
+    "root": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "packages/boardui-renderer/package.json",
+      "nx/core/package-json"
+    ],
+    "tags.npm:public": [
+      "packages/boardui-renderer/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups": [
+      "packages/boardui-renderer/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js": [
+      "packages/boardui-renderer/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageName": [
+      "packages/boardui-renderer/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.isInPackageManagerWorkspaces": [
+      "packages/boardui-renderer/package.json",
+      "nx/core/package-json"
+    ],
+    "targets": [
+      "packages/boardui-renderer/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "packages/boardui-renderer/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "packages/boardui-renderer/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "packages/boardui-renderer/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
+      "packages/boardui-renderer/package.json",
+      "nx/core/package-json"
+    ],
+    "$schema": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.outputs": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.dependsOn": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.outputPath": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.main": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.tsConfig": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.assets": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.outputs": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.lintFilePatterns": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.executor": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.outputs": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.jestConfig": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.passWithNoTests": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci.ci": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci.codeCoverage": [
+      "packages/boardui-renderer/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "packages/boardui-demo": {
+    "root": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "$schema": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "prefix": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.outputs": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.defaultConfiguration": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.dependsOn": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.outputPath": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.index": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.main": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.polyfills": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.tsConfig": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.assets": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.styles": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.scripts": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.production": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.production.budgets": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.production.outputHashing": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.development": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.development.buildOptimizer": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.development.optimization": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.development.vendorChunk": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.development.extractLicenses": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.development.sourceMap": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.development.namedChunks": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve.executor": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve.configurations": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve.defaultConfiguration": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve.configurations.production": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve.configurations.production.buildTarget": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve.configurations.development": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve.configurations.development.buildTarget": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.extract-i18n": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.extract-i18n.executor": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.extract-i18n.options": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.extract-i18n.options.buildTarget": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.outputs": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.lintFilePatterns": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.executor": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.outputs": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.jestConfig": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.passWithNoTests": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci.ci": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.configurations.ci.codeCoverage": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve-static": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve-static.executor": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve-static.options": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.serve-static.options.buildTarget": [
+      "packages/boardui-demo/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "packages/boardui-demo-e2e": {
+    "root": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "$schema": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "implicitDependencies": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "implicitDependencies.boardui-demo": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e.executor": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e.options": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e.configurations": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e.options.cypressConfig": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e.options.devServerTarget": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e.options.testingType": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e.configurations.production": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e.configurations.production.devServerTarget": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e.configurations.ci": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e.configurations.ci.devServerTarget": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.outputs": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.lintFilePatterns": [
+      "packages/boardui-demo-e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.e2e.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.e2e.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  }
+}

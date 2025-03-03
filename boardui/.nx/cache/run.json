@@ -1,0 +1,54 @@
+{
+  "run": {
+    "command": "nx run boardui-angular:build",
+    "startTime": "2025-03-03T22:11:52.798Z",
+    "endTime": "2025-03-03T22:11:56.993Z",
+    "inner": false
+  },
+  "tasks": [
+    {
+      "taskId": "boardui-core:build",
+      "target": "build",
+      "projectName": "boardui-core",
+      "hash": "399739307338957698",
+      "startTime": "2025-03-03T22:11:52.807Z",
+      "endTime": "2025-03-03T22:11:53.800Z",
+      "params": "",
+      "cacheStatus": "cache-miss",
+      "status": 0
+    },
+    {
+      "taskId": "boardui-parser:build",
+      "target": "build",
+      "projectName": "boardui-parser",
+      "hash": "14170607879427057801",
+      "startTime": "2025-03-03T22:11:52.807Z",
+      "endTime": "2025-03-03T22:11:53.967Z",
+      "params": "",
+      "cacheStatus": "cache-miss",
+      "status": 0
+    },
+    {
+      "taskId": "boardui-renderer:build",
+      "target": "build",
+      "projectName": "boardui-renderer",
+      "hash": "1026447515684006065",
+      "startTime": "2025-03-03T22:11:54.050Z",
+      "endTime": "2025-03-03T22:11:55.250Z",
+      "params": "",
+      "cacheStatus": "cache-miss",
+      "status": 0
+    },
+    {
+      "taskId": "boardui-angular:build:production",
+      "target": "build",
+      "projectName": "boardui-angular",
+      "hash": "4436582216557151009",
+      "startTime": "2025-03-03T22:11:55.308Z",
+      "endTime": "2025-03-03T22:11:56.981Z",
+      "params": "",
+      "cacheStatus": "cache-miss",
+      "status": 0
+    }
+  ]
+}
