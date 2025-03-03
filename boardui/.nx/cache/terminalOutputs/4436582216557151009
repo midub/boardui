@@ -1,0 +1,22 @@
+[34mBuilding Angular Package[39m
+[37m[39m
+[37m------------------------------------------------------------------------------[39m
+[37mBuilding entry point 'boardui-angular'[39m
+[37m------------------------------------------------------------------------------[39m
+- Compiling with Angular sources in Ivy partial compilation mode.
+[32m✔[39m Compiling with Angular sources in Ivy partial compilation mode.
+[32m✔[39m Generating FESM bundles
+- Copying assets
+[32m✔[39m Copying assets
+- Writing package manifest
+[32m✔[39m Writing package manifest
+[32m✔[39m Built boardui-angular
+[32m[39m
+[32m------------------------------------------------------------------------------[39m
+[32mBuilt Angular Package[39m
+[32m - from: D:/repos/boardui/boardui/boardui/packages/boardui-angular[39m
+[32m - to:   D:/repos/boardui/boardui/boardui/dist/packages/boardui-angular[39m
+[32m------------------------------------------------------------------------------[39m
+[37m[37m[39m[37m[39m
+[37m[37mBuild at: [1m2025-03-03T22:11:56.950Z[22m - Time: [1m965[22mms[39m[37m[39m
+[37m[37m[39m[37m[39m

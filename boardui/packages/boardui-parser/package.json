@@ -1,8 +1,8 @@
 {
   "name": "boardui-parser",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "commonjs",
   "dependencies": {
-    "sax-wasm": "^2.2.2"
+    "sax-wasm": "^3.0.0"
   }
 }
