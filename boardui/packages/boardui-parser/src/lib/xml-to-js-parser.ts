@@ -12,19 +12,19 @@ export class XmlToJsParser<TResult> {
   constructor(
     mappings: XMLToJSMapping[],
     private _rootNodePrototype: any,
-    private _saxParser: SAXParser
+    private _saxParser: SAXParser,
   ) {
     this._processOpenTagFuncHashSet = new Map(
       mappings
         .sort((a, b) => a[0].localeCompare(b[0]))
-        .map((x) => XmlToJsParser.getMappingFunc(...x))
+        .map((x) => XmlToJsParser.getMappingFunc(...x)),
     );
   }
 
   static getMappingFunc(
     tagName: string,
     prototype: any,
-    properties: string[]
+    properties: string[],
   ): [string, (obj: any, stack: any[]) => void] {
     return [
       tagName,
@@ -52,7 +52,7 @@ export class XmlToJsParser<TResult> {
   static processOpenTag(
     tag: Tag,
     stack: any[],
-    processOpenTagFuncHashSet: Map<string, (obj: any, stack: any[]) => any>
+    processOpenTagFuncHashSet: Map<string, (obj: any, stack: any[]) => any>,
   ) {
     const obj = stack.at(-1);
     if (!obj) {
@@ -87,14 +87,14 @@ export class XmlToJsParser<TResult> {
     event: SaxEventType,
     data: any,
     stack: any[],
-    processOpenTagFuncHashSet: Map<string, (obj: any, stack: any[]) => any>
+    processOpenTagFuncHashSet: Map<string, (obj: any, stack: any[]) => any>,
   ) {
     switch (event) {
       case SaxEventType.OpenTagStart:
         XmlToJsParser.processOpenTag(
           <Tag>data,
           stack,
-          processOpenTagFuncHashSet
+          processOpenTagFuncHashSet,
         );
         break;
       case SaxEventType.Attribute:
@@ -115,7 +115,7 @@ export class XmlToJsParser<TResult> {
         event,
         data,
         stack,
-        this._processOpenTagFuncHashSet
+        this._processOpenTagFuncHashSet,
       );
 
     const streamReader = stream.getReader();
@@ -123,19 +123,19 @@ export class XmlToJsParser<TResult> {
     while (!(readResult = await streamReader.read()).done) {
       const chunk = readResult.value;
       const chunkSliceCount = Math.floor(
-        chunk.length / XmlToJsParser._chunkSize
+        chunk.length / XmlToJsParser._chunkSize,
       );
       let i = 0;
       while (i < chunkSliceCount) {
         this._saxParser.write(
           chunk.subarray(
             i * XmlToJsParser._chunkSize,
-            ++i * XmlToJsParser._chunkSize
-          )
+            ++i * XmlToJsParser._chunkSize,
+          ),
         );
       }
       this._saxParser.write(
-        chunk.subarray(i * XmlToJsParser._chunkSize, chunk.length)
+        chunk.subarray(i * XmlToJsParser._chunkSize, chunk.length),
       );
     }
     this._saxParser.end();

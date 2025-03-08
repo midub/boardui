@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "type": "commonjs",
   "dependencies": {
-    "sax-wasm": "^3.0.0"
+    "sax-wasm": "^2.0.0"
   }
 }
