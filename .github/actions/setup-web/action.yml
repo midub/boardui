@@ -1,0 +1,31 @@
+name: Set up the web build
+description: >-
+  Everything `pnpm build` needs: Rust (rust-toolchain.toml, with the wasm32 target), the
+  wasm-bindgen CLI matching the wasm-bindgen crate in Cargo.lock, wasm-opt (binaryen), pnpm and
+  Node 24, then `pnpm install --frozen-lockfile`. Used by the CI Web job and the Pages deploy, so
+  the deploy builds the demo exactly as CI does.
+
+runs:
+  using: composite
+  steps:
+    # `pnpm build` builds the WASM module of crates/boardui-wasm for @boardui/converter.
+    - run: rustup toolchain install
+      shell: bash
+    - uses: Swatinem/rust-cache@v2
+    # The wasm-bindgen CLI must match the wasm-bindgen crate in Cargo.lock.
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: wasm-bindgen@0.2.129
+    - name: Install wasm-opt (binaryen)
+      shell: bash
+      run: |
+        curl -sSfL https://github.com/WebAssembly/binaryen/releases/download/version_133/binaryen-version_133-x86_64-linux.tar.gz \
+          | tar -xz -C "$RUNNER_TEMP"
+        echo "$RUNNER_TEMP/binaryen-version_133/bin" >> "$GITHUB_PATH"
+    - uses: pnpm/action-setup@v6
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+      shell: bash
