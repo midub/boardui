@@ -1,0 +1,21 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step board, FABRICATION
+thickness: 1.6000 mm
+counts: 4 features, 74 vertices, 132 triangles, 0 nets, 0 components, 0 pins (0 checked against pads)
+warnings: 0 from the reader, 1 from the converter
+  - zero-width lines are drawn as 0.1 mm hairlines
+layer layer/SILK Silkscreen Top z 0.8200..0.8300 mm Default
+  2 features {"Marking": 2}, 58 vertices, 108 triangles, top area 0.8135 mm²
+    row 0: Marking net - area 0.6064 mm²
+    row 1: Marking net - area 0.2071 mm²
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 24.0000 mm²
+    row 0: Sheet net - area 24.0000 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
+layer layer/@core Dielectric Internal z -0.8000..0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 24.0000 mm²
+    row 0: Sheet net - area 24.0000 mm²
+components: 0

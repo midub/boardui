@@ -9,6 +9,9 @@ use std::f64::consts::{FRAC_PI_2, PI, TAU};
 /// How deep `UserPrimitiveRef`s may nest before the shape is given up as cyclic.
 const MAX_DEPTH: usize = 16;
 
+/// The width, in metres, of a stroke whose `LineDesc` is zero wide: a hairline (spec §6.1).
+const HAIRLINE: f64 = 0.1e-3;
+
 /// The order in which an `Xform` mirrors and rotates.
 ///
 /// IPC-2581 exporters disagree for mirrored elements (bottom-side components and their
@@ -198,7 +201,17 @@ impl<'a> ShapeConverter<'a> {
             self.warn("a line descriptor is not defined; its strokes were dropped".into());
             return None;
         };
-        stroke(path, desc, scale(at))
+        let width = self.line_width(desc, at);
+        stroke(path, width, desc.end)
+    }
+
+    /// The drawn width of a line under `at`: zero-width lines are hairlines.
+    fn line_width(&mut self, desc: ipc::LineDesc, at: DAffine2) -> f64 {
+        if desc.width == 0.0 {
+            self.warn("zero-width lines are drawn as 0.1 mm hairlines".into());
+            return HAIRLINE;
+        }
+        desc.width * scale(at)
     }
 
     fn polygon(&mut self, poly: &ipc::Polygon, at: DAffine2, mode: Mode) -> Option<Shape> {
@@ -237,11 +250,17 @@ impl<'a> ShapeConverter<'a> {
         line: Option<ipc::LineDesc>,
         at: DAffine2,
     ) -> Option<Shape> {
-        let line = line.filter(|l| l.width > 0.0);
+        // The zero-width line of a filled area is not drawn; a hollow one's is a hairline.
+        let line = line
+            .filter(|l| matches!(fill, Fill::Hollow) || l.width > 0.0)
+            .map(|l| (self.line_width(l, at), l.end));
         let strokes = || {
             paths
                 .iter()
-                .filter_map(|p| stroke(close(p.clone()), line?, scale(at)))
+                .filter_map(|p| {
+                    let (width, end) = line?;
+                    stroke(close(p.clone()), width, end)
+                })
                 .collect::<Vec<_>>()
         };
         match fill {
@@ -399,14 +418,14 @@ fn direction(clockwise: bool, at: DAffine2) -> ArcDirection {
     }
 }
 
-fn stroke(path: Path, desc: ipc::LineDesc, scale: f64) -> Option<Shape> {
-    if desc.width.is_nan() || desc.width <= 0.0 {
+fn stroke(path: Path, width: f64, end: LineEnd) -> Option<Shape> {
+    if width.is_nan() || width <= 0.0 {
         return None;
     }
     Some(Shape::Stroke(Stroke {
         path,
-        width: desc.width * scale,
-        cap: match desc.end {
+        width,
+        cap: match end {
             LineEnd::Round => LineCap::Round,
             LineEnd::Square => LineCap::Square,
             LineEnd::None => LineCap::Flat,
@@ -883,6 +902,50 @@ mod tests {
             .filled(&ipc::Shape::Polygon(poly), DAffine2::IDENTITY)
             .unwrap();
         close_to(area(&filled), 1e-6, 1e-15);
+    }
+
+    #[test]
+    fn zero_width_lines_are_hairlines() {
+        let c = content();
+        let zero = ipc::LineStyle::Desc(ipc::LineDesc {
+            width: 0.0,
+            end: LineEnd::None,
+        });
+        let open = ipc::Path {
+            start: ipc::Point { x: 0.0, y: 0.0 },
+            steps: vec![ipc::PolyStep::Segment {
+                to: ipc::Point { x: 2e-3, y: 0.0 },
+            }],
+        };
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
+        let at = DAffine2::from_scale(DVec2::splat(3.0));
+        let polyline = ipc::Shape::Polyline(ipc::Polyline {
+            path: open,
+            line: zero.clone(),
+        });
+        // A hairline keeps its width under a scaling `Xform`.
+        let s = conv.area(&polyline, at).unwrap();
+        close_to(area(&s), 6e-3 * HAIRLINE, 1e-12);
+        assert_eq!(conv.warnings.len(), 1);
+        // The zero-width line of a filled outline is not drawn.
+        let square = ipc::Polygon {
+            path: ipc::Path {
+                start: ipc::Point { x: 0.0, y: 0.0 },
+                steps: [(1e-3, 0.0), (1e-3, 1e-3), (0.0, 1e-3), (0.0, 0.0)]
+                    .map(|(x, y)| ipc::PolyStep::Segment {
+                        to: ipc::Point { x, y },
+                    })
+                    .to_vec(),
+            },
+            line: None,
+            fill: None,
+        };
+        let outline = ipc::Shape::Outline(ipc::Outline {
+            polygon: square,
+            line: zero,
+        });
+        let s = conv.area(&outline, DAffine2::IDENTITY).unwrap();
+        close_to(area(&s), 1e-6, 1e-15);
     }
 
     #[test]

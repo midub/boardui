@@ -3,10 +3,11 @@ source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step testcase10-RevC, ASSEMBLY
 thickness: 1.6000 mm
-counts: 9162 features, 604190 vertices, 1224284 triangles, 514 nets, 56 components, 1746 pins (1746 checked against pads)
-warnings: 11 from the reader, 0 from the converter
+counts: 9162 features, 623546 vertices, 1261648 triangles, 514 nets, 56 components, 1746 pins (1746 checked against pads)
+warnings: 11 from the reader, 1 from the converter
+  - zero-width lines are drawn as 0.1 mm hairlines
 layer layer/SS_TOP Silkscreen Top z 0.8200..0.8300 mm Default
-  137 features {"Marking": 137}, 0 vertices, 0 triangles, top area -0.0000 mm²
+  137 features {"Marking": 137}, 7432 vertices, 14232 triangles, top area 81.7542 mm²
 layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
   1 features {"Sheet": 1}, 100080 vertices, 213920 triangles, top area 9663.5866 mm²
 layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
@@ -18,7 +19,7 @@ layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
 layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
   1 features {"Sheet": 1}, 50896 vertices, 109488 triangles, top area 9971.3862 mm²
 layer layer/SS_BOT Silkscreen Bottom z -0.8300..-0.8200 mm Default
-  207 features {"Marking": 207}, 0 vertices, 0 triangles, top area -0.0000 mm²
+  207 features {"Marking": 207}, 11924 vertices, 23132 triangles, top area 55.7881 mm²
 drill layer/DRILL_1-18 layer/TOP..layer/BOTTOM
   1859 features {"Barrel": 1859}, 95884 vertices, 191768 triangles, top area 43.6548 mm²
 components: 56

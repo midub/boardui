@@ -9,6 +9,7 @@ Each sample is an IPC-2581 input plus the expected boardui asset. Together they 
 | [`minimal-2layer`](hand-written/minimal-2layer/) | hand-written | one resistor, two pads, one trace, one via; the smallest conformant asset |
 | [`overlap-priority`](hand-written/overlap-priority/) | hand-written | pad over trace over plane, and ties in document order; §6.2 |
 | [`negative-polarity`](hand-written/negative-polarity/) | hand-written | plane with negative cut-outs, and a later trace they don't cut; §6.2 |
+| [`zero-width-lines`](hand-written/zero-width-lines/) | hand-written | a silkscreen polyline and line with zero-width `LineDesc`s, drawn as hairlines; §6.1 |
 | [`slots`](hand-written/slots/) | hand-written | a plated slot with pads and a non-plated slot; §6.3 |
 | [`bottom-placement`](hand-written/bottom-placement/) | hand-written | an asymmetric package on the bottom side at 0°, 30°, 90° and 270°, and one on top; §6.8 |
 | [`units-inch`](hand-written/units-inch/), [`units-micron`](hand-written/units-micron/) | hand-written | `minimal-2layer` in `INCH` and `MICRON`; the test checks that all three give the same geometry; §3 |
