@@ -58,6 +58,16 @@ pub enum Shape {
     },
     /// A stroked path.
     Stroke(Stroke),
+    /// The area covered by any of the shapes, for example the parts of an IPC-2581
+    /// `UserSpecial`.
+    Union(Vec<Shape>),
+    /// The area of `base` not covered by any of `cut`, for example a thermal relief.
+    Difference {
+        /// The shape to cut.
+        base: Box<Shape>,
+        /// The shapes removed from it.
+        cut: Vec<Shape>,
+    },
 }
 
 impl Shape {
@@ -74,6 +84,26 @@ impl Shape {
             }
             Self::Circle { center, radius } => circle(*center, *radius, tolerance),
             Self::Stroke(stroke) => stroke.to_region(tolerance),
+            Self::Union(shapes) => {
+                let mut regions = shapes
+                    .iter()
+                    .map(|shape| shape.to_region(tolerance))
+                    .collect::<Result<Vec<_>, _>>()?;
+                regions.retain(|r| !r.is_empty());
+                Ok(match regions.len() {
+                    0 => Region::empty(),
+                    1 => regions.pop().expect("one region"),
+                    _ => Region::union_all(&regions),
+                })
+            }
+            Self::Difference { base, cut } => {
+                let base = base.to_region(tolerance)?;
+                let cuts = cut
+                    .iter()
+                    .map(|shape| shape.to_region(tolerance))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(base.subtract(&cuts))
+            }
         }
     }
 }
@@ -192,6 +222,28 @@ mod tests {
     /// circumference times the tolerance.
     fn circle_slack(radius: f64) -> f64 {
         TAU * radius * T.metres()
+    }
+
+    #[test]
+    fn unions_and_differences_combine_shapes() {
+        let square = |x0: f64, y0: f64, x1: f64, y1: f64| Shape::Polygon {
+            outline: Path::new(DVec2::new(x0, y0))
+                .line_to(DVec2::new(x1, y0))
+                .line_to(DVec2::new(x1, y1))
+                .line_to(DVec2::new(x0, y1)),
+            holes: Vec::new(),
+        };
+        let union = Shape::Union(vec![
+            square(0.0, 0.0, 2e-3, 1e-3),
+            square(1e-3, 0.0, 3e-3, 1e-3),
+        ]);
+        assert_close(union.to_region(T).unwrap().area(), 3e-6, 1e-15);
+        assert!(Shape::Union(Vec::new()).to_region(T).unwrap().is_empty());
+        let cut = Shape::Difference {
+            base: Box::new(union),
+            cut: vec![square(0.5e-3, 0.0, 1e-3, 1e-3)],
+        };
+        assert_close(cut.to_region(T).unwrap().area(), 2.5e-6, 1e-15);
     }
 
     #[test]

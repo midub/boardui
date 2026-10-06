@@ -1,0 +1,29 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step testcase10-RevC, ASSEMBLY
+thickness: 1.6000 mm
+counts: 9162 features, 604190 vertices, 1224284 triangles, 514 nets, 56 components, 1746 pins (1746 checked against pads)
+warnings: 11 from the reader, 0 from the converter
+layer layer/SS_TOP Silkscreen Top z 0.8200..0.8300 mm Default
+  137 features {"Marking": 137}, 0 vertices, 0 triangles, top area -0.0000 mm²
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 100080 vertices, 213920 triangles, top area 9663.5866 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  5010 features {"Pad": 1682, "Trace": 1569, "Via": 1759}, 193898 vertices, 375172 triangles, top area 769.9174 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized hidden
+  1 features {"Sheet": 1}, 49806 vertices, 107044 triangles, top area 10026.4063 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  1946 features {"Pad": 166, "Trace": 21, "Via": 1759}, 113626 vertices, 226892 triangles, top area 363.0278 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 50896 vertices, 109488 triangles, top area 9971.3862 mm²
+layer layer/SS_BOT Silkscreen Bottom z -0.8300..-0.8200 mm Default
+  207 features {"Marking": 207}, 0 vertices, 0 triangles, top area -0.0000 mm²
+drill layer/DRILL_1-18 layer/TOP..layer/BOTTOM
+  1859 features {"Barrel": 1859}, 95884 vertices, 191768 triangles, top area 43.6548 mm²
+components: 56
+  U1 at (286.4994, 0.8000, -349.4993) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder BGA_25X25_1MM
+  C12 at (256.1552, 0.8000, -315.3901) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder SMC0805
+  C11 at (262.4995, 0.8000, -315.6370) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder SMC0805
+  C10 at (249.4995, 0.8000, -315.6370) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder SMC0805
+  C52 at (254.1281, -0.8000, -306.0767) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder SMC0402

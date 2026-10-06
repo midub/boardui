@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "match": {
+        "package": "R0603"
+      },
+      "file": "r0603.gltf"
+    }
+  ]
+}

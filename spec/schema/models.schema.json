@@ -42,7 +42,7 @@
             "default": [0, 0, 0]
           },
           "rotationDeg": {
-            "description": "XYZ Euler rotation applied in the model's frame before placement, in degrees.",
+            "description": "Rotation about the model's X, then Y, then Z axis (fixed axes), applied in the model's frame before placement, in degrees. The child node's transform is scale, then this rotation, then offsetMm.",
             "type": "array",
             "items": { "type": "number" },
             "minItems": 3,

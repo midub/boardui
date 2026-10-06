@@ -27,6 +27,7 @@ mod hole;
 mod index;
 mod layer;
 mod mesh;
+pub mod par;
 mod path;
 mod prism;
 mod region;

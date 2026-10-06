@@ -26,6 +26,33 @@ jobs:
       - run: cargo test --workspace --locked
       - run: cargo build -p boardui-wasm --target wasm32-unknown-unknown --release --locked
 
+  conformance:
+    name: Conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      # Converts every sample in spec/samples, checks it with the profile validator and
+      # compares it with spec/samples/expected.
+      - name: Convert and validate the samples
+        run: cargo test -p boardui-convert --test conformance --locked
+        env:
+          BOARDUI_CONFORMANCE_OUT: target/conformance
+      - name: boardui validate
+        run: |
+          cargo build -p boardui --locked
+          for glb in target/conformance/*.glb; do ./target/debug/boardui validate --no-khronos "$glb"; done
+      - name: Khronos glTF validator
+        run: |
+          mkdir -p target/khronos
+          echo '{"private": true}' > target/khronos/package.json
+          npm install --prefix target/khronos --no-audit --no-fund gltf-validator@2.0.0-dev.3.10
+          node scripts/khronos-validate.mjs target/khronos target/conformance/*.glb
+
   web:
     name: Web
     runs-on: ubuntu-latest

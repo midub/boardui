@@ -1,0 +1,41 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step board, FABRICATION
+thickness: 1.6000 mm
+counts: 18 features, 1104 vertices, 2196 triangles, 15 nets, 5 components, 15 pins (15 checked against pads)
+warnings: 0 from the reader, 0 from the converter
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 116 vertices, 240 triangles, top area 175.1689 mm²
+    row 0: Sheet net - area 175.1689 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  3 features {"Pad": 3}, 108 vertices, 204 triangles, top area 0.8311 mm²
+    row 0: Pad net 0 area 0.2770 mm²
+    row 1: Pad net 1 area 0.2770 mm²
+    row 2: Pad net 2 area 0.2770 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized hidden
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 176.0000 mm²
+    row 0: Sheet net - area 176.0000 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  12 features {"Pad": 12}, 432 vertices, 816 triangles, top area 3.3244 mm²
+    row 0: Pad net 3 area 0.2770 mm²
+    row 1: Pad net 4 area 0.2770 mm²
+    row 2: Pad net 5 area 0.2770 mm²
+    row 3: Pad net 6 area 0.2770 mm²
+    row 4: Pad net 7 area 0.2770 mm²
+    row 5: Pad net 8 area 0.2770 mm²
+    row 6: Pad net 9 area 0.2770 mm²
+    row 7: Pad net 10 area 0.2770 mm²
+    row 8: Pad net 11 area 0.2770 mm²
+    row 9: Pad net 12 area 0.2770 mm²
+    row 10: Pad net 13 area 0.2770 mm²
+    row 11: Pad net 14 area 0.2770 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 440 vertices, 924 triangles, top area 172.6756 mm²
+    row 0: Sheet net - area 172.6756 mm²
+components: 5
+  U1 at (3.0000, -0.8000, -3.0000) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder L3
+  U2 at (8.0000, -0.8000, -3.0000) mm, rotation (0.2588, 0.0000, 0.9659, 0.0000), placeholder L3
+  U3 at (3.0000, -0.8000, -8.0000) mm, rotation (0.7071, 0.0000, 0.7071, 0.0000), placeholder L3
+  U4 at (8.0000, -0.8000, -8.0000) mm, rotation (0.7071, 0.0000, -0.7071, 0.0000), placeholder L3
+  U5 at (13.0000, 0.8000, -5.5000) mm, rotation (0.0000, 0.3827, 0.0000, 0.9239), placeholder L3
