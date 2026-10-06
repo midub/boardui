@@ -20,6 +20,11 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   property; `Hexagon` and `Moire` primitives are drawn; `HATCH` and `MESH` fills are drawn as
   lines clipped to their area; `LineDesc@lineProperty` dots and dashes strokes, and `ERASE` lines
   erase (profile 0.3; spec §6.1, §6.2, §8.2).
+- **Optional layers:** paste, courtyard, assembly (fab) and documentation layers are converted,
+  hidden by default: paste as a prism on the pads, drawings as thin sheets stacked outside the
+  board. Package assembly drawings fill a synthesized `@assembly-top`/`-bottom` when the file has
+  no assembly layer, and package silkscreens are drawn where the silkscreen layer has nothing for
+  a part. The viewer and demo list the new layers, switched off (profile 0.4; spec §6.11–§6.13).
 
 ## [1.0.0] - 2026-10-06
 

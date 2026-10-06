@@ -385,7 +385,7 @@ export class BoardViewerElement extends HTMLElement {
   /** Selects an element (any kind: a net selects all its copper), or clears the selection. */
   select(id: string | null): void {
     const { state, model } = this.#require();
-    const texels = id === null ? [] : this.#resolve(model, id).texels;
+    const texels = id === null ? [] : model.emphasis(this.#resolve(model, id));
     state.setSelection(texels);
     this.#selection = id;
     this.#requestRender();
@@ -629,7 +629,8 @@ export class BoardViewerElement extends HTMLElement {
   #setHover(id: string | null): void {
     if (id === this.#hover || !this.#loaded) return;
     this.#hover = id;
-    this.#loaded.state.setHover(id ? this.#resolve(this.#loaded.model, id).texels : []);
+    const model = this.#loaded.model;
+    this.#loaded.state.setHover(id ? model.emphasis(this.#resolve(model, id)) : []);
     this.#emit('bui-hover', id);
   }
 

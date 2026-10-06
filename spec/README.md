@@ -1,6 +1,6 @@
 # boardui glTF profile
 
-**Version 0.3 — draft**
+**Version 0.4 — draft**
 
 This document specifies how boardui represents a printed circuit board as a glTF 2.0 asset. The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
@@ -13,7 +13,7 @@ A *boardui asset* is a valid glTF 2.0 asset (`.glb` recommended) that:
 
 The asset is an **export**. The IPC-2581 source file stays the source of truth; this profile does not aim to convert back to IPC-2581 ([ADR 0002](../docs/adr/0002-gltf-is-an-export-with-metadata.md)). Analyses that need full design data (DRC, impedance, BOM checks) read the source.
 
-Out of scope for 0.2: paste and documentation layers, assembly drawings, embedded components, cavities, rigid-flex.
+Out of scope: embedded components, cavities, rigid-flex. Paste, courtyard, assembly and documentation layers and package drawings are in scope since 0.4 (§6.11–§6.13).
 
 ## 2. Conformance
 
@@ -70,8 +70,9 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 | feature | `feat/<layer name>/<n>` | input file unchanged |
 
 - Each `<…>` segment is percent-encoded. `%`, `/`, `#`, `@`, whitespace (Unicode `White_Space`) and control characters MUST be written as `%XX`: one `%XX` per UTF-8 byte, with upper-case hex digits. Other characters MUST NOT be encoded, so every ID has exactly one spelling.
-- Layers that the converter synthesizes (§6.4, §6.5) get names starting with an unencoded `@`, for example `layer/@soldermask-top`. Because `@` in source names is always encoded, the two never collide.
+- Layers that the converter synthesizes (§6.4, §6.5, §6.13) get names starting with an unencoded `@`, for example `layer/@soldermask-top`. Because `@` in source names is always encoded, the two never collide.
 - `<n>` is the 0-based index of the feature among the layer's source features in document order. The step's `LayerFeature` elements for that layer are walked in document order (a step may split one layer over several of them), counting every `Pad`, `Features`, fiducial (`GlobalFiducial`, `LocalFiducial`, `BadBoardMark`, `GoodPanelMark`), `Hole` and `SlotCavity` element of their `Set`s.
+- Features drawn from package drawings (§6.13) follow the layer's source features: they are numbered on from the last one, in the order of §6.13 (from 0 on a synthesized layer).
 - Soldermask and dielectric layers have a single feature, their sheet (§6.5, §6.7), with `n = 0`. The source features of a soldermask layer are its openings; they shape the sheet but get no rows of their own.
 - Feature IDs are stable only for identical input. Viewers and widgets SHOULD bind to components, pins and nets where possible.
 
@@ -105,7 +106,7 @@ Within one copper layer, feature regions MUST NOT overlap. Where input features 
 4. fills: `Contour`s and `Polygon`s (planes, pours, teardrops)
 5. everything else
 
-The class is also the feature's `kind` (§8.2): `PAD`, `VIA`, `TRACE`, `FILL` or `OTHER`, except that fiducials are `FIDUCIAL`. Silkscreen features are `MARKING`.
+The class is also the feature's `kind` (§8.2): `PAD`, `VIA`, `TRACE`, `FILL` or `OTHER`, except that fiducials are `FIDUCIAL`. Silkscreen and drawing features (§6.12, §6.13) are `MARKING`. Paste features are classified like copper features (§6.11).
 
 On equal priority, the earlier feature in document order wins.
 
@@ -127,7 +128,7 @@ A feature whose region becomes empty keeps its metadata row (§8.2) and has no v
   - Layers along the span are cut at `diameter / 2 + platingThickness`.
 - Non-plated holes are cut at `diameter / 2` and have no barrel.
 - Layers with `layerFunction` `DRILL` or `ROUT` are drill layers. The drill layer's `Span` defines a hole's span. Without a `Span`, the hole runs through all layers.
-- A hole is cut from the copper and dielectric layers of its span. It is cut from a side's soldermask and silkscreen when its span reaches that side's outer copper layer.
+- A hole is cut from the copper and dielectric layers of its span. It is cut from a side's soldermask, paste and silkscreen when its span reaches that side's outer copper layer. Drawings (§6.12) are not cut.
 - Barrels are features of their drill layer (kind `BARREL`) and carry the net of their `Set`. Non-plated holes keep their row in the drill layer's table (kind `OTHER`) but have no geometry.
 - Slots follow the same rules, using the slot outline instead of a circle. Where a circle's radius grows by `platingThickness`, the outline is offset outward by it, with rounded corners.
 
@@ -142,11 +143,14 @@ A feature whose region becomes empty keeps its metadata row (§8.2) and has no v
 | Copper | 35 µm |
 | Soldermask | 20 µm |
 | Silkscreen | 10 µm |
+| Paste (§6.11) | 100 µm |
+| Drawing sheet (§6.12) | 10 µm, always |
 
   Dielectric layers without a thickness share what the copper leaves of the 1.6 mm evenly.
 - Where two adjacent copper layers have no dielectric between them, the converter synthesizes one. With `g` gaps counted from the top (0-based), the middle gap `⌊(g − 1) / 2⌋` is `@core` and gap `k` otherwise is `@prepreg-<k+1>`; a 2-layer board gets `@core`, a 4-layer board `@prepreg-1`, `@core`, `@prepreg-3`. A board with a single copper layer sits on a synthesized `@core`.
 - Each entry in `BOARDUI_board.layers` records its actual `zMin` and `zMax`, and whether the thickness came from the file or from defaults.
-- Layer Z ranges are ordered top to bottom and MUST NOT overlap, with one exception: a soldermask layer starts at the top of the dielectric beneath the outer copper layer (§6.5).
+- Layer Z ranges are ordered top to bottom and MUST NOT overlap, with two exceptions: a soldermask layer starts at the top of the dielectric beneath the outer copper layer (§6.5), and a paste layer overlaps the soldermask and silkscreen of its side (§6.11).
+- Outside the copper layers, the layers of a side are ordered by their outer face: the top side's by `zMax`, highest first, and the bottom side's by `zMin`, highest first. A paste layer thicker than the mask and silkscreen therefore comes before them.
 
 ### 6.5 Soldermask
 
@@ -160,6 +164,7 @@ A feature whose region becomes empty keeps its metadata row (§8.2) and has no v
 - Strokes become polygons, using the line width and end style of their `LineDesc`.
 - Silkscreen sits on top of the soldermask. It SHOULD be clipped by mask openings, as manufacturers do.
 - Silkscreen features SHOULD reference their component when the source links them.
+- Package silkscreens add features where the silkscreen layer has nothing for a component, and a side without a silkscreen layer may get a synthesized one (§6.13).
 
 ### 6.7 Dielectric and outline
 
@@ -231,6 +236,30 @@ Notes:
 - `ColorRef` in a `Set` is not a board colour: the consortium test cases use it for the CAD tool's display colours (red and blue copper, pink silkscreen). It is ignored.
 - KiCad 9 writes `StackupLayer/SpecRef id="SPEC_<layer>"` but names the spec `<layer>_<n>`. A dangling reference `SPEC_<layer>` resolves to the spec named `<layer>_<digits>` if there is exactly one; such references are not reported.
 
+### 6.11 Paste
+
+- Layers with `layerFunction` `SOLDERPASTE` or `PASTEMASK` are paste layers (role `PASTE`). A paste layer with `side="BOTTOM"` is on the bottom side, any other on the top side. A side has at most one paste layer, the first in document order; the converter skips any other with a warning.
+- Paste is material on the pads. Its features are prisms that stand on the outer copper surface of their side: from the top of the top copper up, or from the bottom of the bottom copper down. Their height is the layer's thickness in the stack-up if given (and not 0), else 100 µm, a common stencil thickness. Paste lies in the mask openings, so its Z range overlaps those of its side's soldermask and silkscreen (§6.4) without any geometry overlapping.
+- Features are classified and linked like copper features (§6.2, §8.2); KiCad's paste pads, for one, reference their pins, including paste-only aperture pads, which it writes as package pins `PAD0`, `PAD1`, …. Holes are cut from paste like from the soldermask (§6.3). Paste is not clipped by mask openings.
+- Paste layers are hidden by default (§8.3).
+
+### 6.12 Drawings
+
+- Layers with `layerFunction` `COURTYARD`, `ASSEMBLY` or `DOCUMENT` are drawings, with roles `COURTYARD`, `ASSEMBLY` and `DOCUMENTATION`. A drawing layer with `side="BOTTOM"` is on the bottom side, any other (`TOP`, `NONE`, `ALL`, …) on the top side.
+- Each drawing layer is a sheet 10 µm thick, whatever the stack-up says. A side's drawing layers are stacked outward from the side's outer face (the outermost face of its other layers, paste included): first the assembly layers, then courtyard, then documentation, each group in document order. No drawing shares a Z range with another layer, so none z-fights with silkscreen, mask, paste or another drawing.
+- Features are drawn as on silkscreen (§6.1), have kind `MARKING` and reference the component and net of their `Set` (§8.2). Drawings are not material: they are neither cut by holes nor clipped by mask openings.
+- Paste and drawing layers without features in the converted step are omitted. Layers with other functions that are not part of the board's appearance (`GLUE`, `PROBE`, `VCUT`, `SCORE`, `BOARD_OUTLINE`, coatings, …) are not converted, and the converter reports them.
+- Drawing layers are hidden by default (§8.3).
+
+### 6.13 Package drawings
+
+A `Package` may carry a `SilkScreen` and an `AssemblyDrawing`: `Outline`s and `Marking`s in the package frame. They are placed with each component like its pins: a `Marking`'s own `Location` and `Xform` first, then the component's (§6.8), so bottom-side parts are mirrored. They become `MARKING` features on a layer of the component's side, and reference the component (§8.2), so that selecting a component can show its outline.
+
+- An `Outline` in a package drawing is the part's drawn outline: its line is drawn (a zero-width line as a hairline, §6.1), and its area is filled only if its polygon's `FillDesc` says `FILL`. `Marking`s are drawn as shapes are (§6.1).
+- **Assembly drawings.** A side without an assembly layer with features gets `@assembly-top` or `@assembly-bottom`, if one of its components' packages has an assembly drawing. The layer holds the assembly drawings of the side's components: components in document order, each with its `Outline`s, then its `Marking`s. A side whose file has an assembly layer with features (KiCad's `F.Fab`) gets nothing from the packages, because that layer already shows them.
+- **Silkscreen.** A component's package silkscreen is added to the silkscreen layer of its side only where that layer has nothing for the component: none of the layer's features references the component, and the layer's features cover less than 10 % of the package silkscreen's area. KiCad, which links silkscreen to components, and the IPC consortium test cases, which mostly copy package silkscreens into the layer without links, are drawn once. A side without a silkscreen layer gets `@silkscreen-top` or `@silkscreen-bottom` (default thickness, outside the soldermask), if one of its components' packages has a silkscreen, with all of them on it.
+- The new features follow the layer's source features (§5), in component document order.
+
 ## 7. Materials
 
 | Name | Used for | Default |
@@ -241,6 +270,10 @@ Notes:
 | `boardui/dielectric` | dielectric sheets | base `#C7B98A`, roughness 0.9 |
 | `boardui/body` | placeholder bodies | base `#2B2B2B`, roughness 0.6 |
 | `boardui/pin1` | pin-1 markers | base `#E0E0E0`, roughness 0.6 |
+| `boardui/paste` | paste | base `#A4A7AB`, roughness 0.6 |
+| `boardui/courtyard` | courtyard drawings | base `#C07AAE`, roughness 0.8 |
+| `boardui/assembly` | assembly drawings | base `#7DB2C4`, roughness 0.8 |
+| `boardui/documentation` | documentation drawings | base `#9FBF73`, roughness 0.8 |
 
 - Materials MUST be shared: each name appears once.
 - A colour from the source (§6.10) gives the layer the material `<name>/<rrggbb>`, for example `boardui/soldermask/1f4e9c`: the role's material with that base colour (lower-case sRGB hex in the name), keeping the role's alpha, metallic and roughness. Layers with the same colour share it; a colour equal to the default uses the default material.
@@ -279,7 +312,7 @@ Feature IDs are row indices into the layer's feature table:
 - **Empty tables.** `EXT_structural_metadata` property tables need at least one row, and glTF buffer views at least one byte. A table without rows is therefore omitted (and so is its index in `BOARDUI_board`), and so is an optional `STRING` property whose values are all empty (its `noData` is `""`; for example `pin.name` on a board without pin names).
 - **References.** References between tables are row indices (`UINT32`); `4294967295` means none. For example, `feature.net` is a row in `nets`, and `pin.component` is a row in `components`.
 - **Feature ID strings** are not stored. They derive from the layer name and `feature.source` (§5).
-- **Linking features to pins and components.** A feature gets `pin` from the `PinRef` of its `Pad`, `component` from that `PinRef@componentRef` or else from its `Set@componentRef`, and `net` from its `Set@net`.
+- **Linking features to pins and components.** A feature gets `pin` from the `PinRef` of its `Pad`, `component` from that `PinRef@componentRef` or else from its `Set@componentRef`, and `net` from its `Set@net`. A feature from a package drawing gets the component it was placed for (§6.13).
 - **Pins.** A pin's `name` is the package `Pin@name`, else the `PinRef@title`. Its `net` is the net of the first feature that references it.
 - **Fiducials.** A `FIDUCIAL` feature's `fiducial` is its IPC-2581 element: `GLOBAL`, `LOCAL`, `BAD_BOARD` or `GOOD_PANEL`. Other features have `NONE`, and a table without fiducials omits the property.
 
@@ -289,7 +322,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 
 ```json
 "BOARDUI_board": {
-  "profileVersion": "0.3",
+  "profileVersion": "0.4",
   "source": {
     "format": "IPC-2581",
     "revision": "C",
@@ -322,8 +355,8 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 
 - `layers` is ordered top to bottom. `thickness` is the copper-to-copper thickness.
 - `tables.*` and `featureTable` are absent for tables without rows (§8.2).
-- `role` is one of `COPPER`, `DIELECTRIC`, `SOLDERMASK`, `SILKSCREEN`. `ipcFunction` keeps the source `layerFunction`, and is absent for synthesized layers.
-- `visible` is the suggested default visibility. Inner copper layers default to `false`, all other layers to `true`. Dielectric layers stay visible so that the board is opaque like a real one: with them hidden, the translucent soldermask (§7) would show the other side's copper and components through the board.
+- `role` is one of `COPPER`, `DIELECTRIC`, `SOLDERMASK`, `SILKSCREEN`, `PASTE`, `COURTYARD`, `ASSEMBLY`, `DOCUMENTATION`. `ipcFunction` keeps the source `layerFunction`, and is absent for synthesized layers.
+- `visible` is the suggested default visibility. Inner copper layers and the optional layers (paste and drawings, §6.11, §6.12) default to `false`, all other layers to `true`. Dielectric layers stay visible so that the board is opaque like a real one: with them hidden, the translucent soldermask (§7) would show the other side's copper and components through the board.
 
 ### 8.4 Component node `extras`
 

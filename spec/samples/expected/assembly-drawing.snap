@@ -1,0 +1,44 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step board, FABRICATION
+thickness: 1.6000 mm
+counts: 18 features, 420 vertices, 804 triangles, 6 nets, 3 components, 6 pins (6 checked against pads)
+warnings: 0 from the reader, 1 from the converter
+  - zero-width lines are drawn as 0.1 mm hairlines
+layer layer/@assembly-top Assembly Top z 0.8200..0.8300 mm Default synthesized hidden
+  6 features {"Marking": 6}, 200 vertices, 384 triangles, top area 1.6220 mm²
+    row 0: Marking net - area 0.6371 mm²
+    row 1: Marking net - area 0.0680 mm²
+    row 2: Marking net - area 0.1059 mm²
+    row 3: Marking net - area 0.6371 mm²
+    row 4: Marking net - area 0.0680 mm²
+    row 5: Marking net - area 0.1059 mm²
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 40 vertices, 92 triangles, top area 107.6800 mm²
+    row 0: Sheet net - area 107.6800 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  4 features {"Pad": 4}, 32 vertices, 48 triangles, top area 4.3200 mm²
+    row 0: Pad net 0 area 1.0800 mm²
+    row 1: Pad net 1 area 1.0800 mm²
+    row 2: Pad net 2 area 1.0800 mm²
+    row 3: Pad net 3 area 1.0800 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 112.0000 mm²
+    row 0: Sheet net - area 112.0000 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  2 features {"Pad": 2}, 16 vertices, 24 triangles, top area 2.1600 mm²
+    row 0: Pad net 4 area 1.0800 mm²
+    row 1: Pad net 5 area 1.0800 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 24 vertices, 52 triangles, top area 109.8400 mm²
+    row 0: Sheet net - area 109.8400 mm²
+layer layer/@assembly-bottom Assembly Bottom z -0.8300..-0.8200 mm Default synthesized hidden
+  3 features {"Marking": 3}, 100 vertices, 192 triangles, top area 0.8110 mm²
+    row 0: Marking net - area 0.6371 mm²
+    row 1: Marking net - area 0.0680 mm²
+    row 2: Marking net - area 0.1059 mm²
+components: 3
+  D1 at (3.0000, 0.8000, -4.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder D0805
+  D2 at (7.0000, 0.8000, -4.0000) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder D0805
+  D3 at (11.0000, -0.8000, -4.0000) mm, rotation (0.2588, 0.0000, 0.9659, 0.0000), placeholder D0805

@@ -29,11 +29,11 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 | `loadIpc2581(file, options)` | Converts IPC-2581 locally with `@boardui/converter` (WASM in a worker) and loads the result. `options`: `models`, `tolerance`, `platingThickness`, `step`, `signal`, `onProgress`. Resolves with the conversion (`glb` for download, `warnings`, `stats`, `timings`). |
 | `whenPickable()` | Resolves when hover and picking cover the whole board (see "Picking" below). |
 | `layers` | Layers and drill layers, top to bottom, with their current visibility. |
-| `setLayerVisible(id, visible)` | Defaults come from `BOARDUI_board.layers[].visible`; drill layers start visible. |
+| `setLayerVisible(id, visible)` | Defaults come from `BOARDUI_board.layers[].visible`: inner copper, paste and drawing layers (courtyard, assembly, documentation) start hidden; drill layers start visible. |
 | `setXray(on)`, `xray` | Makes the board translucent (copper less than the rest); tinted elements stay opaque. Layer visibility doesn't change: inner copper shows only when switched on. |
 | `highlight({ ids } \| { net }, { color })` | Tints elements with a CSS colour. Returns a function that removes the highlight. |
 | `hide({ ids } \| { net })` | Hides elements. Returns a function that shows them again. |
-| `select(id \| null)`, `selection` | Selects any element; a net selects all its copper. |
+| `select(id \| null)`, `selection` | Selects any element; a net selects all its copper, and a component (also on hover) its drawings, such as its assembly outline. |
 | `focus(id)` | Flies the camera to an element. (`focus()` / `focus(options)` still focus the element.) |
 | `setView('top' \| 'bottom' \| 'iso')` | Frames the board from above, from below (mirrored, as when flipping a board), or obliquely. |
 | `attachWidget(id, element, { anchor, offset, occlusion })` | Shows an HTML element above the board, following a board element. Returns a detach function. |

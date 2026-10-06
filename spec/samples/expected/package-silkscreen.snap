@@ -1,0 +1,41 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step board, FABRICATION
+thickness: 1.6000 mm
+counts: 15 features, 328 vertices, 628 triangles, 8 nets, 4 components, 8 pins (8 checked against pads)
+warnings: 0 from the reader, 0 from the converter
+layer layer/SST Silkscreen Top z 0.8200..0.8300 mm Default
+  3 features {"Marking": 3}, 132 vertices, 252 triangles, top area 1.4799 mm²
+    row 0: Marking net - area 0.4933 mm²
+    row 1: Marking net - area 0.4933 mm²
+    row 2: Marking net - area 0.4933 mm²
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 56 vertices, 132 triangles, top area 89.5200 mm²
+    row 0: Sheet net - area 89.5200 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  6 features {"Pad": 6}, 48 vertices, 72 triangles, top area 6.4800 mm²
+    row 0: Pad net 0 area 1.0800 mm²
+    row 1: Pad net 1 area 1.0800 mm²
+    row 2: Pad net 2 area 1.0800 mm²
+    row 3: Pad net 3 area 1.0800 mm²
+    row 4: Pad net 4 area 1.0800 mm²
+    row 5: Pad net 5 area 1.0800 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 96.0000 mm²
+    row 0: Sheet net - area 96.0000 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  2 features {"Pad": 2}, 16 vertices, 24 triangles, top area 2.1600 mm²
+    row 0: Pad net 6 area 1.0800 mm²
+    row 1: Pad net 7 area 1.0800 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 24 vertices, 52 triangles, top area 93.8400 mm²
+    row 0: Sheet net - area 93.8400 mm²
+layer layer/@silkscreen-bottom Silkscreen Bottom z -0.8300..-0.8200 mm Default synthesized
+  1 features {"Marking": 1}, 44 vertices, 84 triangles, top area 0.4933 mm²
+    row 0: Marking net - area 0.4933 mm²
+components: 4
+  R1 at (3.0000, 0.8000, -3.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0805
+  R2 at (7.0000, 0.8000, -3.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0805
+  R3 at (11.0000, 0.8000, -3.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0805
+  R4 at (14.0000, -0.8000, -3.0000) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder R0805

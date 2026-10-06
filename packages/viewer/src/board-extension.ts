@@ -5,8 +5,26 @@
 /** Profile major version this viewer reads (spec §11). */
 export const SUPPORTED_PROFILE_MAJOR = 0;
 
-/** Physical role of a layer. */
-export type LayerRole = 'COPPER' | 'DIELECTRIC' | 'SOLDERMASK' | 'SILKSCREEN';
+/** Role of a layer (spec §8.3). */
+export type LayerRole =
+  | 'COPPER'
+  | 'DIELECTRIC'
+  | 'SOLDERMASK'
+  | 'SILKSCREEN'
+  | 'PASTE'
+  | 'COURTYARD'
+  | 'ASSEMBLY'
+  | 'DOCUMENTATION';
+
+/** Roles of drawing layers (spec §6.12): courtyard, assembly and documentation. */
+export const DRAWING_ROLES: ReadonlySet<LayerRole> = new Set([
+  'COURTYARD',
+  'ASSEMBLY',
+  'DOCUMENTATION',
+]);
+
+/** Roles of the optional layers (spec §6.11, §6.12), hidden by default. */
+export const OPTIONAL_ROLES: ReadonlySet<LayerRole> = new Set([...DRAWING_ROLES, 'PASTE']);
 
 /** Board side of a layer or component. */
 export type Side = 'TOP' | 'BOTTOM' | 'INTERNAL';

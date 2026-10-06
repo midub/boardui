@@ -89,7 +89,18 @@
       "properties": {
         "id": { "$ref": "#/$defs/layerId" },
         "name": { "type": "string" },
-        "role": { "enum": ["COPPER", "DIELECTRIC", "SOLDERMASK", "SILKSCREEN"] },
+        "role": {
+          "enum": [
+            "COPPER",
+            "DIELECTRIC",
+            "SOLDERMASK",
+            "SILKSCREEN",
+            "PASTE",
+            "COURTYARD",
+            "ASSEMBLY",
+            "DOCUMENTATION"
+          ]
+        },
         "ipcFunction": { "type": "string" },
         "side": { "enum": ["TOP", "BOTTOM", "INTERNAL"] },
         "zMin": { "type": "number" },

@@ -3,7 +3,7 @@ source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step testcase11-rdgflx-RevC, USERDEF
 thickness: 0.9195 mm
-counts: 2168 features, 200332 vertices, 396560 triangles, 116 nets, 78 components, 312 pins (312 checked against pads)
+counts: 2995 features, 268232 vertices, 528992 triangles, 116 nets, 78 components, 312 pins (312 checked against pads)
 warnings: 21 from the reader, 10 from the converter
   - layer `COVERLAY_FLEX_1` is not in the stack-up and was skipped
   - layer `ADHESIVE_FLEX_1` is not in the stack-up and was skipped
@@ -13,8 +13,24 @@ warnings: 21 from the reader, 10 from the converter
   - layer `EPOXY_TOP` is not in the stack-up and was skipped
   - layer `PASTEMASK_INT_4` is not in the stack-up and was skipped
   - layer `SOLDERMASK_INT_4` is not in the stack-up and was skipped
-  - layers outside the profile's scope were not converted: GOLD_HARD_FLEX_2 (COATINGCOND), SS_TOP (DOCUMENT), Asm_top (ASSEMBLY), Zones (DOCUMENT), Asm_Rgd2_Bottom (DOCUMENT), Asm_Flex2 (DOCUMENT), ASM_Flex1 (DOCUMENT), asm_rgd2_top (DOCUMENT)
+  - layers outside the profile's scope were not converted: GOLD_HARD_FLEX_2 (COATINGCOND)
   - zero-width lines are drawn as 0.1 mm hairlines
+layer layer/asm_rgd2_top Documentation Top z 0.5448..0.5548 mm Default hidden
+  1 features {"Marking": 1}, 2864 vertices, 5728 triangles, top area 95.2266 mm²
+layer layer/ASM_Flex1 Documentation Top z 0.5348..0.5448 mm Default hidden
+  1 features {"Marking": 1}, 2864 vertices, 5728 triangles, top area 95.2266 mm²
+layer layer/Asm_Flex2 Documentation Top z 0.5248..0.5348 mm Default hidden
+  1 features {"Marking": 1}, 2864 vertices, 5728 triangles, top area 95.2266 mm²
+layer layer/Asm_Rgd2_Bottom Documentation Top z 0.5148..0.5248 mm Default hidden
+  1 features {"Marking": 1}, 2864 vertices, 5728 triangles, top area 95.2266 mm²
+layer layer/Zones Documentation Top z 0.5048..0.5148 mm Default hidden
+  140 features {"Marking": 140}, 9804 vertices, 18684 triangles, top area 133.8064 mm²
+layer layer/SS_TOP Documentation Top z 0.4948..0.5048 mm Default hidden
+  222 features {"Marking": 222}, 15642 vertices, 30620 triangles, top area 172.4524 mm²
+layer layer/Asm_top Assembly Top z 0.4848..0.4948 mm Default hidden
+  328 features {"Marking": 328}, 24554 vertices, 47828 triangles, top area 239.4814 mm²
+layer layer/@silkscreen-top Silkscreen Top z 0.4748..0.4848 mm Default synthesized
+  133 features {"Marking": 133}, 6444 vertices, 12388 triangles, top area 79.6744 mm²
 layer layer/SOLDERMASK_TOP Soldermask Top z 0.4293..0.4748 mm File
   1 features {"Sheet": 1}, 3576 vertices, 7496 triangles, top area 10775.7880 mm²
 layer layer/TOP Copper Top z 0.4293..0.4597 mm File

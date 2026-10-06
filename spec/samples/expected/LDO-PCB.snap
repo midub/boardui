@@ -3,9 +3,19 @@ source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev A, step LDO-PCB, FULL
 thickness: 1.6000 mm
-counts: 14 features, 4238 vertices, 8436 triangles, 4 nets, 5 components, 0 pins (0 checked against pads)
+counts: 29 features, 9062 vertices, 18024 triangles, 4 nets, 5 components, 0 pins (0 checked against pads)
 warnings: 8 from the reader, 1 from the converter
-  - layers outside the profile's scope were not converted: BoardShape_LDO-PCB (BOARD_OUTLINE), Top Assembly (DOCUMENT), Top 3D Body (DOCUMENT), Top Courtyard (DOCUMENT), Top Component Center (DOCUMENT), Drill Drawing (Top Layer - Bottom Layer) (DOCUMENT)
+  - layers outside the profile's scope were not converted: BoardShape_LDO-PCB (BOARD_OUTLINE)
+layer layer/Drill%20Drawing%20(Top%20Layer%20-%20Bottom%20Layer) Documentation Top z 0.8602..0.8702 mm Default hidden
+  1 features {"Marking": 1}, 480 vertices, 960 triangles, top area 1.4234 mm²
+layer layer/Top%20Component%20Center Documentation Top z 0.8502..0.8602 mm Default hidden
+  1 features {"Marking": 1}, 280 vertices, 540 triangles, top area 1.0212 mm²
+layer layer/Top%20Courtyard Documentation Top z 0.8402..0.8502 mm Default hidden
+  1 features {"Marking": 1}, 520 vertices, 1040 triangles, top area 16.3914 mm²
+layer layer/Top%203D%20Body Documentation Top z 0.8302..0.8402 mm Default hidden
+  1 features {"Marking": 1}, 520 vertices, 1040 triangles, top area 12.5913 mm²
+layer layer/Top%20Assembly Documentation Top z 0.8202..0.8302 mm Default hidden
+  11 features {"Marking": 11}, 3024 vertices, 6008 triangles, top area 17.3094 mm²
 layer layer/Top%20Overlay Silkscreen Top z 0.8102..0.8202 mm Default
   1 features {"Marking": 1}, 1778 vertices, 3464 triangles, top area 14.2330 mm²
 layer layer/Top%20Solder Soldermask Top z 0.7644..0.8102 mm File

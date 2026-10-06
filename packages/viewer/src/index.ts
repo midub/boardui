@@ -14,7 +14,7 @@
  */
 import { BoardViewerElement } from './element.js';
 
-export type { LayerRole, Side } from './board-extension.js';
+export { DRAWING_ROLES, type LayerRole, OPTIONAL_ROLES, type Side } from './board-extension.js';
 export type { ElementInfo, ListableKind } from './board-model.js';
 export type { ViewPreset } from './camera.js';
 export {

@@ -3,9 +3,9 @@ source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step fomu-pvt, ASSEMBLY
 thickness: 0.5800 mm
-counts: 983 features, 53712 vertices, 109052 triangles, 31 nets, 55 components, 160 pins (144 checked against pads)
+counts: 1649 features, 145668 vertices, 286176 triangles, 31 nets, 55 components, 218 pins (144 checked against pads)
 warnings: 17 from the reader, 18 from the converter
-  - layers outside the profile's scope were not converted: F.Paste (SOLDERPASTE), B.Paste (SOLDERPASTE), Dwgs.User (DOCUMENT), Cmts.User (DOCUMENT), Eco1.User (DOCUMENT), Edge.Cuts (BOARD_OUTLINE), B.CrtYd (COURTYARD), B.Fab (ASSEMBLY), F.Fab (ASSEMBLY)
+  - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
   - 30 of 30 pins of component `U5` are not on their pads
   - 2 of 2 pins of component `D5_1` are not on their pads
   - 8 of 9 pins of component `U4` are not on their pads
@@ -17,6 +17,16 @@ warnings: 17 from the reader, 18 from the converter
   - 2 of 2 pins of component `C28` are not on their pads
   - 4 of 5 pins of component `U2` are not on their pads
   - 2 of 2 pins of component `C11` are not on their pads
+layer layer/Eco1.User Documentation Top z 0.4200..0.4300 mm Default hidden
+  1 features {"Marking": 1}, 8358 vertices, 16484 triangles, top area 125.7314 mm²
+layer layer/Cmts.User Documentation Top z 0.4100..0.4200 mm Default hidden
+  57 features {"Marking": 57}, 4910 vertices, 9360 triangles, top area 5.3144 mm²
+layer layer/Dwgs.User Documentation Top z 0.4000..0.4100 mm Default hidden
+  5 features {"Marking": 5}, 294 vertices, 516 triangles, top area 5.8171 mm²
+layer layer/F.Fab Assembly Top z 0.3900..0.4000 mm Default hidden
+  1 features {"Marking": 1}, 1002 vertices, 1980 triangles, top area 0.0614 mm²
+layer layer/F.Paste Paste Top z 0.2900..0.3900 mm Default hidden
+  12 features {"Pad": 12}, 594 vertices, 1232 triangles, top area 63.1215 mm²
 layer layer/F.SilkS Silkscreen Top z 0.3000..0.3100 mm Default
   0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
 layer layer/F.Mask Soldermask Top z 0.2550..0.3000 mm File
@@ -39,6 +49,12 @@ layer layer/B.Mask Soldermask Bottom z -0.3000..-0.2550 mm File
   1 features {"Sheet": 1}, 4674 vertices, 10112 triangles, top area 83.7760 mm²
 layer layer/B.SilkS Silkscreen Bottom z -0.3100..-0.3000 mm Default
   9 features {"Marking": 9}, 346 vertices, 664 triangles, top area 1.0079 mm²
+layer layer/B.Paste Paste Bottom z -0.3900..-0.2900 mm Default hidden
+  194 features {"Pad": 194}, 8390 vertices, 16324 triangles, top area 20.4481 mm²
+layer layer/B.Fab Assembly Bottom z -0.4000..-0.3900 mm Default hidden
+  231 features {"Marking": 231}, 61686 vertices, 119308 triangles, top area 13.7562 mm²
+layer layer/B.CrtYd Courtyard Bottom z -0.4100..-0.4000 mm Default hidden
+  165 features {"Marking": 165}, 6722 vertices, 11920 triangles, top area 8.3519 mm²
 drill layer/F.Cu_In1.Cu layer/F.Cu..layer/In1.Cu
   29 features {"Barrel": 29}, 986 vertices, 1972 triangles, top area 0.2668 mm²
 drill layer/In1.Cu_In2.Cu layer/In1.Cu..layer/In2.Cu
