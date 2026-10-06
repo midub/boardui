@@ -76,9 +76,13 @@ export class BoardRenderer {
       new RoomEnvironment(),
       0.04,
     ).texture;
+    // A key light from above and a weaker one from below, so that the bottom side (bodies,
+    // mask) is lit in the bottom view too; the room environment mostly lights from above.
     const light = new DirectionalLight(0xffffff, 1.2);
     light.position.set(0.5, 1, 0.8);
-    this.scene.add(light);
+    const under = new DirectionalLight(0xffffff, 0.9);
+    under.position.set(-0.5, -1, -0.6);
+    this.scene.add(light, under);
   }
 
   /**
@@ -164,6 +168,16 @@ export class BoardRenderer {
     );
     this.#raycaster.setFromCamera(ndc, this.camera);
     return target.copy(this.#raycaster.ray);
+  }
+
+  /** Whether the camera orbits the board on its own (one turn in about 30 s at 60 fps). */
+  get autoRotate(): boolean {
+    return this.controls.autoRotate;
+  }
+
+  set autoRotate(on: boolean) {
+    this.controls.autoRotate = on;
+    this.requestRender();
   }
 
   /** Schedules a frame. */

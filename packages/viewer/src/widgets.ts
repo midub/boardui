@@ -96,6 +96,8 @@ export function placement(
 export interface WidgetHost {
   /** Bounding box of an element in world coordinates, or `null` if it has no geometry. */
   box(id: string): Box3 | null;
+  /** Whether the element is drawn at all (its layer shown, the element not hidden). */
+  visible(id: string): boolean;
   /** Whether something other than the element itself lies between `from` and `to`. */
   occluded(id: string, from: Vector3, to: Vector3): boolean;
 }
@@ -163,7 +165,7 @@ export class WidgetLayer {
   update(camera: Camera, width: number, height: number, now: number): void {
     camera.getWorldPosition(this.#eye);
     for (const widget of this.#widgets) {
-      const box = this.#host.box(widget.id);
+      const box = this.#host.visible(widget.id) ? this.#host.box(widget.id) : null;
       const point = box && anchorPoint(box, widget.options.anchor, this.#point);
       const screen = point && projectToScreen(point, camera, width, height);
       if (point && screen && widget.options.occlusion !== 'none' && now >= widget.nextCheck) {
