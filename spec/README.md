@@ -13,7 +13,7 @@ A *boardui asset* is a valid glTF 2.0 asset (`.glb` recommended) that:
 
 The asset is an **export**. The IPC-2581 source file stays the source of truth; this profile does not aim to convert back to IPC-2581 ([ADR 0002](../docs/adr/0002-gltf-is-an-export-with-metadata.md)). Analyses that need full design data (DRC, impedance, BOM checks) read the source.
 
-Out of scope for 0.1: paste and documentation layers, assembly drawings, embedded components, cavities, rigid-flex.
+Out of scope for 0.2: paste and documentation layers, assembly drawings, embedded components, cavities, rigid-flex.
 
 ## 2. Conformance
 

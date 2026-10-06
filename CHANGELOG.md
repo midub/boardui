@@ -19,7 +19,7 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   `GoodPanelMark`) become copper features of the new kind `FIDUCIAL` with a `fiducial` type
   property; `Hexagon` and `Moire` primitives are drawn; `HATCH` and `MESH` fills are drawn as
   lines clipped to their area; `LineDesc@lineProperty` dots and dashes strokes, and `ERASE` lines
-  erase (spec §6.1, §6.2, §8.2).
+  erase (profile 0.2; spec §6.1, §6.2, §8.2).
 
 ## [1.0.0] - 2026-10-06
 
