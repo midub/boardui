@@ -1159,4 +1159,215 @@ mod tests {
         assert!(!report.is_valid());
         assert_eq!(report.errors(), 1);
     }
+
+    /// A valid asset: the `minimal-2layer` sample.
+    fn sample() -> (Root, Vec<u8>) {
+        let xml =
+            include_bytes!("../../../spec/samples/hand-written/minimal-2layer/minimal-2layer.xml");
+        let glb = crate::convert(xml, &crate::Options::default()).unwrap().glb;
+        let (root, bin) = glb::read(&glb).unwrap();
+        (root, bin.to_vec())
+    }
+
+    fn check(root: &Root, bin: &[u8]) -> Vec<String> {
+        let report = validate(&glb::write(root, bin));
+        report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| i.message.clone())
+            .collect()
+    }
+
+    fn assert_error(errors: &[String], needle: &str) {
+        assert!(
+            errors.iter().any(|e| e.contains(needle)),
+            "expected an error containing {needle:?}, got {errors:#?}"
+        );
+    }
+
+    fn board(root: &Root) -> Board {
+        serde_json::from_value(root.extensions.board.clone().unwrap()).unwrap()
+    }
+
+    fn set_board(root: &mut Root, board: &Board) {
+        root.extensions.board = Some(serde_json::to_value(board).unwrap());
+    }
+
+    /// The buffer view and byte offset of a primitive attribute or index accessor.
+    fn accessor_bytes(root: &Root, accessor: u32) -> (usize, Option<u32>) {
+        let a = &root.accessors[accessor as usize];
+        let view = &root.buffer_views[a.buffer_view.unwrap() as usize];
+        (view.byte_offset as usize, view.byte_stride)
+    }
+
+    #[test]
+    fn the_sample_is_valid() {
+        let (root, bin) = sample();
+        assert_eq!(check(&root, &bin), Vec::<String>::new());
+    }
+
+    #[test]
+    fn extensions_must_be_declared_but_not_required() {
+        let (mut root, bin) = sample();
+        root.extensions_used.retain(|e| e != "EXT_mesh_features");
+        root.extensions_required.push("BOARDUI_board".into());
+        let errors = check(&root, &bin);
+        assert_error(&errors, "extensionsUsed does not list EXT_mesh_features");
+        assert_error(&errors, "BOARDUI_board must not be in extensionsRequired");
+    }
+
+    #[test]
+    fn scene_structure_is_checked() {
+        let (mut root, bin) = sample();
+        root.nodes[0].name = Some("pcb".into());
+        let layer = board(&root).layers[2].node as usize;
+        root.nodes[layer].translation = Some([0.0, 1.0, 0.0]);
+        let errors = check(&root, &bin);
+        assert_error(&errors, "root node must be named `board`");
+        assert_error(&errors, "identity transform");
+    }
+
+    #[test]
+    fn board_extension_follows_its_schema() {
+        let (mut root, bin) = sample();
+        let mut value = root.extensions.board.clone().unwrap();
+        value["unexpected"] = serde_json::json!(1);
+        root.extensions.board = Some(value);
+        assert_error(&check(&root, &bin), "does not match its schema");
+    }
+
+    #[test]
+    fn z_ranges_must_be_ordered() {
+        let (mut root, bin) = sample();
+        let mut b = board(&root);
+        let core = b.layers.iter_mut().find(|l| l.name == "@core").unwrap();
+        core.z_max = 1e-3;
+        set_board(&mut root, &b);
+        let errors = check(&root, &bin);
+        assert_error(&errors, "out of order or overlap");
+    }
+
+    #[test]
+    fn component_extras_must_match_the_table() {
+        let (mut root, bin) = sample();
+        let node = root
+            .nodes
+            .iter_mut()
+            .find(|n| n.name.as_deref() == Some("R1"))
+            .unwrap();
+        node.extras.as_mut().unwrap()["boardui"]["part"] = serde_json::json!("other");
+        assert_error(&check(&root, &bin), "do not match the components table");
+    }
+
+    #[test]
+    fn references_must_be_in_range() {
+        let (root, mut bin) = sample();
+        let b = board(&root);
+        let top = b.layers.iter().find(|l| l.name == "TOP").unwrap();
+        let metadata = root.extensions.structural_metadata.as_ref().unwrap();
+        let table = &metadata.property_tables[top.feature_table.unwrap() as usize];
+        let view = &root.buffer_views[table.properties["net"].values as usize];
+        let at = view.byte_offset as usize;
+        bin[at..at + 4].copy_from_slice(&999u32.to_le_bytes());
+        assert_error(&check(&root, &bin), "have `net` out of range");
+    }
+
+    #[test]
+    fn feature_ids_must_be_contiguous() {
+        let (root, mut bin) = sample();
+        let b = board(&root);
+        let top = b.layers.iter().find(|l| l.name == "TOP").unwrap();
+        let mesh = root.nodes[top.node as usize].mesh.unwrap();
+        let primitive = &root.meshes[mesh as usize].primitives[0];
+        let (at, stride) = accessor_bytes(&root, primitive.attributes["_FEATURE_ID_0"]);
+        assert_eq!(stride, Some(4));
+        // Give the first vertex the last feature's ID.
+        bin[at..at + 2].copy_from_slice(&3u16.to_le_bytes());
+        let errors = check(&root, &bin);
+        assert_error(&errors, "not contiguous and ascending");
+    }
+
+    #[test]
+    fn prisms_must_be_closed() {
+        let (root, mut bin) = sample();
+        let b = board(&root);
+        let top = b.layers.iter().find(|l| l.name == "TOP").unwrap();
+        let mesh = root.nodes[top.node as usize].mesh.unwrap();
+        let primitive = &root.meshes[mesh as usize].primitives[0];
+        let (at, _) = accessor_bytes(&root, primitive.indices.unwrap());
+        // Collapse the first triangle onto its first edge.
+        let first = [bin[at], bin[at + 1]];
+        bin[at + 4..at + 6].copy_from_slice(&first);
+        assert_error(&check(&root, &bin), "not closed prisms");
+    }
+
+    #[test]
+    fn overlapping_copper_is_reported() {
+        use boardui_geom::{LayerMeshBuilder, Path, Shape};
+        use boardui_gltf::{BoardAsset, FeatureRow, LayerAsset, ThicknessSource};
+        let square = |x: f64| {
+            Shape::Polygon {
+                outline: Path::new(DVec2::new(x, 0.0))
+                    .line_to(DVec2::new(x + 2e-3, 0.0))
+                    .line_to(DVec2::new(x + 2e-3, 2e-3))
+                    .line_to(DVec2::new(x, 2e-3)),
+                holes: Vec::new(),
+            }
+            .to_region(boardui_geom::Tolerance::DEFAULT)
+            .unwrap()
+            .extrude(0.0, 35e-6)
+            .unwrap()
+        };
+        let asset = |overlap: bool| {
+            let mut mesh = LayerMeshBuilder::new();
+            mesh.push(0, &square(0.0)).unwrap();
+            mesh.push(1, &square(if overlap { 1e-3 } else { 2e-3 }))
+                .unwrap();
+            let row = |source| FeatureRow {
+                kind: FeatureKind::Fill,
+                source,
+                net: None,
+                pin: None,
+                component: None,
+            };
+            BoardAsset {
+                generator: "test".into(),
+                source: boardui_gltf::Source {
+                    format: "IPC-2581".into(),
+                    revision: None,
+                    step: None,
+                    function_mode: None,
+                    sha256: "0".repeat(64),
+                },
+                tolerance: 5e-6,
+                plating_thickness: 25e-6,
+                thickness: 35e-6,
+                layers: vec![LayerAsset {
+                    name: "TOP".into(),
+                    role: Role::Copper,
+                    ipc_function: Some("CONDUCTOR".into()),
+                    side: Side::Top,
+                    z_min: 0.0,
+                    z_max: 35e-6,
+                    thickness_source: ThicknessSource::Default,
+                    synthesized: false,
+                    visible: true,
+                    mesh: mesh.finish(),
+                    features: vec![row(0), row(1)],
+                }],
+                drills: Vec::new(),
+                nets: Vec::new(),
+                components: Vec::new(),
+                pins: Vec::new(),
+                placeholders: Vec::new(),
+                models: Vec::new(),
+            }
+            .to_glb()
+        };
+        assert!(validate(&asset(false)).is_valid());
+        let report = validate(&asset(true));
+        let errors: Vec<String> = report.issues.iter().map(|i| i.message.clone()).collect();
+        assert_error(&errors, "features overlap by 2.000e-6 m²");
+    }
 }

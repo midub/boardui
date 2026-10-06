@@ -55,7 +55,8 @@ fn board(n: usize) -> String {
         r#"<Package name="R" pinOne="1" height="0.4"><Outline><Polygon><PolyBegin x="-0.3" y="-0.25"/><PolyStepSegment x="1.3" y="-0.25"/><PolyStepSegment x="1.3" y="0.25"/><PolyStepSegment x="-0.3" y="0.25"/><PolyStepSegment x="-0.3" y="-0.25"/></Polygon><LineDesc lineWidth="0.1" lineEnd="ROUND"/></Outline><Pin number="1"><Location x="0" y="0"/></Pin><Pin number="2"><Location x="1" y="0"/></Pin></Package>
 "#,
     );
-    let resistor = |row: usize, col: usize| row % 20 == 0 && col % 2 == 0 && col + 1 < n;
+    let resistor =
+        |row: usize, col: usize| row.is_multiple_of(20) && col.is_multiple_of(2) && col + 1 < n;
     for row in 0..n {
         for col in 0..n {
             if resistor(row, col) {
