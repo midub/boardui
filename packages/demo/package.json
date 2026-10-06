@@ -1,7 +1,7 @@
 {
   "name": "@boardui/demo",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "boardui demo: drop an IPC-2581 file, convert it locally, view it in 3D.",
   "license": "MIT",
   "type": "module",

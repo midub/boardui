@@ -1,6 +1,6 @@
 {
   "name": "@boardui/viewer",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "<board-viewer>: a web component that shows boardui glTF boards in 3D.",
   "license": "MIT",

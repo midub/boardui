@@ -159,7 +159,7 @@ dependencies = [
 
 [[package]]
 name = "boardui"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "boardui-convert",
  "boardui-ipc2581",
@@ -172,7 +172,7 @@ dependencies = [
 
 [[package]]
 name = "boardui-convert"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64",
  "boardui-geom",
@@ -189,7 +189,7 @@ dependencies = [
 
 [[package]]
 name = "boardui-geom"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "glam",
  "i_overlay",
@@ -201,7 +201,7 @@ dependencies = [
 
 [[package]]
 name = "boardui-gltf"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64",
  "boardui-geom",
@@ -213,7 +213,7 @@ dependencies = [
 
 [[package]]
 name = "boardui-ipc2581"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "insta",
  "quick-xml",
@@ -221,7 +221,7 @@ dependencies = [
 
 [[package]]
 name = "boardui-wasm"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "boardui-convert",
  "js-sys",
