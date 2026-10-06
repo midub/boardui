@@ -43,6 +43,7 @@ export const SAMPLES: readonly Sample[] = [
   handWritten('slots', 'Plated and non-plated slots'),
   handWritten('overlap-priority', 'Pad over trace over plane'),
   handWritten('negative-polarity', 'A plane with negative cut-outs'),
+  handWritten('zero-width-lines', 'Silkscreen lines of zero width, drawn as hairlines'),
   handWritten('units-inch', 'minimal-2layer in inches'),
   handWritten('units-micron', 'minimal-2layer in microns'),
   {
