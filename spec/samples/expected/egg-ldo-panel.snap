@@ -1,0 +1,30 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step egg250-panel, ASSEMBLY
+thickness: 1.5800 mm
+counts: 329 features, 51794 vertices, 103108 triangles, 20 nets, 101 components, 157 pins (106 checked against pads)
+warnings: 20 from the reader, 1 from the converter
+  - layers outside the profile's scope were not converted: F.Paste (SOLDERPASTE), B.Paste (SOLDERPASTE), Edge.Cuts (BOARD_OUTLINE), B.Courtyard (COURTYARD), F.Courtyard (COURTYARD), B.Fab (ASSEMBLY), F.Fab (ASSEMBLY)
+layer layer/F.Silkscreen Silkscreen Top z 0.8000..0.8100 mm Default
+  17 features {"Marking": 17}, 1490 vertices, 2892 triangles, top area 14.1579 mm²
+layer layer/F.Mask Soldermask Top z 0.7550..0.8000 mm File
+  1 features {"Sheet": 1}, 3282 vertices, 7144 triangles, top area 1197.6381 mm²
+layer layer/F.Cu Copper Top z 0.7550..0.7900 mm File
+  155 features {"Fill": 20, "Pad": 103, "Trace": 16, "Via": 16}, 16178 vertices, 31384 triangles, top area 590.2570 mm²
+layer layer/DIELECTRIC_1 Dielectric Internal z -0.7550..0.7550 mm File
+  1 features {"Sheet": 1}, 2960 vertices, 6168 triangles, top area 1321.1057 mm²
+layer layer/B.Cu Copper Bottom z -0.7900..-0.7550 mm File
+  51 features {"Fill": 8, "Pad": 19, "Trace": 8, "Via": 16}, 2898 vertices, 5624 triangles, top area 60.8786 mm²
+layer layer/B.Mask Soldermask Bottom z -0.8000..-0.7550 mm File
+  1 features {"Sheet": 1}, 2610 vertices, 5464 triangles, top area 1294.6842 mm²
+layer layer/B.Silkscreen Silkscreen Bottom z -0.8100..-0.8000 mm Default
+  20 features {"Marking": 20}, 19944 vertices, 39568 triangles, top area 37.4087 mm²
+drill layer/F.Cu_B.Cu layer/F.Cu..layer/B.Cu
+  83 features {"Barrel": 32, "Other": 51}, 2432 vertices, 4864 triangles, top area 1.7908 mm²
+components: 101
+  KiKit_MB_4_2 at (149.7000, 0.7900, 36.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder NPTH_1
+  KiKit_MB_3_1 at (142.0000, 0.7900, 42.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder NPTH_1
+  KiKit_MB_10_3 at (149.7000, 0.7900, 52.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder NPTH_1
+  R2 at (152.7000, 0.7900, 58.4300) mm, rotation (0.0000, 1.0000, 0.0000, 0.0000), placeholder ERJUP3_2
+  KiKit_MB_3_3 at (140.0000, 0.7900, 42.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder NPTH_1

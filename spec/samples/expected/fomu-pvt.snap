@@ -1,0 +1,53 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step fomu-pvt, ASSEMBLY
+thickness: 0.5800 mm
+counts: 983 features, 53712 vertices, 109052 triangles, 31 nets, 55 components, 160 pins (144 checked against pads)
+warnings: 17 from the reader, 18 from the converter
+  - layers outside the profile's scope were not converted: F.Paste (SOLDERPASTE), B.Paste (SOLDERPASTE), Dwgs.User (DOCUMENT), Cmts.User (DOCUMENT), Eco1.User (DOCUMENT), Edge.Cuts (BOARD_OUTLINE), B.CrtYd (COURTYARD), B.Fab (ASSEMBLY), F.Fab (ASSEMBLY)
+  - 30 of 30 pins of component `U5` are not on their pads
+  - 2 of 2 pins of component `D5_1` are not on their pads
+  - 8 of 9 pins of component `U4` are not on their pads
+  - 2 of 2 pins of component `D6` are not on their pads
+  - 2 of 2 pins of component `D7` are not on their pads
+  - 2 of 2 pins of component `D1_1` are not on their pads
+  - 2 of 2 pins of component `D3_1` are not on their pads
+  - 4 of 5 pins of component `U3` are not on their pads
+  - 2 of 2 pins of component `C28` are not on their pads
+  - 4 of 5 pins of component `U2` are not on their pads
+  - 2 of 2 pins of component `C11` are not on their pads
+layer layer/F.SilkS Silkscreen Top z 0.3000..0.3100 mm Default
+  0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
+layer layer/F.Mask Soldermask Top z 0.2550..0.3000 mm File
+  1 features {"Sheet": 1}, 98 vertices, 208 triangles, top area 37.6683 mm²
+layer layer/F.Cu Copper Top z 0.2550..0.2900 mm File
+  50 features {"Pad": 12, "Trace": 5, "Via": 33}, 3062 vertices, 6124 triangles, top area 83.0373 mm²
+layer layer/DIELECTRIC_1 Dielectric Internal z 0.1083..0.2550 mm File
+  1 features {"Sheet": 1}, 710 vertices, 1532 triangles, top area 119.2900 mm²
+layer layer/In1.Cu Copper Internal z 0.0733..0.1083 mm File hidden
+  98 features {"Trace": 10, "Via": 88}, 5014 vertices, 10132 triangles, top area 79.8501 mm²
+layer layer/DIELECTRIC_2 Dielectric Internal z -0.0733..0.0733 mm File
+  1 features {"Sheet": 1}, 1460 vertices, 3128 triangles, top area 117.2775 mm²
+layer layer/In2.Cu Copper Internal z -0.1083..-0.0733 mm File hidden
+  241 features {"Trace": 17, "Via": 224}, 11762 vertices, 23696 triangles, top area 67.6663 mm²
+layer layer/DIELECTRIC_3 Dielectric Internal z -0.2550..-0.1083 mm File
+  1 features {"Sheet": 1}, 3194 vertices, 7048 triangles, top area 117.0450 mm²
+layer layer/B.Cu Copper Bottom z -0.2900..-0.2550 mm File
+  331 features {"Pad": 136, "Trace": 22, "Via": 173}, 14396 vertices, 28416 triangles, top area 76.9841 mm²
+layer layer/B.Mask Soldermask Bottom z -0.3000..-0.2550 mm File
+  1 features {"Sheet": 1}, 4674 vertices, 10112 triangles, top area 83.7760 mm²
+layer layer/B.SilkS Silkscreen Bottom z -0.3100..-0.3000 mm Default
+  9 features {"Marking": 9}, 346 vertices, 664 triangles, top area 1.0079 mm²
+drill layer/F.Cu_In1.Cu layer/F.Cu..layer/In1.Cu
+  29 features {"Barrel": 29}, 986 vertices, 1972 triangles, top area 0.2668 mm²
+drill layer/In1.Cu_In2.Cu layer/In1.Cu..layer/In2.Cu
+  53 features {"Barrel": 53}, 2332 vertices, 4664 triangles, top area 0.9266 mm²
+drill layer/In2.Cu_B.Cu layer/In2.Cu..layer/B.Cu
+  167 features {"Barrel": 167}, 5678 vertices, 11356 triangles, top area 1.5361 mm²
+components: 55
+  U7 at (22.0500, -0.2900, 18.8650) mm, rotation (0.7071, 0.0000, 0.7071, 0.0000), placeholder XTAL-2520_1
+  U10 at (26.4200, -0.2900, 21.8800) mm, rotation (0.7071, 0.0000, -0.7071, 0.0000), placeholder LED-RGB-5DS-UHD1110-FKA_2
+  U9 at (16.8500, 0.2900, 27.3500) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
+  U5 at (24.4000, -0.2900, 21.9000) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder iCE40UP5K-UWG30_4
+  C22 at (20.3000, -0.2900, 25.4600) mm, rotation (0.7071, 0.0000, -0.7071, 0.0000), placeholder C_0402_1005Metric_5

@@ -1,0 +1,24 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step antenna, ASSEMBLY
+thickness: 1.5900 mm
+counts: 8 features, 278 vertices, 548 triangles, 2 nets, 1 components, 2 pins (2 checked against pads)
+warnings: 15 from the reader, 1 from the converter
+  - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
+layer layer/f.silkscreen Silkscreen Top z 0.8050..0.8150 mm Default
+  0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
+layer layer/F.Mask Soldermask Top z 0.7600..0.8050 mm File
+  1 features {"Sheet": 1}, 36 vertices, 72 triangles, top area 399.9073 mm²
+layer layer/F.Cu Copper Top z 0.7600..0.7950 mm File
+  3 features {"Fill": 1, "Pad": 2}, 100 vertices, 192 triangles, top area 21.2170 mm²
+layer layer/DIELECTRIC_1 Dielectric Internal z -0.7600..0.7600 mm File
+  1 features {"Sheet": 1}, 36 vertices, 72 triangles, top area 399.9073 mm²
+layer layer/B.Cu Copper Bottom z -0.7950..-0.7600 mm File
+  1 features {"Pad": 1}, 36 vertices, 72 triangles, top area 0.3570 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8150..-0.7600 mm Default synthesized
+  1 features {"Sheet": 1}, 16 vertices, 32 triangles, top area 399.5503 mm²
+drill layer/F.Cu_B.Cu layer/F.Cu..layer/B.Cu
+  1 features {"Barrel": 1}, 54 vertices, 108 triangles, top area 0.0250 mm²
+components: 1
+  E1 at (168.9000, 0.7950, 100.4394) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), no body

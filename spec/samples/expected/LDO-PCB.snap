@@ -1,0 +1,34 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev A, step LDO-PCB, FULL
+thickness: 1.6000 mm
+counts: 14 features, 4238 vertices, 8436 triangles, 4 nets, 5 components, 0 pins (0 checked against pads)
+warnings: 8 from the reader, 1 from the converter
+  - layers outside the profile's scope were not converted: BoardShape_LDO-PCB (BOARD_OUTLINE), Top Assembly (DOCUMENT), Top 3D Body (DOCUMENT), Top Courtyard (DOCUMENT), Top Component Center (DOCUMENT), Drill Drawing (Top Layer - Bottom Layer) (DOCUMENT)
+layer layer/Top%20Overlay Silkscreen Top z 0.8102..0.8202 mm Default
+  1 features {"Marking": 1}, 1778 vertices, 3464 triangles, top area 14.2330 mm²
+layer layer/Top%20Solder Soldermask Top z 0.7644..0.8102 mm File
+  1 features {"Sheet": 1}, 322 vertices, 660 triangles, top area 257.0642 mm²
+layer layer/Top%20Layer Copper Top z 0.7644..0.8000 mm File
+  3 features {"Trace": 3}, 518 vertices, 1008 triangles, top area 5.6892 mm²
+layer layer/@core Dielectric Internal z 0.1600..0.7644 mm Default synthesized
+  1 features {"Sheet": 1}, 322 vertices, 660 triangles, top area 257.0642 mm²
+layer layer/Dielectric%201 Copper Internal z -0.1600..0.1600 mm File hidden
+  0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
+layer layer/@prepreg-2 Dielectric Internal z -0.7644..-0.1600 mm Default synthesized
+  1 features {"Sheet": 1}, 322 vertices, 660 triangles, top area 257.0642 mm²
+layer layer/Bottom%20Layer Copper Bottom z -0.8000..-0.7644 mm File
+  1 features {"Fill": 1}, 264 vertices, 544 triangles, top area 241.8807 mm²
+layer layer/Bottom%20Solder Soldermask Bottom z -0.8102..-0.7644 mm File
+  1 features {"Sheet": 1}, 322 vertices, 660 triangles, top area 257.0642 mm²
+layer layer/Bottom%20Overlay Silkscreen Bottom z -0.8202..-0.8102 mm Default
+  0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
+drill layer/Drill%20Guide%20(Top%20Layer%20-%20Bottom%20Layer) layer/Top%20Layer..layer/Bottom%20Layer
+  5 features {"Barrel": 5}, 390 vertices, 780 triangles, top area 0.2879 mm²
+components: 5
+  U1 at (152.9080, 0.8000, -42.2910) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder FP-SOT23-5LD-PL-1-MFG
+  J2 at (162.4330, 0.8000, -42.1640) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder FP-SM02B-GHS-TB_LF_SN-MFG
+  J1 at (143.3830, 0.8000, -42.0370) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder FP-SM02B-GHS-TB_LF_SN-MFG
+  C2 at (156.4640, 0.8000, -42.2910) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder FP-CC0805-0_85-MFG
+  C1 at (148.9710, 0.8000, -42.3270) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder FP-CC0805-0_85-MFG
