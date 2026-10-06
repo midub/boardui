@@ -12,8 +12,8 @@
  * - `shots <dist> <out>`: PNGs of the small fixture (views, x-ray, net highlight, hover,
  *   selection, layer toggles, focus).
  * - `perf <dist> <out> <query>…`: load time, frame time while orbiting and hover latency for
- *   each dev page query (e.g. `board=dense&grid=60&realistic`), at 1920 × 1080; results go to
- *   `<out>/perf.json`.
+ *   each dev page query (e.g. `board=dense&grid=60&realistic`), at 1920 × 1080 or
+ *   `REVIEW_SIZE=<w>x<h>`; results go to `<out>/perf.json`.
  * - `probe <dist> <out>`: which backends the browser offers.
  */
 
@@ -188,54 +188,69 @@ async function shots() {
   await page.close();
 }
 
+/** Installs `gpuSync()` in the page: resolves once the GPU has finished all submitted work. */
+function installGpuSync(page) {
+  return page.evaluate(() => {
+    const canvas = globalThis.viewer.shadowRoot.querySelector('canvas');
+    globalThis.gpuSync = async () => {
+      if (globalThis.viewer.stats().backend === 'WebGPU') {
+        await canvas.getContext('webgpu').getConfiguration().device.queue.onSubmittedWorkDone();
+      } else {
+        const gl = canvas.getContext('webgl2');
+        gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+      }
+    };
+  });
+}
+
 async function perf() {
+  const [width, height] = (process.env.REVIEW_SIZE ?? '1920x1080').split('x').map(Number);
   const results = [];
   for (const query of queries) {
-    const page = await open(query, 1920, 1080);
+    const page = await open(query, width, height);
+    await installGpuSync(page);
     const timings = await page.evaluate(() => globalThis.timings);
     const stats = await page.evaluate(() => globalThis.viewer.stats());
-    console.log(query, JSON.stringify({ timings, stats }));
+    console.log(query, `${width}x${height}`, JSON.stringify({ timings, stats }));
     // BVHs are built in idle time after loading; give them a moment.
     await page.waitForTimeout(5000);
-    await frames(page);
+    await page.evaluate(() => globalThis.gpuSync());
 
-    // Orbit: drag across the canvas for a while and record every animation frame.
-    await page.evaluate(() => {
-      globalThis.frameTimes = [];
-      globalThis.recording = true;
-      const loop = (t) => {
-        globalThis.frameTimes.push(t);
-        if (globalThis.recording) requestAnimationFrame(loop);
-      };
-      requestAnimationFrame(loop);
-    });
-    const start = Date.now();
-    await page.mouse.move(700, 540);
+    // Orbit: drag across the canvas for at least 8 s and 5 rendered frames, then wait for the
+    // GPU. Frames are pipelined, so time per frame = elapsed / frames rendered.
+    const x = width / 2;
+    const y = height / 2;
+    await page.mouse.move(x, y);
     await page.mouse.down();
-    for (let i = 0; Date.now() - start < 8000 || i < 20; i++) {
-      await page.mouse.move(700 + 300 * Math.sin(i / 10), 540 + 60 * Math.sin(i / 7));
+    const before = await page.evaluate(() => ({
+      t: performance.now(),
+      frames: globalThis.viewer.stats().frames,
+    }));
+    const start = Date.now();
+    for (let i = 0; ; i++) {
+      await page.mouse.move(x + 300 * Math.sin(i / 10), y + 60 * Math.sin(i / 7));
+      if (i % 10 === 9 && Date.now() - start > 8000) {
+        const frames = await page.evaluate(() => globalThis.viewer.stats().frames);
+        if (frames - before.frames >= 5) break;
+      }
     }
-    await page.mouse.up();
-    const orbit = await page.evaluate(() => {
-      globalThis.recording = false;
-      const t = globalThis.frameTimes;
-      const d = t
-        .slice(1)
-        .map((v, i) => v - t[i])
-        .sort((a, b) => a - b);
-      const at = (q) => d[Math.min(d.length - 1, Math.floor(q * d.length))];
-      return {
-        frames: d.length,
-        medianMs: at(0.5),
-        p95Ms: at(0.95),
-        meanMs: d.reduce((a, b) => a + b, 0) / d.length,
-      };
+    const after = await page.evaluate(async () => {
+      const frames = globalThis.viewer.stats().frames;
+      await globalThis.gpuSync();
+      return { t: performance.now(), frames };
     });
+    await page.mouse.up();
+    const orbit = {
+      frames: after.frames - before.frames,
+      msPerFrame: (after.t - before.t) / (after.frames - before.frames),
+    };
     const orbitStats = await page.evaluate(() => globalThis.viewer.stats());
     console.log('orbit', JSON.stringify(orbit), JSON.stringify(orbitStats));
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(1000);
+    await page.evaluate(() => globalThis.gpuSync());
 
-    // Hover: move between two points over the board; time pointermove → bui-hover → next frame.
+    // Hover: pointermove → pick in the next animation frame (bui-hover) → that frame is drawn
+    // (GPU synced).
     await page.evaluate(() => {
       globalThis.hovers = [];
       const canvas = globalThis.viewer.shadowRoot.querySelector('canvas');
@@ -253,22 +268,33 @@ async function perf() {
         if (!h || h.event !== undefined) return;
         h.event = performance.now();
         h.id = e.detail?.id ?? null;
-        requestAnimationFrame(() => {
+        // bui-hover fires just before the frame is drawn; sync after this animation frame.
+        setTimeout(async () => {
+          await globalThis.gpuSync();
           h.shown = performance.now();
         });
       });
     });
     const points = [
-      [960, 540],
-      [1010, 560],
+      [x, y],
+      [x + 50, y + 20],
     ];
-    for (let i = 0; i < 12; i++) {
-      const [x, y] = points[i % 2];
-      await page.mouse.move(x + (i % 3), y);
-      await page.waitForTimeout(orbit.medianMs * 3 + 200);
+    for (let i = 0; i < 10; i++) {
+      const [px, py] = points[i % 2];
+      await page.mouse.move(px + (i % 3), py);
+      await page.waitForFunction(
+        () => {
+          // Done when the frame is shown, or when two frames passed without a hover change.
+          const h = globalThis.hovers.at(-1);
+          return !h || h.shown !== undefined || (h.event === undefined && h.frames >= 2);
+        },
+        undefined,
+        { timeout: 120_000, polling: 50 },
+      );
+      await page.waitForTimeout(100);
     }
     const hover = await page.evaluate(() => {
-      const h = globalThis.hovers.filter((x) => x.event !== undefined && x.shown !== undefined);
+      const h = globalThis.hovers.filter((x) => x.shown !== undefined);
       const median = (values) => values.sort((a, b) => a - b)[Math.floor(values.length / 2)];
       return {
         samples: h.length,
@@ -279,7 +305,7 @@ async function perf() {
       };
     });
     console.log('hover', JSON.stringify(hover));
-    results.push({ query, timings, stats, orbit, orbitStats, hover });
+    results.push({ query, size: `${width}x${height}`, timings, stats, orbit, orbitStats, hover });
     await page.close();
   }
   await writeFile(join(out, 'perf.json'), JSON.stringify(results, null, 1));

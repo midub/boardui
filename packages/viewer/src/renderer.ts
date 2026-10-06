@@ -26,6 +26,8 @@ export interface RenderStats {
   backend: 'WebGPU' | 'WebGL2';
   drawCalls: number;
   triangles: number;
+  /** Frames rendered so far. Frames are rendered on demand, so this counts changes. */
+  frames: number;
 }
 
 /** How long camera moves animate, in milliseconds. */
@@ -50,6 +52,7 @@ export class BoardRenderer {
   readonly #raycaster = new Raycaster();
   readonly #content: Object3D[] = [];
   #frame = 0;
+  #frames = 0;
   #flight: Flight | null = null;
   /** Radius of the board's bounding sphere. */
   #radius = 1;
@@ -174,7 +177,7 @@ export class BoardRenderer {
   stats(): RenderStats {
     const backend = (this.renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend;
     const { drawCalls, triangles } = this.renderer.info.render;
-    return { backend: backend ? 'WebGPU' : 'WebGL2', drawCalls, triangles };
+    return { backend: backend ? 'WebGPU' : 'WebGL2', drawCalls, triangles, frames: this.#frames };
   }
 
   dispose(): void {
@@ -206,6 +209,7 @@ export class BoardRenderer {
     again = this.#beforeRender(now) || again;
     this.renderer.info.reset();
     this.renderer.render(this.scene, this.camera);
+    this.#frames++;
     if (again) this.requestRender();
   }
 }

@@ -35,7 +35,7 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 | `attachWidget(id, element, { anchor, offset, occlusion })` | Shows an HTML element above the board, following a board element. Returns a detach function. |
 | `info(id)` | `{ id, kind, properties }`, with references to other elements as IDs. |
 | `ids(kind)` | All IDs of a kind: `'layer'`, `'component'`, `'pin'` or `'net'`. |
-| `stats()` | Backend, draw calls and triangles of the last frame. |
+| `stats()` | Backend, draw calls and triangles of the last frame, and the number of frames rendered. |
 
 Events (`bubbles`, `composed`): `bui-hover` when the element under the pointer changes, and
 `bui-select` when the user clicks an element or empty space. `detail` is `info(id)`, or `null`.
