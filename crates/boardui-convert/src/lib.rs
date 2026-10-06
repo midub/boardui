@@ -116,11 +116,11 @@ pub struct Stats {
     pub nets: usize,
     /// Pins.
     pub pins: usize,
-    /// Pads that reference a component pin.
-    pub pads_checked: usize,
-    /// Of those, pads whose location doesn't match the package pin placed with the
-    /// component's transform (spec §6.8).
-    pub pads_misplaced: usize,
+    /// Package pins referenced by pads.
+    pub pins_checked: usize,
+    /// Of those, pins that land on none of their pads when placed with the component's
+    /// transform (spec §6.8).
+    pub pins_misplaced: usize,
 }
 
 /// Why a conversion failed.

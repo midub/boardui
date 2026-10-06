@@ -9,21 +9,35 @@ use std::f64::consts::{FRAC_PI_2, PI, TAU};
 /// How deep `UserPrimitiveRef`s may nest before the shape is given up as cyclic.
 const MAX_DEPTH: usize = 16;
 
-/// Builds the affine map of an `Xform` placed at `location`: scale, then rotate
-/// counter-clockwise, then mirror about the Y axis, then offset and translate.
+/// The order in which an `Xform` mirrors and rotates.
 ///
-/// Mirroring after rotating is the IPC-2581 convention: for a mirrored element, the rotation
-/// reads clockwise in the top view. The samples' pads confirm it against their components'
-/// pins (see `components.rs`).
-pub fn placement(location: ipc::Point, xform: &ipc::Xform) -> DAffine2 {
+/// IPC-2581 exporters disagree for mirrored elements (bottom-side components and their
+/// pads), and the two orders differ unless the rotation is a multiple of 180°. The pads of
+/// a file show which one it uses (see [`detect_mirror_order`](crate::components)).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MirrorOrder {
+    /// Mirror about the Y axis, then rotate counter-clockwise (KiCad).
+    MirrorThenRotate,
+    /// Rotate counter-clockwise, then mirror about the Y axis; the rotation reads clockwise
+    /// in the top view (the IPC consortium test cases).
+    RotateThenMirror,
+}
+
+/// Builds the affine map of an `Xform` placed at `location`: scale, rotate and mirror in
+/// `order`, then offset and translate.
+pub fn placement(location: ipc::Point, xform: &ipc::Xform, order: MirrorOrder) -> DAffine2 {
     let mirror = if xform.mirror {
         DAffine2::from_scale(DVec2::new(-1.0, 1.0))
     } else {
         DAffine2::IDENTITY
     };
+    let rotation = DAffine2::from_angle(xform.rotation.to_radians());
+    let linear = match order {
+        MirrorOrder::MirrorThenRotate => rotation * mirror,
+        MirrorOrder::RotateThenMirror => mirror * rotation,
+    };
     DAffine2::from_translation(point(location) + point(xform.offset))
-        * mirror
-        * DAffine2::from_angle(xform.rotation.to_radians())
+        * linear
         * DAffine2::from_scale(DVec2::splat(xform.scale))
 }
 
@@ -51,18 +65,26 @@ pub fn is_stroke(shape: &ipc::Shape, content: &ipc::Content) -> bool {
 pub struct ShapeConverter<'a> {
     content: &'a ipc::Content,
     tolerance: Tolerance,
+    /// How the file's `Xform`s mirror.
+    pub order: MirrorOrder,
     /// Messages about shapes that were approximated or dropped.
     pub warnings: Vec<String>,
 }
 
 impl<'a> ShapeConverter<'a> {
     /// A converter for shapes of `content`'s document.
-    pub fn new(content: &'a ipc::Content, tolerance: Tolerance) -> Self {
+    pub fn new(content: &'a ipc::Content, tolerance: Tolerance, order: MirrorOrder) -> Self {
         Self {
             content,
             tolerance,
+            order,
             warnings: Vec::new(),
         }
+    }
+
+    /// The placement of an element with this file's mirror order.
+    pub fn placement(&self, location: ipc::Point, xform: &ipc::Xform) -> DAffine2 {
+        placement(location, xform, self.order)
     }
 
     fn warn(&mut self, message: String) {
@@ -675,12 +697,12 @@ mod tests {
     #[test]
     fn rectangles_rotate_and_translate() {
         let c = content();
-        let mut conv = ShapeConverter::new(&c, T);
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
         let xform = ipc::Xform {
             rotation: 90.0,
             ..ipc::Xform::default()
         };
-        let at = placement(ipc::Point { x: 1e-3, y: 2e-3 }, &xform);
+        let at = placement(ipc::Point { x: 1e-3, y: 2e-3 }, &xform, MirrorOrder::MirrorThenRotate);
         let s = conv
             .area(&std(PrimitiveKind::RectCenter { width: 2e-3, height: 1e-3 }), at)
             .unwrap();
@@ -691,23 +713,27 @@ mod tests {
     }
 
     #[test]
-    fn mirror_applies_after_rotation() {
-        // A point at +x, rotated 90° (to +y) and then mirrored, stays at +y; mirroring
-        // first would give -y after rotation... both give the same here, so use 45°.
+    fn mirror_orders_differ_in_rotation_sense() {
         let xform = ipc::Xform {
             rotation: 30.0,
             mirror: true,
             ..ipc::Xform::default()
         };
-        let p = placement(ipc::Point::default(), &xform).transform_point2(DVec2::X);
-        close_to(p.x, -(30f64.to_radians().cos()), 1e-12);
-        close_to(p.y, 30f64.to_radians().sin(), 1e-12);
+        let (c, s) = (30f64.to_radians().cos(), 30f64.to_radians().sin());
+        let p = placement(ipc::Point::default(), &xform, MirrorOrder::RotateThenMirror)
+            .transform_point2(DVec2::X);
+        close_to(p.x, -c, 1e-12);
+        close_to(p.y, s, 1e-12);
+        let p = placement(ipc::Point::default(), &xform, MirrorOrder::MirrorThenRotate)
+            .transform_point2(DVec2::X);
+        close_to(p.x, -c, 1e-12);
+        close_to(p.y, -s, 1e-12);
     }
 
     #[test]
     fn rounded_and_chamfered_rectangles() {
         let c = content();
-        let mut conv = ShapeConverter::new(&c, T);
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
         let all = ipc::Corners {
             upper_right: true,
             upper_left: true,
@@ -751,7 +777,7 @@ mod tests {
     #[test]
     fn ovals_donuts_and_thermals() {
         let c = content();
-        let mut conv = ShapeConverter::new(&c, T);
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
         let oval = conv
             .area(&std(PrimitiveKind::Oval { width: 3e-3, height: 1e-3 }), DAffine2::IDENTITY)
             .unwrap();
@@ -811,7 +837,7 @@ mod tests {
                 angle2: None,
             }))),
         };
-        let mut conv = ShapeConverter::new(&c, T);
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
         let s = conv.area(&ipc::Shape::Polygon(poly.clone()), DAffine2::IDENTITY).unwrap();
         // Round joins round the outer corners.
         let ring = 1.1e-3 * 1.1e-3 - 0.9e-3 * 0.9e-3 - (4.0 - PI) * 0.05e-3 * 0.05e-3;
@@ -823,7 +849,7 @@ mod tests {
     #[test]
     fn mirrored_arcs_keep_their_shape() {
         let c = content();
-        let mut conv = ShapeConverter::new(&c, T);
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
         let half_disc = ipc::Shape::Polygon(ipc::Polygon {
             path: ipc::Path {
                 start: ipc::Point { x: 1e-3, y: 0.0 },
@@ -840,7 +866,7 @@ mod tests {
             mirror: true,
             ..ipc::Xform::default()
         };
-        let s = conv.area(&half_disc, placement(ipc::Point::default(), &xform)).unwrap();
+        let s = conv.area(&half_disc, conv.placement(ipc::Point::default(), &xform)).unwrap();
         close_to(area(&s), PI * 1e-6 / 2.0, 6e-3 * T.metres());
         assert!(bounds(&s).1.y > 0.9e-3, "the upper half stays the upper half");
         let r: Region = s.to_region(T).unwrap();

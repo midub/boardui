@@ -11,7 +11,7 @@ use glam::{DAffine2, DMat3, DQuat, DVec3};
 
 use crate::Warnings;
 use crate::models::ModelLibrary;
-use crate::shapes::{ShapeConverter, placement, point};
+use crate::shapes::{MirrorOrder, ShapeConverter, placement, point};
 use crate::stackup::Stack;
 
 /// Body height used when neither the component nor its package gives one: half the
@@ -19,7 +19,7 @@ use crate::stackup::Stack;
 const DEFAULT_HEIGHT_RANGE: (f64, f64) = (0.2e-3, 2e-3);
 /// Thickness of the pin-1 marker on top of the body.
 const PIN1_THICKNESS: f64 = 20e-6;
-/// Pads farther than this from their package pin count as misplaced.
+/// Pins farther than this from their pads count as misplaced.
 const PAD_TOLERANCE: f64 = 0.1e-3;
 
 /// A pad that references a component pin, for checking placements.
@@ -33,8 +33,8 @@ pub(crate) struct Components {
     pub components: Vec<ComponentAsset>,
     pub placeholders: Vec<PlaceholderBody>,
     pub models: Vec<Model>,
-    pub pads_checked: usize,
-    pub pads_misplaced: usize,
+    pub pins_checked: usize,
+    pub pins_misplaced: usize,
 }
 
 pub(crate) fn build(
@@ -49,8 +49,8 @@ pub(crate) fn build(
         components: Vec::with_capacity(step.components.len()),
         placeholders: Vec::new(),
         models: Vec::new(),
-        pads_checked: 0,
-        pads_misplaced: 0,
+        pins_checked: 0,
+        pins_misplaced: 0,
     };
     let mut placeholder_keys: HashMap<(String, u64, u64), Option<usize>> = HashMap::new();
     let mut model_indices: HashMap<usize, usize> = HashMap::new();
@@ -66,7 +66,7 @@ pub(crate) fn build(
             _ => stack.outer_copper(Side::Top).map(|i| stack.layers[i].z_max),
         }
         .unwrap_or(0.0);
-        let at = placement(c.location, &c.xform);
+        let at = shapes.placement(c.location, &c.xform);
         let package = step.packages.get(&c.package_ref);
         if package.is_none() {
             warnings.push(format!(
@@ -75,25 +75,22 @@ pub(crate) fn build(
             ));
         }
 
-        // Check the placement convention against the pads (spec §6.8).
+        // Check the placement convention against the pads (spec §6.8): every package pin
+        // that pads reference must have one of them where the placed pin lands.
         if let (Some(package), Some(pads)) = (package, pads_by_component.get(c.ref_des.as_str())) {
-            let mut misplaced = 0;
-            for pad in pads {
-                let Some(pin) = package.pins.get(&pad.pin) else {
-                    continue;
-                };
-                out.pads_checked += 1;
-                let expected = at.transform_point2(point(pin.location));
-                if expected.distance(pad.location) > PAD_TOLERANCE {
-                    misplaced += 1;
-                }
-            }
+            let (checked, misplaced) = check_pins(package, pads, at, shapes.order);
+            out.pins_checked += checked;
             if misplaced > 0 {
-                out.pads_misplaced += misplaced;
+                out.pins_misplaced += misplaced;
                 warnings.push(format!(
-                    "{misplaced} pads of component `{}` are not at their package pins",
+                    "{misplaced} of {checked} pins of component `{}` are not on their pads",
                     c.ref_des
                 ));
+                for (_, pin) in package.pins.iter() {
+                    let pin_at = placement(pin.location, &pin.xform, shapes.order);
+                    let p = (at * pin_at).transform_point2(DVec2::ZERO);
+                    tracing::debug!("{} pin {} lands at {p}", c.ref_des, pin.number);
+                }
             }
         }
 
@@ -151,6 +148,57 @@ pub(crate) fn build(
         }
     }
     out
+}
+
+/// Finds the file's [`MirrorOrder`] from the pads of mirrored components: whichever order
+/// puts more package pins onto their pads. Without evidence, KiCad's order.
+pub(crate) fn detect_mirror_order(step: &ipc::Step, pads: &[PadRef]) -> MirrorOrder {
+    let orders = [MirrorOrder::MirrorThenRotate, MirrorOrder::RotateThenMirror];
+    let mut by_component: HashMap<&str, Vec<&PadRef>> = HashMap::new();
+    for pad in pads {
+        by_component.entry(&pad.component).or_default().push(pad);
+    }
+    let mut votes = [0usize; 2];
+    for (ref_des, pads) in &by_component {
+        let Some(c) = step.components.get(ref_des) else {
+            continue;
+        };
+        if !c.xform.mirror || (c.xform.rotation / 180.0).fract() == 0.0 {
+            continue;
+        }
+        let Some(package) = step.packages.get(&c.package_ref) else {
+            continue;
+        };
+        for (k, order) in orders.into_iter().enumerate() {
+            let (checked, misplaced) =
+                check_pins(package, pads, placement(c.location, &c.xform, order), order);
+            votes[k] += checked - misplaced;
+        }
+    }
+    if votes[1] > votes[0] { orders[1] } else { orders[0] }
+}
+
+/// Counts the package pins that pads reference, and those of them with no pad where the
+/// placed pin lands. A pin's Xform offset moves the pin (testcase1 relies on it).
+fn check_pins(
+    package: &ipc::Package,
+    pads: &[&PadRef],
+    at: DAffine2,
+    order: MirrorOrder,
+) -> (usize, usize) {
+    let (mut checked, mut misplaced) = (0, 0);
+    for (number, pin) in package.pins.iter() {
+        let mut referencing = pads.iter().filter(|p| p.pin == number).peekable();
+        if referencing.peek().is_none() {
+            continue;
+        }
+        checked += 1;
+        let landing = (at * placement(pin.location, &pin.xform, order)).transform_point2(DVec2::ZERO);
+        if !referencing.any(|p| p.location.distance(landing) <= PAD_TOLERANCE) {
+            misplaced += 1;
+        }
+    }
+    (checked, misplaced)
 }
 
 fn component_side(c: &ipc::Component, stack: &Stack) -> Side {
@@ -291,7 +339,7 @@ mod tests {
             rotation: 90.0,
             ..ipc::Xform::default()
         };
-        let at = placement(ipc::Point { x: 0.01, y: 0.02 }, &xform);
+        let at = placement(ipc::Point { x: 0.01, y: 0.02 }, &xform, MirrorOrder::RotateThenMirror);
         let t = transform(at, Side::Top, 0.0008);
         assert_eq!(t.scale, [1.0; 3]);
         // Package point (1, 0) at height 0.5 mm: rotated to (0, 1) in the board.
@@ -301,13 +349,14 @@ mod tests {
 
     #[test]
     fn bottom_side_mirrors_and_points_down() {
-        for rotation in [0.0, 30.0, 90.0, 270.0] {
+        let orders = [MirrorOrder::MirrorThenRotate, MirrorOrder::RotateThenMirror];
+        for (order, rotation) in orders.into_iter().flat_map(|o| [0.0, 30.0, 90.0, 270.0].map(|r| (o, r))) {
             let xform = ipc::Xform {
                 rotation,
                 mirror: true,
                 ..ipc::Xform::default()
             };
-            let at = placement(ipc::Point { x: 0.01, y: 0.02 }, &xform);
+            let at = placement(ipc::Point { x: 0.01, y: 0.02 }, &xform, order);
             let t = transform(at, Side::Bottom, -0.0008);
             assert_eq!(t.scale, [1.0; 3], "a proper rotation");
             for (px, py) in [(1e-3, 0.0), (0.0, 1e-3), (2e-3, -1e-3)] {
@@ -324,7 +373,7 @@ mod tests {
 
     #[test]
     fn unmirrored_bottom_placement_is_a_reflection() {
-        let at = placement(ipc::Point::default(), &ipc::Xform::default());
+        let at = placement(ipc::Point::default(), &ipc::Xform::default(), MirrorOrder::MirrorThenRotate);
         let t = transform(at, Side::Bottom, -1.0);
         assert_eq!(t.scale, [1.0, -1.0, 1.0]);
         assert_close(apply(&t, DVec3::new(1.0, 1.0, 0.0)), gltf(1.0, 0.0, -2.0));

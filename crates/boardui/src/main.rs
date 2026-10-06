@@ -172,10 +172,10 @@ fn convert(args: &ConvertArgs) -> miette::Result<ExitCode> {
         "{} layers, {} drills, {} features, {} vertices, {} triangles, {} components, {} nets, {} pins",
         s.layers, s.drills, s.features, s.vertices, s.triangles, s.components, s.nets, s.pins
     );
-    if s.pads_misplaced > 0 {
+    if s.pins_misplaced > 0 {
         warn!(
-            "{} of {} pads are not where their component's package puts them",
-            s.pads_misplaced, s.pads_checked
+            "{} of {} component pins are not on their pads",
+            s.pins_misplaced, s.pins_checked
         );
     }
     if quiet_enabled() {

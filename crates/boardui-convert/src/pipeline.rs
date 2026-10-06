@@ -13,7 +13,7 @@ use boardui_ipc2581 as ipc;
 use glam::DAffine2;
 
 use crate::components::{self, PadRef};
-use crate::shapes::{ShapeConverter, is_stroke, placement, point};
+use crate::shapes::{ShapeConverter, is_stroke, point};
 use crate::stackup::{self, LayerClass, Stack};
 use crate::{Conversion, ConvertError, Options, Stats, Warning, Warnings};
 
@@ -71,15 +71,17 @@ pub(crate) fn run(
         .enumerate()
         .map(|(i, c)| (c.ref_des.as_str(), i as u32))
         .collect();
+    let pads = pads(step, &stack);
+    let order = components::detect_mirror_order(step, &pads);
+    tracing::debug!("mirror order: {order:?}");
     let mut ctx = Context {
         content: &doc.content,
         step,
-        shapes: ShapeConverter::new(&doc.content, tolerance),
+        shapes: ShapeConverter::new(&doc.content, tolerance, order),
         net_rows,
         component_rows,
         pins: Vec::new(),
         pin_rows: HashMap::new(),
-        pads: Vec::new(),
         warnings: &mut warnings,
     };
 
@@ -116,7 +118,6 @@ pub(crate) fn run(
         }
     }
     let drills = ctx.drills(doc, &stack);
-    let pads = std::mem::take(&mut ctx.pads);
     let components = components::build(
         step,
         &stack,
@@ -310,8 +311,8 @@ pub(crate) fn run(
         components: components.components.len(),
         nets: nets.len(),
         pins: pins.len(),
-        pads_checked: components.pads_checked,
-        pads_misplaced: components.pads_misplaced,
+        pins_checked: components.pins_checked,
+        pins_misplaced: components.pins_misplaced,
         ..Stats::default()
     };
     let meshes = layers
@@ -366,6 +367,31 @@ pub(crate) fn run(
         warnings: all,
         stats,
     })
+}
+
+/// Pads on copper layers that reference a component pin.
+fn pads(step: &ipc::Step, stack: &Stack) -> Vec<PadRef> {
+    let mut pads = Vec::new();
+    for i in stack.copper() {
+        let Some(lf) = step.layer_features.get(&stack.layers[i].name) else {
+            continue;
+        };
+        for (set, feature) in lf.features() {
+            let ipc::FeatureElement::Pad(pad) = &feature.element else {
+                continue;
+            };
+            for pin_ref in &pad.pin_refs {
+                if let Some(component) = pin_ref.component_ref.as_ref().or(set.component_ref.as_ref()) {
+                    pads.push(PadRef {
+                        component: component.clone(),
+                        pin: pin_ref.pin.clone(),
+                        location: point(pad.location),
+                    });
+                }
+            }
+        }
+    }
+    pads
 }
 
 fn select_step<'a>(doc: &'a ipc::Document, options: &Options) -> Result<&'a ipc::Step, ConvertError> {
@@ -475,7 +501,6 @@ struct Context<'a> {
     component_rows: HashMap<&'a str, u32>,
     pins: Vec<PinRow>,
     pin_rows: HashMap<(u32, String), u32>,
-    pads: Vec<PadRef>,
     warnings: &'a mut Warnings,
 }
 
@@ -492,23 +517,10 @@ impl<'a> Context<'a> {
                         _ => FeatureKind::Pad,
                     };
                     let shape = self.pad_shape(pad, &lf.layer_ref);
-                    if role == Role::Copper {
-                        for pin_ref in &pad.pin_refs {
-                            if let Some(component) =
-                                pin_ref.component_ref.as_ref().or(set.component_ref.as_ref())
-                            {
-                                self.pads.push(PadRef {
-                                    component: component.clone(),
-                                    pin: pin_ref.pin.clone(),
-                                    location: point(pad.location),
-                                });
-                            }
-                        }
-                    }
                     (kind, shape, pad.pin_refs.first())
                 }
                 ipc::FeatureElement::Features(f) => {
-                    let at = placement(f.location, &f.xform);
+                    let at = self.shapes.placement(f.location, &f.xform);
                     let shape = self.shapes.area(&f.shape, at);
                     let kind = if is_stroke(&f.shape, self.content) {
                         FeatureKind::Trace
@@ -568,7 +580,7 @@ impl<'a> Context<'a> {
 
     /// A pad's shape: its own, or its padstack's regular pad on this layer.
     fn pad_shape(&mut self, pad: &ipc::Pad, layer: &str) -> Option<Shape> {
-        let at = placement(pad.location, &pad.xform);
+        let at = self.shapes.placement(pad.location, &pad.xform);
         if let Some(shape) = &pad.shape {
             return self.shapes.area(shape, at);
         }
@@ -578,7 +590,8 @@ impl<'a> Context<'a> {
             .iter()
             .find(|p| p.layer_ref == layer && p.pad_use == ipc::PadUse::Regular)?;
         let shape = pp.shape.as_ref()?;
-        self.shapes.area(shape, at * placement(pp.location, &pp.xform))
+        let inner = self.shapes.placement(pp.location, &pp.xform);
+        self.shapes.area(shape, at * inner)
     }
 
     fn pin_row(
@@ -657,7 +670,7 @@ impl<'a> Context<'a> {
                     }),
                     ipc::FeatureElement::SlotCavity(slot) => self
                         .shapes
-                        .filled(&slot.shape, placement(slot.location, &slot.xform))
+                        .filled(&slot.shape, self.shapes.placement(slot.location, &slot.xform))
                         .map(|shape| DrillHole {
                             hole: geom::Hole::Slot(shape),
                             plated: slot.plating != ipc::PlatingStatus::NonPlated,
