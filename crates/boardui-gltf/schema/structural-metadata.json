@@ -89,6 +89,11 @@
           "type": "ENUM",
           "enumType": "Fiducial",
           "noData": "NONE"
+        },
+        "text": {
+          "description": "The textString of the Text elements the feature draws, in document order, joined by line feeds. Omitted from tables without text.",
+          "type": "STRING",
+          "noData": ""
         }
       }
     }

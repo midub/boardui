@@ -15,7 +15,7 @@ use glam::DAffine2;
 
 use crate::colours;
 use crate::components::{self, PadRef};
-use crate::shapes::{ShapeConverter, erases, is_stroke, point};
+use crate::shapes::{ShapeConverter, erases, is_stroke, point, texts};
 use crate::stackup::{self, LayerClass, Stack, Synthesize};
 use crate::{Conversion, ConvertError, Options, Stats, Timings, Warning, Warnings};
 
@@ -163,7 +163,7 @@ pub(crate) fn run(
         .as_ref()
         .and_then(|p| ctx.shapes.contour(p, DAffine2::IDENTITY));
     let pins = std::mem::take(&mut ctx.pins);
-    for message in std::mem::take(&mut ctx.shapes.warnings) {
+    for message in ctx.shapes.take_warnings() {
         ctx.warnings.push(message);
     }
     drop(ctx);
@@ -522,6 +522,7 @@ fn push_drawing(out: &mut Features, shapes: Vec<Option<Shape>>, component: u32) 
             pin: None,
             component: Some(component),
             fiducial: None,
+            text: String::new(),
         });
         out.shapes.push(geom::Feature {
             shape: shape.unwrap_or(Shape::Union(Vec::new())),
@@ -569,6 +570,7 @@ fn sheet_row() -> FeatureRow {
         pin: None,
         component: None,
         fiducial: None,
+        text: String::new(),
     }
 }
 
@@ -667,6 +669,7 @@ impl<'a> Context<'a> {
                 .copied();
             let mut polarity = set.polarity;
             let mut fiducial = None;
+            let mut text = String::new();
             let (kind, shape, pin_ref) = match &feature.element {
                 ipc::FeatureElement::Pad(pad) => {
                     let kind = match set.pad_usage {
@@ -679,6 +682,7 @@ impl<'a> Context<'a> {
                 ipc::FeatureElement::Features(f) => {
                     let at = self.shapes.placement(f.location, &f.xform);
                     let shape = self.shapes.area(&f.shape, at);
+                    text = texts(&f.shape, self.content).join("\n");
                     if erases(&f.shape, self.content) {
                         polarity = ipc::Polarity::Negative;
                     }
@@ -731,6 +735,7 @@ impl<'a> Context<'a> {
                 pin,
                 component,
                 fiducial: fiducial.filter(|_| kind == FeatureKind::Fiducial),
+                text,
             });
             out.shapes.push(geom::Feature {
                 shape: shape.unwrap_or(Shape::Union(Vec::new())),
@@ -942,6 +947,7 @@ impl<'a> Context<'a> {
                     pin: None,
                     component,
                     fiducial: None,
+                    text: String::new(),
                 });
                 holes.push(hole);
             }
