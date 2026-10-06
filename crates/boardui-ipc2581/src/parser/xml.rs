@@ -3,8 +3,8 @@
 use std::io::BufRead;
 use std::ops::Range;
 
-use quick_xml::XmlVersion;
 use quick_xml::events::{BytesStart, Event};
+use quick_xml::{Reader, XmlVersion};
 
 use super::Parser;
 use crate::{DiagnosticKind, Error, ErrorKind, Position};
@@ -93,8 +93,29 @@ pub(super) enum Next {
     Eof,
 }
 
-fn newlines(s: &str) -> u64 {
-    s.bytes().filter(|&b| b == b'\n').count() as u64
+/// Reads the next event into `buf`, advancing `line` past it.
+///
+/// Every newline of the input lies inside some event (text, tag, comment, ...), so counting
+/// the newlines of each event keeps `line` exact.
+fn read_event<'b, R: BufRead>(
+    reader: &mut Reader<R>,
+    buf: &'b mut Vec<u8>,
+    line: &mut u64,
+) -> Result<Event<'b>, Error> {
+    buf.clear();
+    match reader.read_event_into(buf) {
+        Ok(event) => {
+            *line += event.bytes().filter(|&b| b == b'\n').count() as u64;
+            Ok(event)
+        }
+        Err(e) => Err(xml_error(
+            &e,
+            Position {
+                offset: reader.error_position(),
+                line: *line,
+            },
+        )),
+    }
 }
 
 impl<R: BufRead> Parser<R> {
@@ -106,18 +127,7 @@ impl<R: BufRead> Parser<R> {
                 offset: self.reader.buffer_position(),
                 line: self.line,
             };
-            self.buf.clear();
-            let event = match self.reader.read_event_into(&mut self.buf) {
-                Ok(event) => event,
-                Err(e) => {
-                    let position = Position {
-                        offset: self.reader.error_position(),
-                        line: self.line,
-                    };
-                    return Err(xml_error(&e, position));
-                }
-            };
-            self.line += newlines(&event);
+            let event = read_event(&mut self.reader, &mut self.buf, &mut self.line)?;
             match event {
                 Event::Start(ref start) | Event::Empty(ref start) => {
                     let empty = matches!(event, Event::Empty(_));
@@ -205,19 +215,7 @@ impl<R: BufRead> Parser<R> {
         }
         let mut depth = 1_usize;
         loop {
-            self.buf.clear();
-            let event = match self.reader.read_event_into(&mut self.buf) {
-                Ok(event) => event,
-                Err(e) => {
-                    let position = Position {
-                        offset: self.reader.error_position(),
-                        line: self.line,
-                    };
-                    return Err(xml_error(&e, position));
-                }
-            };
-            self.line += newlines(&event);
-            match event {
+            match read_event(&mut self.reader, &mut self.buf, &mut self.line)? {
                 Event::Start(_) => depth += 1,
                 Event::End(_) => {
                     depth -= 1;
