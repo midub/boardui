@@ -411,7 +411,7 @@ mod dictionaries {
     use super::*;
     use crate::{
         ButterflyShape, Color, Corners, FillDesc, FillProperty, FillStyle, LineDesc, LineEnd,
-        LineStyle, Point, PrimitiveKind, RingShape, Shape,
+        LineProperty, LineStyle, Moire, Point, PrimitiveKind, RingShape, Shape,
     };
 
     fn standard(entries: &str) -> Document {
@@ -514,6 +514,36 @@ mod dictionaries {
             K::Octagon { length: mm(2.0) }
         );
         assert_eq!(
+            primitive(r#"<Hexagon length="2"/>"#),
+            K::Hexagon { length: mm(2.0) }
+        );
+        assert_eq!(
+            primitive(
+                r#"<Moire diameter="8.4" ringWidth="0.3" ringGap="0.6" ringNumber="5" lineWidth="0.3" lineLength="8.2" lineAngle="30"/>"#
+            ),
+            K::Moire(Moire {
+                diameter: mm(8.4),
+                ring_width: mm(0.3),
+                ring_gap: mm(0.6),
+                ring_number: 5,
+                line_width: mm(0.3),
+                line_length: Some(mm(8.2)),
+                line_angle: 30.0,
+            })
+        );
+        assert_eq!(
+            primitive(r#"<Moire diameter="4" ringWidth="0.2" ringGap="0.5" ringNumber="3"/>"#),
+            K::Moire(Moire {
+                diameter: mm(4.0),
+                ring_width: mm(0.2),
+                ring_gap: mm(0.5),
+                ring_number: 3,
+                line_width: 0.0,
+                line_length: None,
+                line_angle: 0.0,
+            })
+        );
+        assert_eq!(
             primitive(r#"<Triangle base="2" height="1"/>"#),
             K::Triangle {
                 base: mm(2.0),
@@ -574,17 +604,17 @@ mod dictionaries {
 
     #[test]
     fn keeps_unsupported_primitives() {
-        let d = standard(r#"<EntryStandard id="H"><Hexagon length="1"/></EntryStandard>"#);
+        let d = standard(r#"<EntryStandard id="H"><Star points="5"/></EntryStandard>"#);
         assert_eq!(
             d.content.standard_primitives.get("H").unwrap().kind,
             PrimitiveKind::Unsupported {
-                element: "Hexagon".to_owned()
+                element: "Star".to_owned()
             }
         );
         assert_eq!(
             kinds(&d.diagnostics),
             [&DiagnosticKind::UnsupportedShape {
-                element: "Hexagon".to_owned()
+                element: "Star".to_owned()
             }]
         );
     }
@@ -609,7 +639,8 @@ mod dictionaries {
             d.content.line_desc(line),
             Some(&LineDesc {
                 width: mm(0.2),
-                end: LineEnd::Round
+                end: LineEnd::Round,
+                property: LineProperty::Solid,
             })
         );
         let fill = x.fill.as_ref().unwrap();
@@ -649,7 +680,7 @@ mod dictionaries {
                   <Arc startX="1" startY="0" endX="0" endY="1" centerX="0" centerY="0" clockwise="false"><LineDescRef id="L"/></Arc>
                   <Polyline><PolyBegin x="0" y="0"/><PolyStepSegment x="1" y="1"/><LineDescRef id="L"/></Polyline>
                   <Polygon><PolyBegin x="0" y="0"/><PolyStepSegment x="1" y="0"/><PolyStepSegment x="0" y="0"/><FillDescRef id="F"/></Polygon>
-                  <Outline><Polygon><PolyBegin x="0" y="0"/><PolyStepSegment x="0" y="0"/></Polygon><LineDesc lineWidth="0.1" lineEnd="SQUARE"/></Outline>
+                  <Outline><Polygon><PolyBegin x="0" y="0"/><PolyStepSegment x="0" y="0"/></Polygon><LineDesc lineWidth="0.1" lineEnd="SQUARE" lineProperty="DASHED"/></Outline>
                   <Circle diameter="0.5"/>
                   <UserSpecial><StandardPrimitiveRef id="C"/></UserSpecial>
                 </UserSpecial></EntryUser>
@@ -695,7 +726,8 @@ mod dictionaries {
             outline.line,
             LineStyle::Desc(LineDesc {
                 width: mm(0.1),
-                end: LineEnd::Square
+                end: LineEnd::Square,
+                property: LineProperty::Dashed,
             })
         );
         assert!(matches!(
@@ -1167,8 +1199,8 @@ mod step {
 mod features {
     use super::*;
     use crate::{
-        Feature, FeatureElement, LineEnd, PadUsage, PinRef, PlatingStatus, Point, Polarity,
-        PolyStep, PrimitiveKind, Shape,
+        Feature, FeatureElement, FiducialKind, LineEnd, PadUsage, PinRef, PlatingStatus, Point,
+        Polarity, PolyStep, PrimitiveKind, Shape,
     };
 
     /// Features of one set on layer `TOP`, in a step with component `U1` (package `P`, pin 1).
@@ -1256,7 +1288,8 @@ mod features {
               <Set><ColorRef id="X"/><Pad><StandardPrimitiveRef id="C"/></Pad><NonstandardAttribute name="a" value="b" type="STRING"/>
                 <Features><Circle diameter="1"/></Features><Pad><StandardPrimitiveRef id="C"/></Pad></Set>
               <Set><Hole name="H" diameter="1" platingStatus="PLATED" plusTol="0" minusTol="0" x="0" y="0"/>
-                <SlotCavity name="S" platingStatus="NONPLATED" plusTol="0" minusTol="0"><Circle diameter="1"/></SlotCavity></Set>
+                <SlotCavity name="S" platingStatus="NONPLATED" plusTol="0" minusTol="0"><Circle diameter="1"/></SlotCavity>
+                <GlobalFiducial><Location x="0" y="0"/><StandardPrimitiveRef id="C"/></GlobalFiducial></Set>
             </LayerFeature>
             <LayerFeature layerRef="BOTTOM"><Set><Pad><StandardPrimitiveRef id="C"/></Pad></Set></LayerFeature>
             <LayerFeature layerRef="TOP"><Set><Features><Circle diameter="1"/></Features></Set></LayerFeature>"#,
@@ -1271,6 +1304,7 @@ mod features {
                 let kind = match f.element {
                     FeatureElement::Pad(_) => "Pad",
                     FeatureElement::Features(_) => "Features",
+                    FeatureElement::Fiducial(_) => "Fiducial",
                     FeatureElement::Hole(_) => "Hole",
                     FeatureElement::SlotCavity(_) => "SlotCavity",
                 };
@@ -1285,12 +1319,62 @@ mod features {
                 (2, "Pad"),
                 (3, "Hole"),
                 (4, "SlotCavity"),
-                (5, "Features")
+                (5, "Fiducial"),
+                (6, "Features")
             ]
         );
-        assert_eq!(top.feature_count(), 6);
+        assert_eq!(top.feature_count(), 7);
         let bottom = s.layer_features.get("BOTTOM").unwrap();
         assert_eq!(bottom.features().next().unwrap().1.source, 0);
+    }
+
+    #[test]
+    fn reads_fiducials() {
+        let features = layer(
+            r#"<GlobalFiducial><Xform rotation="45"/><Location x="1" y="2"/><Circle diameter="1"/></GlobalFiducial>
+            <LocalFiducial><Location x="3" y="4"/><StandardPrimitiveRef id="C"/></LocalFiducial>
+            <BadBoardMark><Location x="0" y="0"/><Hexagon length="2"/></BadBoardMark>
+            <GoodPanelMark><StandardPrimitiveRef id="C"/></GoodPanelMark>"#,
+        );
+        let fiducials: Vec<_> = features
+            .iter()
+            .map(|f| match &f.element {
+                FeatureElement::Fiducial(fiducial) => fiducial,
+                other => panic!("not a fiducial: {other:?}"),
+            })
+            .collect();
+        assert_eq!(
+            fiducials.iter().map(|f| f.kind).collect::<Vec<_>>(),
+            [
+                FiducialKind::Global,
+                FiducialKind::Local,
+                FiducialKind::BadBoard,
+                FiducialKind::GoodPanel
+            ]
+        );
+        assert_eq!(
+            fiducials[0].location,
+            Point {
+                x: mm(1.0),
+                y: mm(2.0)
+            }
+        );
+        assert_eq!(fiducials[0].xform.rotation, 45.0);
+        assert!(matches!(
+            &fiducials[0].shape,
+            Shape::Standard(p) if p.kind == PrimitiveKind::Circle { diameter: mm(1.0) }
+        ));
+        assert_eq!(fiducials[1].shape, Shape::StandardRef("C".to_owned()));
+        assert!(matches!(
+            &fiducials[2].shape,
+            Shape::Standard(p) if p.kind == PrimitiveKind::Hexagon { length: mm(2.0) }
+        ));
+        assert_eq!(fiducials[3].location, Point::default());
+        let e = step_doc(
+            r#"<LayerFeature layerRef="TOP"><Set><LocalFiducial><Location x="0" y="0"/></LocalFiducial></Set></LayerFeature>"#,
+        )
+        .unwrap_err();
+        assert!(matches!(e.kind(), ErrorKind::MissingElement { .. }), "{e}");
     }
 
     #[test]

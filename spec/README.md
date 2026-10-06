@@ -1,6 +1,6 @@
 # boardui glTF profile
 
-**Version 0.2 — draft**
+**Version 0.3 — draft**
 
 This document specifies how boardui represents a printed circuit board as a glTF 2.0 asset. The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
@@ -13,7 +13,7 @@ A *boardui asset* is a valid glTF 2.0 asset (`.glb` recommended) that:
 
 The asset is an **export**. The IPC-2581 source file stays the source of truth; this profile does not aim to convert back to IPC-2581 ([ADR 0002](../docs/adr/0002-gltf-is-an-export-with-metadata.md)). Analyses that need full design data (DRC, impedance, BOM checks) read the source.
 
-Out of scope for 0.1: paste and documentation layers, assembly drawings, embedded components, cavities, rigid-flex.
+Out of scope for 0.2: paste and documentation layers, assembly drawings, embedded components, cavities, rigid-flex.
 
 ## 2. Conformance
 
@@ -71,7 +71,7 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 
 - Each `<…>` segment is percent-encoded. `%`, `/`, `#`, `@`, whitespace (Unicode `White_Space`) and control characters MUST be written as `%XX`: one `%XX` per UTF-8 byte, with upper-case hex digits. Other characters MUST NOT be encoded, so every ID has exactly one spelling.
 - Layers that the converter synthesizes (§6.4, §6.5) get names starting with an unencoded `@`, for example `layer/@soldermask-top`. Because `@` in source names is always encoded, the two never collide.
-- `<n>` is the 0-based index of the feature among the layer's source features in document order. The step's `LayerFeature` elements for that layer are walked in document order (a step may split one layer over several of them), counting every `Pad`, `Features`, `Hole` and `SlotCavity` element of their `Set`s.
+- `<n>` is the 0-based index of the feature among the layer's source features in document order. The step's `LayerFeature` elements for that layer are walked in document order (a step may split one layer over several of them), counting every `Pad`, `Features`, fiducial (`GlobalFiducial`, `LocalFiducial`, `BadBoardMark`, `GoodPanelMark`), `Hole` and `SlotCavity` element of their `Set`s.
 - Soldermask and dielectric layers have a single feature, their sheet (§6.5, §6.7), with `n = 0`. The source features of a soldermask layer are its openings; they shape the sheet but get no rows of their own.
 - Feature IDs are stable only for identical input. Viewers and widgets SHOULD bind to components, pins and nets where possible.
 
@@ -87,7 +87,11 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
   - `SQUARE` ends extend half the width beyond the end point, `NONE` ends stop at it, and corners of both are mitered, with corners sharper than 30° clipped;
   - a polyline that ends at its start point is closed and has no ends;
   - a stroke whose `LineDesc` has zero width is a hairline, drawn 0.1 mm wide whatever the `Xform` scale. The IPC consortium test case 10 draws its silkscreen this way.
-- An IPC-2581 `Outline` encloses an area: it is filled, and its line (if wider than zero) is drawn on top. KiCad writes silkscreen text and slots this way, with zero-width lines. A `Polygon` is filled unless its `FillDesc` says `HOLLOW` (stroked only, so a zero-width line is a hairline) or `VOID` (nothing); `HATCH` and `MESH` fills are drawn solid.
+- An IPC-2581 `Outline` encloses an area: it is filled, and its line (if wider than zero) is drawn on top. KiCad writes silkscreen text and slots this way, with zero-width lines. A `Polygon` is filled unless its `FillDesc` says `HOLLOW` (stroked only, so a zero-width line is a hairline) or `VOID` (nothing).
+- A `HATCH` fill is parallel lines of the `FillDesc`'s `lineWidth` (a hairline if absent or 0) at `angle1` (default 45°) and `pitch1` (default 4 line widths) apart, clipped to the area; `MESH` adds a second set at `angle2` (default 135°) and `pitch2`. Angles are measured from the shape's local X axis, and one line of each set passes through the shape's origin. The shape's line is drawn on top, as for a solid fill. A fill whose pitch isn't positive, or that would need more than 4,096 lines in one direction, is drawn solid with a warning.
+- `LineDesc@lineProperty` patterns strokes (lines, arcs, polylines and outlines) with the lengths of IPC-2581C §3.5.5.1, in line widths `w`: `DOTTED` dots `w` and gaps `2w`, `DASHED` dashes and gaps `3w`, `CENTER` a dash `6w`, gap `2w`, dot `w`, gap `2w`, and `PHANTOM` the same with two dots. These are visible lengths, ends included: a round or square end reaches `w/2` past a dash's centre line, so a round dot is a disc of diameter `w`. The pattern starts with a dash at the start of the path, runs on around corners and arcs, and the last dash may be cut short. A stroke that would have more than 100,000 dashes is drawn solid with a warning.
+- An `ERASE` line is solid and erases instead of drawing. A `Features` element drawn only with `ERASE` lines (strokes, or hollow shapes) has negative polarity (§6.2). Inside a `UserSpecial`, an `ERASE` stroke cuts the parts before it, and the `ERASE` line of a filled shape cuts its own fill.
+- A `Hexagon` is regular, with a corner pointing up (+Y); its `length` is the distance across the corners (IPC-2581C §3.5.9.7). A `Moire` is `ringNumber` rings of width `ringWidth`, centred on diameters `diameter`, `diameter − 2·ringGap`, …, as long as they fit, and a crosshair of two lines (`lineWidth` wide, flat ends, `lineLength` long or else spanning the outer ring, turned by `lineAngle`) when `lineWidth` is above 0.
 - Shapes are placed with their `Location` and `Xform`: scaled, rotated and mirrored (in the file's mirror order, §6.8), then offset by `xOffset`/`yOffset` and moved to the location.
 - Normals SHOULD be omitted. glTF clients then compute flat normals, which suit prisms and save roughly 45 % of vertex data.
 
@@ -95,17 +99,17 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 
 Within one copper layer, feature regions MUST NOT overlap. Where input features overlap, the feature with higher priority keeps the overlapping area:
 
-1. pads: `Pad` elements, except in a `Set` with `padUsage="VIA"`, and area features (not strokes) in a `Set` with `padUsage="TERMINATION"`
+1. pads: `Pad` elements, except in a `Set` with `padUsage="VIA"`, area features (not strokes) in a `Set` with `padUsage="TERMINATION"`, and fiducials
 2. via lands: `Pad` elements and area features in a `Set` with `padUsage="VIA"`
 3. traces: strokes (`Line`, `Arc`, `Polyline`, or a `UserSpecial` made only of them), whatever the `Set`'s `padUsage`; KiCad, for one, puts a net's traces into its via `Set`s
 4. fills: `Contour`s and `Polygon`s (planes, pours, teardrops)
 5. everything else
 
-The class is also the feature's `kind` (§8.2): `PAD`, `VIA`, `TRACE`, `FILL` or `OTHER`. Silkscreen features are `MARKING`.
+The class is also the feature's `kind` (§8.2): `PAD`, `VIA`, `TRACE`, `FILL` or `OTHER`, except that fiducials are `FIDUCIAL`. Silkscreen features are `MARKING`.
 
 On equal priority, the earlier feature in document order wins.
 
-A negative-polarity feature removes copper from every feature that precedes it in document order and produces no geometry of its own.
+A negative-polarity feature (in a `Set` with `polarity="NEGATIVE"`, or drawn only with `ERASE` lines, §6.1) removes copper from every feature that precedes it in document order and produces no geometry of its own.
 
 The union of a layer's features equals that layer's copper exactly. Two consequences:
 
@@ -148,7 +152,7 @@ A feature whose region becomes empty keeps its metadata row (§8.2) and has no v
 
 - Each side has one soldermask sheet: the board outline minus mask openings minus holes.
 - Its Z range starts at the top surface of the dielectric under the outer copper layer and ends `soldermask` above the copper surface. The copper sits inside the mask volume, so a translucent mask shows the traces under it, and there is no gap at the board edge.
-- If the source has no soldermask layer for a side, the converter SHOULD synthesize `@soldermask-top` / `@soldermask-bottom`. Its openings equal that side's pad features (kind `PAD`; via lands stay tented), and it is flagged `synthesized: true`.
+- If the source has no soldermask layer for a side, the converter SHOULD synthesize `@soldermask-top` / `@soldermask-bottom`. Its openings equal that side's pad and fiducial features (kinds `PAD` and `FIDUCIAL`; via lands stay tented), and it is flagged `synthesized: true`.
 - The sheet is the layer's only feature (kind `SHEET`).
 
 ### 6.6 Silkscreen
@@ -277,6 +281,7 @@ Feature IDs are row indices into the layer's feature table:
 - **Feature ID strings** are not stored. They derive from the layer name and `feature.source` (§5).
 - **Linking features to pins and components.** A feature gets `pin` from the `PinRef` of its `Pad`, `component` from that `PinRef@componentRef` or else from its `Set@componentRef`, and `net` from its `Set@net`.
 - **Pins.** A pin's `name` is the package `Pin@name`, else the `PinRef@title`. Its `net` is the net of the first feature that references it.
+- **Fiducials.** A `FIDUCIAL` feature's `fiducial` is its IPC-2581 element: `GLOBAL`, `LOCAL`, `BAD_BOARD` or `GOOD_PANEL`. Other features have `NONE`, and a table without fiducials omits the property.
 
 ### 8.3 `BOARDUI_board`
 
@@ -284,7 +289,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 
 ```json
 "BOARDUI_board": {
-  "profileVersion": "0.2",
+  "profileVersion": "0.3",
   "source": {
     "format": "IPC-2581",
     "revision": "C",
@@ -356,6 +361,7 @@ Anchors (for example top-centre of the bounding box) are computed from these.
 - the scene structure follows §4, and IDs are unique and well-formed;
 - feature IDs are contiguous and ascending within primitives;
 - metadata references are in range, and component `extras` match the `components` table;
+- `FIDUCIAL` features, and only they, have a fiducial type;
 - per copper layer, the sum of feature areas equals the area of their union, within tolerance (§6.2). Feature areas are the areas of their top faces. Features may overlap by grid-rounding slivers where their boundaries cross, and float32 positions add rounding, so the sum may exceed the union by at most `δ · P`: `P` is the sum of the feature perimeters and `δ` is 20 nm (twice the converter's 10 nm grid) plus twice the float32 spacing at the board's largest coordinate;
 - prisms are closed;
 - layer Z ranges are ordered (§6.4).

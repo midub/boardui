@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use boardui_convert::{Conversion, ModelLibrary, Options, convert, validate};
 use boardui_gltf::buffer::{read_u32s, read_vec3, view_bytes};
 use boardui_gltf::metadata::NO_ROW;
-use boardui_gltf::{Board, FeatureKind, Root, glb};
+use boardui_gltf::{Board, FeatureKind, Fiducial, Root, glb};
 
 fn samples_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/samples")
@@ -143,6 +143,10 @@ samples! {
     overlap_priority => "overlap-priority",
     negative_polarity => "negative-polarity",
     zero_width_lines => "zero-width-lines",
+    fiducials => "fiducials",
+    hexagon_moire => "hexagon-moire",
+    hatch_fill => "hatch-fill",
+    line_styles => "line-styles",
     slots => "slots",
     bottom_placement => "bottom-placement",
     user_models => "user-models",
@@ -245,7 +249,7 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
             return vec![NO_ROW; t.count as usize];
         };
         let bytes = view_bytes(&root, bin, p.values).expect("column");
-        if name == "kind" {
+        if name == "kind" || name == "fiducial" {
             bytes[..t.count as usize]
                 .iter()
                 .map(|&b| u32::from(b))
@@ -291,6 +295,7 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
     for (title, node, table) in entries {
         let kinds = column(table, "kind");
         let nets = column(table, "net");
+        let fiducials = column(table, "fiducial");
         let mut histogram: BTreeMap<String, usize> = BTreeMap::new();
         for &k in &kinds {
             *histogram
@@ -317,10 +322,13 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
                     NO_ROW => "-".to_owned(),
                     n => n.to_string(),
                 };
+                let kind = match Fiducial::from_value(fiducials[row] as u8) {
+                    Some(f) => format!("Fiducial({f:?})"),
+                    None => format!("{:?}", FeatureKind::from_value(*kind as u8).expect("kind")),
+                };
                 writeln!(
                     out,
-                    "    row {row}: {:?} net {net} area {:.4} mm²",
-                    FeatureKind::from_value(*kind as u8).expect("kind"),
+                    "    row {row}: {kind} net {net} area {:.4} mm²",
                     areas.get(&(row as u32)).copied().unwrap_or(0.0) * 1e6
                 )
                 .unwrap();

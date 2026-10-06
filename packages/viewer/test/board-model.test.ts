@@ -21,7 +21,7 @@ describe('metadata', () => {
     expect(model.ids('net')).toEqual(['net/GND', 'net/VCC', 'net/%2FSDA', 'net/Net-(R1-Pad2)']);
     expect(model.ids('component')).toEqual(['cmp/R1', 'cmp/R2', 'cmp/U1', 'cmp/C1', 'cmp/J1']);
     expect(model.ids('pin')).toContain('pin/U1/8');
-    expect(model.board.profileVersion).toBe('0.1');
+    expect(model.board.profileVersion).toBe('0.2');
   });
 
   it('describes components, pins and nets, with references as IDs', () => {

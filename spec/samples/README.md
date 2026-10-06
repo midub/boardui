@@ -10,6 +10,10 @@ Each sample is an IPC-2581 input plus the expected boardui asset. Together they 
 | [`overlap-priority`](hand-written/overlap-priority/) | hand-written | pad over trace over plane, and ties in document order; §6.2 |
 | [`negative-polarity`](hand-written/negative-polarity/) | hand-written | plane with negative cut-outs, and a later trace they don't cut; §6.2 |
 | [`zero-width-lines`](hand-written/zero-width-lines/) | hand-written | a silkscreen polyline and line with zero-width `LineDesc`s, drawn as hairlines; §6.1 |
+| [`fiducials`](hand-written/fiducials/) | hand-written | `GlobalFiducial`, `LocalFiducial`, `BadBoardMark` and `GoodPanelMark` as `FIDUCIAL` copper features with their type, opening the synthesized soldermask; §6.2, §6.5, §8.2 |
+| [`hexagon-moire`](hand-written/hexagon-moire/) | hand-written | `Hexagon` (corner up, plain, rotated and hollow) and a `Moire` with a crosshair; §6.1 |
+| [`hatch-fill`](hand-written/hatch-fill/) | hand-written | a `HATCH` polygon with its outline, and a `MESH` circle; §6.1 |
+| [`line-styles`](hand-written/line-styles/) | hand-written | `SOLID`, `DOTTED`, `DASHED`, `CENTER` and `PHANTOM` lines, a dashed arc, a dotted outline, and an `ERASE` line cutting a plane; §6.1 |
 | [`slots`](hand-written/slots/) | hand-written | a plated slot with pads and a non-plated slot; §6.3 |
 | [`bottom-placement`](hand-written/bottom-placement/) | hand-written | an asymmetric package on the bottom side at 0°, 30°, 90° and 270°, and one on top; §6.8 |
 | [`colours`](hand-written/colours/) | hand-written | soldermask and silkscreen colours from a `ColorRef`, a `ColorTerm` and KiCad-style names, a KiCad 9 `SpecRef`, and colours that are ignored (copper, `Set/ColorRef`); §6.10 |

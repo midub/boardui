@@ -473,7 +473,7 @@ pub struct Set {
     pub component_ref: Option<String>,
     /// `ColorRef@id`, if given.
     pub color_ref: Option<String>,
-    /// `Pad`, `Features`, `Hole` and `SlotCavity` children in document order.
+    /// `Pad`, `Features`, fiducial, `Hole` and `SlotCavity` children in document order.
     pub features: Vec<Feature>,
 }
 
@@ -491,8 +491,9 @@ pub enum PadUsage {
 /// A source feature of a layer (spec §5).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Feature {
-    /// 0-based index among the layer's `Pad`, `Features`, `Hole` and `SlotCavity` elements in
-    /// document order, counted over all `LayerFeature` elements of the layer in the step.
+    /// 0-based index among the layer's `Pad`, `Features`, fiducial, `Hole` and `SlotCavity`
+    /// elements in document order, counted over all `LayerFeature` elements of the layer in the
+    /// step.
     pub source: usize,
     /// The element.
     pub element: FeatureElement,
@@ -505,6 +506,8 @@ pub enum FeatureElement {
     Pad(Pad),
     /// `Features`.
     Features(Features),
+    /// A `Fiducial`: `GlobalFiducial`, `LocalFiducial`, `BadBoardMark` or `GoodPanelMark`.
+    Fiducial(Fiducial),
     /// `Hole`.
     Hole(Hole),
     /// `SlotCavity`.
@@ -546,6 +549,32 @@ pub struct Features {
     pub xform: Xform,
     /// The shape.
     pub shape: Shape,
+}
+
+/// A fiducial (`Fiducial` substitution group): a standard shape at a location.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Fiducial {
+    /// Which element of the substitution group.
+    pub kind: FiducialKind,
+    /// `Location`. Absent: the origin.
+    pub location: Point,
+    /// `Xform`. Absent: identity.
+    pub xform: Xform,
+    /// The shape: a `StandardPrimitive` or `StandardPrimitiveRef`.
+    pub shape: Shape,
+}
+
+/// The element of a [`Fiducial`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FiducialKind {
+    /// `GlobalFiducial`: positions the features of a board, assembly or panel.
+    Global,
+    /// `LocalFiducial`: positions one component.
+    Local,
+    /// `BadBoardMark`: covered to flag a defective board in a panel.
+    BadBoard,
+    /// `GoodPanelMark`: flags a panel whose boards are all good.
+    GoodPanel,
 }
 
 /// `Hole` (in a `Set`) or `PadstackHoleDef` (in a `PadStackDef`).

@@ -15,6 +15,11 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   ([spec §6.10](spec/README.md#610-colours)).
 - Profile 0.2: a material with a colour from the source is named `boardui/<kind>/<rrggbb>`
   ([spec §7](spec/README.md#7-materials)).
+- **Missing shapes:** fiducials (`GlobalFiducial`, `LocalFiducial`, `BadBoardMark`,
+  `GoodPanelMark`) become copper features of the new kind `FIDUCIAL` with a `fiducial` type
+  property; `Hexagon` and `Moire` primitives are drawn; `HATCH` and `MESH` fills are drawn as
+  lines clipped to their area; `LineDesc@lineProperty` dots and dashes strokes, and `ERASE` lines
+  erase (profile 0.3; spec §6.1, §6.2, §8.2).
 
 ## [1.0.0] - 2026-10-06
 

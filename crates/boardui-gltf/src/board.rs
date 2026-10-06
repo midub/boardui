@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// The profile version written by this crate (spec §11).
-pub const PROFILE_VERSION: &str = "0.2";
+pub const PROFILE_VERSION: &str = "0.3";
 
 /// Root extension `BOARDUI_board`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -233,6 +233,8 @@ pub enum FeatureKind {
     Marking,
     /// Soldermask or dielectric sheet.
     Sheet,
+    /// Fiducial; its type is in [`FeatureRow::fiducial`](crate::FeatureRow::fiducial).
+    Fiducial,
     /// Anything else.
     Other,
 }
@@ -248,6 +250,7 @@ impl FeatureKind {
             Self::Barrel => 4,
             Self::Marking => 5,
             Self::Sheet => 6,
+            Self::Fiducial => 7,
             Self::Other => 255,
         }
     }
@@ -262,7 +265,45 @@ impl FeatureKind {
             4 => Self::Barrel,
             5 => Self::Marking,
             6 => Self::Sheet,
+            7 => Self::Fiducial,
             255 => Self::Other,
+            _ => return None,
+        })
+    }
+}
+
+/// `Fiducial` enum of the metadata schema: the IPC-2581 fiducial element.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Fiducial {
+    /// `GlobalFiducial`.
+    Global,
+    /// `LocalFiducial`.
+    Local,
+    /// `BadBoardMark`.
+    BadBoard,
+    /// `GoodPanelMark`.
+    GoodPanel,
+}
+
+impl Fiducial {
+    /// Value in the `Fiducial` enum of the metadata schema. `NONE` (no fiducial) is 255.
+    pub fn value(self) -> u8 {
+        match self {
+            Self::Global => 0,
+            Self::Local => 1,
+            Self::BadBoard => 2,
+            Self::GoodPanel => 3,
+        }
+    }
+
+    /// The fiducial type for an enum value; `None` for `NONE` and unknown values.
+    pub fn from_value(value: u8) -> Option<Self> {
+        Some(match value {
+            0 => Self::Global,
+            1 => Self::Local,
+            2 => Self::BadBoard,
+            3 => Self::GoodPanel,
             _ => return None,
         })
     }

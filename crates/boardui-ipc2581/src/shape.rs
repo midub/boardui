@@ -146,6 +146,11 @@ pub enum PrimitiveKind {
         /// `length`.
         length: f64,
     },
+    /// `Hexagon`: regular hexagon with a corner pointing up (+Y).
+    Hexagon {
+        /// `length`: distance between opposite corners.
+        length: f64,
+    },
     /// `Triangle`: isosceles triangle.
     Triangle {
         /// `base` (X).
@@ -184,14 +189,36 @@ pub enum PrimitiveKind {
         /// `diameter` for [`ButterflyShape::Round`], `side` for [`ButterflyShape::Square`].
         size: f64,
     },
+    /// `Moire`: concentric rings, optionally with a crosshair.
+    Moire(Moire),
     /// `Contour`: polygon with cutouts.
     Contour(Box<Contour>),
-    /// A standard primitive the reader cannot describe, for example `Hexagon` or `Moire`. A
-    /// [`UnsupportedShape`](crate::DiagnosticKind::UnsupportedShape) warning was recorded.
+    /// A standard primitive the reader cannot describe, for example an element from a newer
+    /// revision. A [`UnsupportedShape`](crate::DiagnosticKind::UnsupportedShape) warning was
+    /// recorded.
     Unsupported {
         /// Local name of the element.
         element: String,
     },
+}
+
+/// [`PrimitiveKind::Moire`]: a registration target.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Moire {
+    /// `diameter`: diameter of the centre line of the outermost ring.
+    pub diameter: f64,
+    /// `ringWidth`: line width of each ring.
+    pub ring_width: f64,
+    /// `ringGap`: distance between the centre lines of neighbouring rings.
+    pub ring_gap: f64,
+    /// `ringNumber`: number of rings.
+    pub ring_number: u32,
+    /// `lineWidth` of the crosshair. Absent: 0, no crosshair.
+    pub line_width: f64,
+    /// `lineLength` of both crosshair lines, if given.
+    pub line_length: Option<f64>,
+    /// `lineAngle`: counter-clockwise rotation of the crosshair in degrees. Absent: 0.
+    pub line_angle: f64,
 }
 
 /// Corner flags of [`PrimitiveKind::RectRound`] and [`PrimitiveKind::RectCham`].
@@ -342,13 +369,15 @@ pub enum FillStyle {
     Ref(String),
 }
 
-/// `LineDesc`: stroke width and end style.
+/// `LineDesc`: stroke width, end style and pattern.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LineDesc {
     /// `lineWidth`.
     pub width: f64,
     /// `lineEnd`.
     pub end: LineEnd,
+    /// `lineProperty`. Absent: [`LineProperty::Solid`].
+    pub property: LineProperty,
 }
 
 /// `lineEnd` of a [`LineDesc`].
@@ -360,6 +389,24 @@ pub enum LineEnd {
     Square,
     /// `NONE`: flat, ending at the end point.
     None,
+}
+
+/// `lineProperty` of a [`LineDesc`]: the pattern along the line.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LineProperty {
+    /// `SOLID`.
+    #[default]
+    Solid,
+    /// `DOTTED`.
+    Dotted,
+    /// `DASHED`.
+    Dashed,
+    /// `CENTER`: long dashes and dots.
+    Center,
+    /// `PHANTOM`: long dashes and pairs of dots.
+    Phantom,
+    /// `ERASE`: a solid line that erases what is drawn beneath it.
+    Erase,
 }
 
 /// `FillDesc`: how a closed shape is filled.
