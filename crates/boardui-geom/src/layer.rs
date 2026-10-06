@@ -78,16 +78,14 @@ pub fn resolve_layer(
     features: &[Feature],
     tolerance: Tolerance,
 ) -> Result<Vec<Region>, FeatureError> {
-    let mut regions = features
-        .iter()
-        .enumerate()
-        .map(|(index, feature)| {
-            feature
-                .shape
-                .to_region(tolerance)
-                .map_err(|error| FeatureError { index, error })
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    let mut regions = crate::par::map(features, |index, feature| {
+        feature
+            .shape
+            .to_region(tolerance)
+            .map_err(|error| FeatureError { index, error })
+    })
+    .into_iter()
+    .collect::<Result<Vec<_>, _>>()?;
     let negative = |i: usize| features[i].polarity == Polarity::Negative;
 
     // Negative polarity: subtract every later negative feature nearby.
@@ -130,20 +128,19 @@ fn subtract_neighbours(
     regions: &[Region],
     bounds: &[Option<GridRect>],
     index: &BoundsIndex,
-    cuts: impl Fn(usize, usize) -> bool,
+    cuts: impl Fn(usize, usize) -> bool + Sync + Send,
 ) -> Vec<(usize, Region)> {
-    bounds
-        .iter()
-        .enumerate()
-        .filter_map(|(i, b)| {
-            let cutters: Vec<&Region> = index
-                .query((*b)?)
-                .filter(|&j| j != i && cuts(i, j))
-                .map(|j| &regions[j])
-                .collect();
-            (!cutters.is_empty()).then(|| (i, regions[i].subtract(cutters)))
-        })
-        .collect()
+    crate::par::map(bounds, |i, b| {
+        let cutters: Vec<&Region> = index
+            .query((*b)?)
+            .filter(|&j| j != i && cuts(i, j))
+            .map(|j| &regions[j])
+            .collect();
+        (!cutters.is_empty()).then(|| (i, regions[i].subtract(cutters)))
+    })
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 fn apply(regions: &mut [Region], changes: Vec<(usize, Region)>) {

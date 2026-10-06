@@ -33,6 +33,18 @@
 | `packages/demo` | demo app |
 | `spec/` | profile spec, JSON schemas, sample boards |
 
+## Command-line tool
+
+```sh
+cargo install --path crates/boardui            # or: cargo run --release -p boardui -- …
+boardui convert board.xml -o board.glb         # IPC-2581 in, boardui GLB out
+boardui convert board.xml -o board.glb --models models.json   # user models for component bodies
+boardui validate board.glb                     # profile rules (spec §10), plus the Khronos
+                                               # validator when gltf_validator is on PATH
+```
+
+`boardui -v convert …` prints the time of each pipeline step. The samples in [`spec/samples`](spec/samples/README.md) double as the conformance suite.
+
 ## Development
 
 Prerequisites: [rustup](https://rustup.rs) (the toolchain version is pinned in `rust-toolchain.toml` and installed automatically), Node.js 24 and pnpm (`corepack enable`).

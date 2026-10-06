@@ -56,9 +56,8 @@
       "items": { "$ref": "#/$defs/drill" }
     },
     "tables": {
-      "description": "Indices into EXT_structural_metadata.propertyTables.",
+      "description": "Indices into EXT_structural_metadata.propertyTables. A table without rows is omitted, because property tables can't be empty.",
       "type": "object",
-      "required": ["nets", "components", "pins"],
       "properties": {
         "nets": { "$ref": "#/$defs/index" },
         "components": { "$ref": "#/$defs/index" },
@@ -85,8 +84,7 @@
         "thicknessSource",
         "synthesized",
         "visible",
-        "node",
-        "featureTable"
+        "node"
       ],
       "properties": {
         "id": { "$ref": "#/$defs/layerId" },
@@ -100,20 +98,26 @@
         "synthesized": { "type": "boolean" },
         "visible": { "type": "boolean" },
         "node": { "$ref": "#/$defs/index" },
-        "featureTable": { "$ref": "#/$defs/index" }
+        "featureTable": {
+          "description": "The layer's feature table; absent when the layer has no features.",
+          "$ref": "#/$defs/index"
+        }
       },
       "additionalProperties": false
     },
     "drill": {
       "type": "object",
-      "required": ["id", "name", "from", "to", "node", "featureTable"],
+      "required": ["id", "name", "from", "to", "node"],
       "properties": {
         "id": { "$ref": "#/$defs/layerId" },
         "name": { "type": "string" },
         "from": { "$ref": "#/$defs/layerId" },
         "to": { "$ref": "#/$defs/layerId" },
         "node": { "$ref": "#/$defs/index" },
-        "featureTable": { "$ref": "#/$defs/index" }
+        "featureTable": {
+          "description": "The drill layer's feature table; absent when it has no features.",
+          "$ref": "#/$defs/index"
+        }
       },
       "additionalProperties": false
     }

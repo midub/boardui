@@ -8,9 +8,23 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-boardui-ipc2581.workspace = true
 boardui-geom.workspace = true
 boardui-gltf.workspace = true
+boardui-ipc2581.workspace = true
+glam = "0.34.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+sha2 = "0.10.9"
+tracing = "0.1.41"
+
+[dev-dependencies]
+base64 = "0.22.1"
+criterion = "0.8.2"
+insta = "1.49.0"
+
+[[bench]]
+name = "convert"
+harness = false
 
 [lints]
 workspace = true

@@ -34,4 +34,3 @@ These are goals to measure against, not promises:
 ## Open items
 
 - Register the `BOARDUI` vendor prefix with Khronos.
-- Bottom-side placement convention (spec §6.8): verify against KiCad exports in M3.
