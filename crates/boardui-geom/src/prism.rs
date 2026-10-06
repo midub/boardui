@@ -120,7 +120,7 @@ fn extrude_shape(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    for triangle in triangulation.triangle_indices::<usize>().chunks_exact(3) {
+    for triangle in triangulation.triangle_indices::<usize>().as_chunks::<3>().0 {
         let mut corners = [0u32; 3];
         for (c, corner) in corners.iter_mut().enumerate() {
             let (p, q, r) = (triangle[c], triangle[(c + 1) % 3], triangle[(c + 2) % 3]);
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn every_triangle_faces_away_from_the_centre() {
         let prism = rect(-1e-3, -1e-3, 1e-3, 1e-3).extrude(-1e-3, 1e-3).unwrap();
-        for t in prism.indices.chunks_exact(3) {
+        for t in prism.indices.as_chunks::<3>().0 {
             let [a, b, c] = [0, 1, 2].map(|i| glam::Vec3::from(prism.positions[t[i] as usize]));
             let normal = (b - a).cross(c - a);
             assert!(normal.dot((a + b + c) / 3.0) > 0.0, "inward triangle {t:?}");
@@ -219,27 +219,66 @@ mod tests {
 
     #[test]
     fn touching_contours_stay_manifold() {
-        // Two holes touching the outline and each other at single points.
+        // One hole touches the outline at a single point, another touches the first.
         let outline = Path::new(DVec2::ZERO)
             .line_to(DVec2::new(4e-3, 0.0))
             .line_to(DVec2::new(4e-3, 4e-3))
             .line_to(DVec2::new(0.0, 4e-3));
-        let diamond = |cx: f64, cy: f64| {
-            Path::new(DVec2::new(cx - 1e-3, cy))
-                .line_to(DVec2::new(cx, cy - 1e-3))
-                .line_to(DVec2::new(cx + 1e-3, cy))
-                .line_to(DVec2::new(cx, cy + 1e-3))
+        let diamond = |cx: f64, r: f64| {
+            Path::new(DVec2::new(cx - r, 2e-3))
+                .line_to(DVec2::new(cx, 2e-3 - r))
+                .line_to(DVec2::new(cx + r, 2e-3))
+                .line_to(DVec2::new(cx, 2e-3 + r))
         };
         let region = Shape::Polygon {
             outline,
-            holes: vec![diamond(1e-3, 2e-3), diamond(3e-3, 2e-3)],
+            holes: vec![diamond(1e-3, 1e-3), diamond(2.75e-3, 0.75e-3)],
         }
         .to_region(Tolerance::DEFAULT)
         .unwrap();
+        assert_eq!(region.shapes().len(), 1);
+        let mut points: Vec<_> = region.contours().flatten().map(|p| (p.x, p.y)).collect();
+        let count = points.len();
+        points.sort_unstable();
+        points.dedup();
+        assert!(points.len() < count, "some boundary points repeat");
+
         let prism = region.extrude(0.0, 1e-3).unwrap();
         assert_closed(&prism);
         // f32 positions carry about 7 significant digits.
-        assert_close(signed_volume(&prism), 12e-9, 1e-14);
+        let area = 16e-6 - 2e-6 - 2.0 * 0.75e-3 * 0.75e-3;
+        assert_close(signed_volume(&prism), area * 1e-3, 1e-14);
+    }
+
+    #[test]
+    fn wedges_tell_touching_occurrences_apart() {
+        let p = GridPoint::new(0, 0);
+        let at = |x, y| GridPoint::new(x, y);
+        // Convex corner of a counter-clockwise square: the interior is the first quadrant.
+        let convex = Occurrence {
+            prev: at(0, 10),
+            point: p,
+            next: at(10, 0),
+        };
+        assert!(in_wedge(&convex, (at(10, 1), at(1, 10))));
+        assert!(!in_wedge(&convex, (at(-10, 1), at(-1, 10))));
+        // Reflex corner: everything but the third quadrant.
+        let reflex = Occurrence {
+            prev: at(-10, 0),
+            point: p,
+            next: at(0, -10),
+        };
+        assert!(in_wedge(&reflex, (at(10, 1), at(1, 10))));
+        assert!(in_wedge(&reflex, (at(-10, 1), at(-1, 10))));
+        assert!(!in_wedge(&reflex, (at(-10, -1), at(-1, -10))));
+        // Straight boundary: the half plane to the left.
+        let straight = Occurrence {
+            prev: at(-10, 0),
+            point: p,
+            next: at(10, 0),
+        };
+        assert!(in_wedge(&straight, (at(1, 1), at(-1, 1))));
+        assert!(!in_wedge(&straight, (at(1, -1), at(-1, -1))));
     }
 
     #[test]

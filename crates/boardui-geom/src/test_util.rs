@@ -54,7 +54,7 @@ pub(crate) fn assert_closed(prism: &Prism) {
             .all(|&i| (i as usize) < prism.positions.len())
     );
     let mut edges: HashMap<(u32, u32), u32> = HashMap::new();
-    for t in prism.indices.chunks_exact(3) {
+    for t in prism.indices.as_chunks::<3>().0 {
         for (a, b) in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
             assert_ne!(a, b, "degenerate triangle {t:?}");
             *edges.entry((a, b)).or_default() += 1;
@@ -71,10 +71,12 @@ pub(crate) fn assert_closed(prism: &Prism) {
 pub(crate) fn signed_volume(prism: &Prism) -> f64 {
     prism
         .indices
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|t| {
             let [a, b, c] =
-                [0, 1, 2].map(|i| glam::DVec3::from(prism.positions[t[i] as usize].map(f64::from)));
+                t.map(|i| glam::DVec3::from(prism.positions[i as usize].map(f64::from)));
             a.dot(b.cross(c)) / 6.0
         })
         .sum()

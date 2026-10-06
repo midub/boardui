@@ -157,14 +157,7 @@ impl Path {
                 } => {
                     let full = grid_point(current)? == grid_point(end)?;
                     arc_points(
-                        current,
-                        end,
-                        center,
-                        direction,
-                        full,
-                        tolerance,
-                        margin,
-                        |p| push(p),
+                        current, end, center, direction, full, tolerance, margin, &mut push,
                     )?;
                 }
             }
