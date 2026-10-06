@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/midub/boardui/spec/schema/models.schema.json",
+  "title": "boardui component model mapping",
+  "description": "Maps parts or packages to user-supplied glTF/GLB body models (boardui convert --models). Model conventions: Y-up, metres, origin at the package origin, top-side placement at 0° rotation, seating plane at y = 0. Matching tries part rules first, then package rules; the first match wins. See spec/README.md §6.9.",
+  "type": "object",
+  "required": ["version", "models"],
+  "properties": {
+    "version": { "const": 1 },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["match", "file"],
+        "properties": {
+          "match": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": ["part"],
+                "properties": { "part": { "type": "string" } },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": ["package"],
+                "properties": { "package": { "type": "string" } },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "file": {
+            "description": "Path to a .glb or .gltf file, relative to the mapping file.",
+            "type": "string"
+          },
+          "offsetMm": {
+            "description": "Translation applied in the model's frame, in millimetres.",
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 3,
+            "maxItems": 3,
+            "default": [0, 0, 0]
+          },
+          "rotationDeg": {
+            "description": "XYZ Euler rotation applied in the model's frame before placement, in degrees.",
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 3,
+            "maxItems": 3,
+            "default": [0, 0, 0]
+          },
+          "scale": {
+            "description": "Uniform scale, e.g. 0.001 for a model authored in millimetres.",
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "default": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/midub/boardui/spec/schema/component-extras.schema.json",
+  "title": "boardui component node extras",
+  "description": "Shape of node.extras on component nodes. The components property table is authoritative; these fields duplicate it for generic tools. See spec/README.md §8.4.",
+  "type": "object",
+  "required": ["boardui"],
+  "properties": {
+    "boardui": {
+      "type": "object",
+      "required": ["id", "row", "refDes", "side"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^cmp/[^/]+$" },
+        "row": { "type": "integer", "minimum": 0 },
+        "refDes": { "type": "string" },
+        "part": { "type": "string" },
+        "package": { "type": "string" },
+        "side": { "enum": ["TOP", "BOTTOM"] },
+        "mount": { "enum": ["SMT", "THMT", "OTHER"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

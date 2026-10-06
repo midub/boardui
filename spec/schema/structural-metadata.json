@@ -1,0 +1,79 @@
+{
+  "id": "boardui",
+  "name": "boardui PCB metadata",
+  "description": "EXT_structural_metadata schema embedded in every boardui asset. See spec/README.md §8.2. References between tables are UINT32 row indices; 4294967295 means none.",
+  "version": "0.1",
+  "enums": {
+    "FeatureKind": {
+      "valueType": "UINT8",
+      "values": [
+        { "name": "PAD", "value": 0 },
+        { "name": "VIA", "value": 1 },
+        { "name": "TRACE", "value": 2 },
+        { "name": "FILL", "value": 3 },
+        { "name": "BARREL", "value": 4 },
+        { "name": "MARKING", "value": 5 },
+        { "name": "SHEET", "value": 6 },
+        { "name": "OTHER", "value": 255 }
+      ]
+    },
+    "Side": {
+      "valueType": "UINT8",
+      "values": [
+        { "name": "TOP", "value": 0 },
+        { "name": "BOTTOM", "value": 1 },
+        { "name": "INTERNAL", "value": 2 }
+      ]
+    },
+    "Mount": {
+      "valueType": "UINT8",
+      "values": [
+        { "name": "SMT", "value": 0 },
+        { "name": "THMT", "value": 1 },
+        { "name": "OTHER", "value": 255 }
+      ]
+    }
+  },
+  "classes": {
+    "net": {
+      "properties": {
+        "id": { "type": "STRING", "required": true },
+        "name": { "type": "STRING", "required": true }
+      }
+    },
+    "component": {
+      "properties": {
+        "id": { "type": "STRING", "required": true },
+        "refDes": { "type": "STRING", "required": true },
+        "part": { "type": "STRING", "noData": "" },
+        "package": { "type": "STRING", "noData": "" },
+        "side": { "type": "ENUM", "enumType": "Side", "required": true },
+        "mount": { "type": "ENUM", "enumType": "Mount", "noData": "OTHER" },
+        "node": { "type": "SCALAR", "componentType": "UINT32", "required": true }
+      }
+    },
+    "pin": {
+      "properties": {
+        "id": { "type": "STRING", "required": true },
+        "number": { "type": "STRING", "required": true },
+        "name": { "type": "STRING", "noData": "" },
+        "component": { "type": "SCALAR", "componentType": "UINT32", "required": true },
+        "net": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 }
+      }
+    },
+    "feature": {
+      "properties": {
+        "kind": { "type": "ENUM", "enumType": "FeatureKind", "required": true },
+        "source": {
+          "description": "0-based document-order index of the source feature within its layer; the feature ID is feat/<layer name>/<source>.",
+          "type": "SCALAR",
+          "componentType": "UINT32",
+          "required": true
+        },
+        "net": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 },
+        "pin": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 },
+        "component": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 }
+      }
+    }
+  }
+}
