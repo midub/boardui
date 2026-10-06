@@ -1,0 +1,29 @@
+{
+  "name": "@boardui/viewer",
+  "version": "0.1.0",
+  "description": "<board-viewer>: a web component that shows boardui glTF boards in 3D.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midub/boardui.git",
+    "directory": "packages/viewer"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

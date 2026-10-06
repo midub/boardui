@@ -1,0 +1,29 @@
+{
+  "name": "@boardui/converter",
+  "version": "0.1.0",
+  "description": "Converts IPC-2581 to boardui glTF in the browser (WebAssembly in a Web Worker).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midub/boardui.git",
+    "directory": "packages/converter"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

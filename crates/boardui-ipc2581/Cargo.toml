@@ -1,0 +1,13 @@
+[package]
+name = "boardui-ipc2581"
+description = "Streaming IPC-2581 reader producing a typed board model."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true
