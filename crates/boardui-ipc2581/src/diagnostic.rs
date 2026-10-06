@@ -156,6 +156,8 @@ pub enum RefKind {
     Component,
     /// `Pin` of a package.
     Pin,
+    /// `Spec` in `CadHeader`.
+    Spec,
 }
 
 impl fmt::Display for RefKind {
@@ -173,6 +175,7 @@ impl fmt::Display for RefKind {
             Self::Package => "package",
             Self::Component => "component",
             Self::Pin => "pin",
+            Self::Spec => "spec",
         })
     }
 }

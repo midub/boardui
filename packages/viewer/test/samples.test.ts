@@ -38,4 +38,18 @@ describe('converter samples', () => {
     }
     expect(model.board.tables.components === undefined).toBe(model.ids('component').length === 0);
   });
+
+  it('gives layers the colour of their material (spec §6.10)', async () => {
+    const bytes = readFileSync(path.join(samples, 'colours', 'colours.glb'));
+    const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const model = await BoardModel.fromGltf(await loadGltf(glb));
+    const colors = Object.fromEntries(model.layers.map((l) => [l.id, l.color]));
+    expect(colors).toMatchObject({
+      'layer/SST': '#eed33a',
+      'layer/SMT': '#5a1e78',
+      'layer/TOP': '#c9a15a',
+      'layer/SMB': '#151515',
+      'layer/SSB': '#f2f2f2',
+    });
+  });
 });

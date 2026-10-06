@@ -1353,6 +1353,7 @@ mod tests {
                     thickness_source: ThicknessSource::Default,
                     synthesized: false,
                     visible: true,
+                    color: None,
                     mesh: mesh.finish(),
                     features: vec![row(0), row(1)],
                 }],

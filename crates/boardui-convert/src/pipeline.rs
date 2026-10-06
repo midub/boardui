@@ -12,6 +12,7 @@ use boardui_gltf::{
 use boardui_ipc2581 as ipc;
 use glam::DAffine2;
 
+use crate::colours;
 use crate::components::{self, PadRef};
 use crate::shapes::{ShapeConverter, is_stroke, point};
 use crate::stackup::{self, LayerClass, Stack};
@@ -57,6 +58,7 @@ pub(crate) fn run(
     let features_step = timings.step("stack-up, features, components");
     let step = select_step(doc, options)?;
     let stack = stackup::build(&doc.ecad, &mut warnings).map_err(ConvertError::Input)?;
+    let colours = colours::resolve(doc, &stack, &mut warnings);
     if doc
         .ecad
         .layers
@@ -287,7 +289,8 @@ pub(crate) fn run(
             let layer = &stack.layers[i];
             extrude(&layer.name, regions, layer.z_min, layer.z_max)
         });
-        for ((layer, (rows, _)), (mesh, messages)) in stack.layers.iter().zip(finals).zip(meshes) {
+        let sources = stack.layers.iter().zip(colours);
+        for (((layer, color), (rows, _)), (mesh, messages)) in sources.zip(finals).zip(meshes) {
             messages.into_iter().for_each(|m| warnings.push(m));
             layers.push(LayerAsset {
                 name: layer.name.clone(),
@@ -299,6 +302,7 @@ pub(crate) fn run(
                 thickness_source: layer.thickness_source,
                 synthesized: layer.synthesized,
                 visible: layer.visible(),
+                color,
                 mesh,
                 features: rows,
             });
@@ -380,6 +384,7 @@ pub(crate) fn run(
     let mut all: Vec<Warning> = doc
         .diagnostics
         .iter()
+        .filter(|d| !colours::is_recovered_spec_ref(&doc.ecad, &d.kind))
         .map(|d| Warning {
             message: d.kind.to_string(),
             position: Some(d.position),

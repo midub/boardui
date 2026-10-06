@@ -69,6 +69,8 @@ pub struct Ecad {
     pub name: String,
     /// `CadHeader@units`: the units of the source file. The model is always in metres.
     pub units: Units,
+    /// `CadHeader/Spec`s, by name, in document order.
+    pub specs: Table<Spec>,
     /// `Layer`s, by name, in document order.
     pub layers: Table<Layer>,
     /// `Stackup`s in document order.
@@ -113,6 +115,8 @@ pub struct Layer {
     pub polarity: Polarity,
     /// `Span`: the layers a drill or rout layer spans.
     pub span: Option<Span>,
+    /// `SpecRef@id` values in document order.
+    pub spec_refs: Vec<String>,
 }
 
 /// `side` of a layer.
@@ -209,6 +213,56 @@ pub struct StackupLayer {
     pub tol_minus: Option<f64>,
     /// `sequence`: position in the stack, top first, if given.
     pub sequence: Option<u32>,
+    /// `SpecRef@id` values in document order.
+    pub spec_refs: Vec<String>,
+}
+
+/// `Spec` in `CadHeader`: a named specification that layers refer to with `SpecRef`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Spec {
+    /// `name`.
+    pub name: String,
+    /// `General` specifications in document order. Other specifications (`Conductor`,
+    /// `Dielectric`, `SurfaceFinish`, …) are skipped.
+    pub general: Vec<SpecGeneral>,
+}
+
+/// `General` in a [`Spec`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpecGeneral {
+    /// `type` as written, for example `MATERIAL`.
+    pub general_type: String,
+    /// `Property` elements in document order.
+    pub properties: Vec<SpecProperty>,
+    /// The colour (`Color`, `ColorRef` or `ColorTerm`), if given.
+    pub color: Option<SpecColor>,
+}
+
+/// `Property` of a [`SpecGeneral`], with its attributes as written.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SpecProperty {
+    /// `text`, if given. KiCad writes colours as `Color : <name>`.
+    pub text: Option<String>,
+    /// `value`, if given.
+    pub value: Option<String>,
+    /// `unit`, if given.
+    pub unit: Option<String>,
+}
+
+/// The colour of a [`SpecGeneral`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SpecColor {
+    /// An inline `Color`.
+    Rgb(Color),
+    /// `ColorRef@id`: an entry of [`Content::colors`].
+    Ref(String),
+    /// `ColorTerm`: a colour by name.
+    Term {
+        /// `name` as written, for example `BLUE`.
+        name: String,
+        /// `comment`, if given.
+        comment: Option<String>,
+    },
 }
 
 /// `Step`.

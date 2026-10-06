@@ -146,6 +146,7 @@ samples! {
     slots => "slots",
     bottom_placement => "bottom-placement",
     user_models => "user-models",
+    colours => "colours",
     testcase1 => "testcase1-RevC-Assembly",
     testcase3 => "testcase3-RevC-Assembly",
     testcase10 => "testcase10-RevC-Assembly",
@@ -265,7 +266,7 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         .map(|l| {
             (
                 format!(
-                    "layer {} {:?} {:?} z {:.4}..{:.4} mm {:?}{}{}",
+                    "layer {} {:?} {:?} z {:.4}..{:.4} mm {:?}{}{}{}",
                     l.id,
                     l.role,
                     l.side,
@@ -273,7 +274,8 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
                     l.z_max * 1e3,
                     l.thickness_source,
                     if l.synthesized { " synthesized" } else { "" },
-                    if l.visible { "" } else { " hidden" }
+                    if l.visible { "" } else { " hidden" },
+                    source_colors(&root, l.node)
                 ),
                 l.node,
                 l.feature_table,
@@ -360,6 +362,21 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         .unwrap();
     }
     out
+}
+
+/// The node's materials with a colour from the source (spec §7), as ` material <name>…`.
+fn source_colors(root: &Root, node: u32) -> String {
+    let Some(mesh) = root.nodes[node as usize].mesh else {
+        return String::new();
+    };
+    let mut names: Vec<&str> = root.meshes[mesh as usize]
+        .primitives
+        .iter()
+        .filter_map(|p| root.materials[p.material? as usize].name.as_deref())
+        .filter(|name| name.matches('/').count() > 1)
+        .collect();
+    names.dedup();
+    names.iter().map(|n| format!(" material {n}")).collect()
 }
 
 fn mesh_size(root: &Root, node: u32) -> (u64, u64) {

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// The profile version written by this crate (spec §11).
-pub const PROFILE_VERSION: &str = "0.1";
+pub const PROFILE_VERSION: &str = "0.2";
 
 /// Root extension `BOARDUI_board`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
