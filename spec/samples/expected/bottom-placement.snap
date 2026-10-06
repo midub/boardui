@@ -13,7 +13,7 @@ layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
     row 0: Pad net 0 area 0.2770 mm²
     row 1: Pad net 1 area 0.2770 mm²
     row 2: Pad net 2 area 0.2770 mm²
-layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized hidden
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
   1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 176.0000 mm²
     row 0: Sheet net - area 176.0000 mm²
 layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default

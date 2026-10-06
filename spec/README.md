@@ -69,7 +69,7 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 | net | `net/<net name>` | net name unchanged |
 | feature | `feat/<layer name>/<n>` | input file unchanged |
 
-- Each `<…>` segment is percent-encoded. `%`, `/`, `#`, `@`, whitespace and control characters MUST be written as `%XX`.
+- Each `<…>` segment is percent-encoded. `%`, `/`, `#`, `@`, whitespace (Unicode `White_Space`) and control characters MUST be written as `%XX`: one `%XX` per UTF-8 byte, with upper-case hex digits. Other characters MUST NOT be encoded, so every ID has exactly one spelling.
 - Layers that the converter synthesizes (§6.4, §6.5) get names starting with an unencoded `@`, for example `layer/@soldermask-top`. Because `@` in source names is always encoded, the two never collide.
 - `<n>` is the 0-based index of the feature among the layer's source features in document order. The step's `LayerFeature` elements for that layer are walked in document order (a step may split one layer over several of them), counting every `Pad`, `Features`, `Hole` and `SlotCavity` element of their `Set`s.
 - Soldermask and dielectric layers have a single feature, their sheet (§6.5, §6.7), with `n = 0`. The source features of a soldermask layer are its openings; they shape the sheet but get no rows of their own.
@@ -223,7 +223,8 @@ Every primitive of a layer or drill mesh MUST carry exactly one `featureIds` ent
 
 Feature IDs are row indices into the layer's feature table:
 
-- The component type is `UNSIGNED_SHORT` when the table has fewer than 65,536 rows. Otherwise it is `FLOAT`, which is exact up to 2²⁴. glTF requires every vertex attribute element to start on a 4-byte boundary, so `UNSIGNED_SHORT` feature IDs have a `byteStride` of 4.
+- The component type is `UNSIGNED_SHORT` when the table has fewer than 65,536 rows. Otherwise it is `FLOAT`, which is exact up to 2²⁴.
+- glTF requires every vertex attribute element to start on a 4-byte boundary, so an `UNSIGNED_SHORT` feature ID attribute MUST NOT be tightly packed: its buffer view has a `byteStride` of 4 (or the attribute is interleaved with others). The Khronos validator reports a tightly packed one as `MESH_PRIMITIVE_ACCESSOR_UNALIGNED`.
 - `nullFeatureId` is not used: every vertex belongs to a feature.
 - Within a primitive, a feature's vertices MUST be contiguous, and so MUST its triangles, with features in ascending ID order. A viewer can then derive every feature's vertex and index ranges in one pass, which it needs for bounding boxes, widget anchors and isolating a feature.
 
@@ -240,7 +241,7 @@ Feature IDs are row indices into the layer's feature table:
 | `<layer ID>` | `feature` | source feature of that layer (or drill layer) |
 
 - Feature tables are named by their layer ID.
-- **Empty tables.** `EXT_structural_metadata` property tables need at least one row, and glTF buffer views at least one byte. A table without rows is therefore omitted (and so is its index in `BOARDUI_board`), and so is an optional string property whose values are all empty (its `noData`).
+- **Empty tables.** `EXT_structural_metadata` property tables need at least one row, and glTF buffer views at least one byte. A table without rows is therefore omitted (and so is its index in `BOARDUI_board`), and so is an optional `STRING` property whose values are all empty (its `noData` is `""`; for example `pin.name` on a board without pin names).
 - **References.** References between tables are row indices (`UINT32`); `4294967295` means none. For example, `feature.net` is a row in `nets`, and `pin.component` is a row in `components`.
 - **Feature ID strings** are not stored. They derive from the layer name and `feature.source` (§5).
 - **Linking features to pins and components.** A feature gets `pin` from the `PinRef` of its `Pad`, `component` from that `PinRef@componentRef` or else from its `Set@componentRef`, and `net` from its `Set@net`.
@@ -286,7 +287,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 - `layers` is ordered top to bottom. `thickness` is the copper-to-copper thickness.
 - `tables.*` and `featureTable` are absent for tables without rows (§8.2).
 - `role` is one of `COPPER`, `DIELECTRIC`, `SOLDERMASK`, `SILKSCREEN`. `ipcFunction` keeps the source `layerFunction`, and is absent for synthesized layers.
-- `visible` is the suggested default visibility. Inner copper and dielectric layers default to `false`.
+- `visible` is the suggested default visibility. Inner copper layers default to `false`, all other layers to `true`. Dielectric layers stay visible so that the board is opaque like a real one: with them hidden, the translucent soldermask (§7) would show the other side's copper and components through the board.
 
 ### 8.4 Component node `extras`
 
@@ -328,7 +329,7 @@ Anchors (for example top-centre of the bounding box) are computed from these.
 - prisms are closed;
 - layer Z ranges are ordered (§6.4).
 
-It runs the Khronos validator too, when the `gltf_validator` binary is on `PATH`; CI always runs it.
+It runs the Khronos validator too, when the `gltf_validator` binary is on `PATH`; CI always runs it. The validator (2.0.0-dev.3.10) doesn't know `EXT_mesh_features` and `EXT_structural_metadata`: it reports them as `UNSUPPORTED_EXTENSION` and their buffer views as `UNUSED_OBJECT` (both infos), so the rules of §8 are checked by `boardui validate` alone.
 
 ## 11. Versioning
 

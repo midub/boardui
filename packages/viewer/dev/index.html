@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>board-viewer dev page</title>
+    <style>
+      html, body { margin: 0; height: 100%; font: 13px/1.4 system-ui, sans-serif; color: #e6e6e6; background: #15171b; }
+      body { display: grid; grid-template-columns: 1fr 300px; }
+      board-viewer { height: 100vh; grid-column: 1; grid-row: 1; }
+      aside { grid-column: 2; grid-row: 1; overflow: auto; padding: 12px; border-left: 1px solid #2c3038; }
+      h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #9aa3b2; margin: 16px 0 6px; }
+      label { display: block; }
+      button, select, input { font: inherit; margin: 2px 2px 2px 0; }
+      pre { white-space: pre-wrap; word-break: break-all; background: #1d2026; padding: 6px; margin: 0; min-height: 2em; }
+      .tag { padding: 2px 6px; border-radius: 4px; background: #ffcc00; color: #000; font-weight: 600; white-space: nowrap; }
+      .tag.net { background: #4fc3f7; }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <h2>Board</h2>
+      <label>Fixture
+        <select id="board">
+          <option value="small">small (4 layers)</option>
+          <option value="dense">dense (~110k features)</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="webgl" /> force WebGL2 backend (reloads)</label>
+      <button type="button" id="download">Download GLB</button>
+      <pre id="status">…</pre>
+      <h2>View</h2>
+      <button type="button" data-view="top">Top</button>
+      <button type="button" data-view="bottom">Bottom</button>
+      <button type="button" data-view="iso">Iso</button>
+      <label><input type="checkbox" id="xray" /> X-ray</label>
+      <h2>Layers</h2>
+      <div id="layers"></div>
+      <h2>Highlight net</h2>
+      <select id="net"></select>
+      <input type="color" id="color" value="#ffcc00" />
+      <button type="button" id="highlight">Highlight</button>
+      <button type="button" id="clear">Clear</button>
+      <h2>Selection</h2>
+      <button type="button" id="focus">Focus</button>
+      <button type="button" id="hide">Hide</button>
+      <button type="button" id="show">Show hidden</button>
+      <button type="button" id="widget">Attach widget</button>
+      <pre id="selection"></pre>
+      <h2>Hover</h2>
+      <pre id="hover"></pre>
+    </aside>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
