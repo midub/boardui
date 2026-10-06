@@ -1,0 +1,49 @@
+name: Pages
+
+# Builds the demo (packages/demo) and deploys it to GitHub Pages: https://midub.github.io/boardui/
+# Pull requests that change this workflow or the shared setup only build it.
+on:
+  push:
+    branches: [master]
+  pull_request:
+    paths:
+      - .github/workflows/pages.yml
+      - .github/actions/setup-web/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time; a newer one waits instead of cancelling a deployment in progress.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build the demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # The same setup as the CI Web job, which tests the build on every pull request.
+      - uses: ./.github/actions/setup-web
+      # Also checks that dist/ contains no IPC consortium test data.
+      - run: pnpm build
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: packages/demo/dist
+
+  deploy:
+    name: Deploy
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

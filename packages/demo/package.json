@@ -1,13 +1,13 @@
 {
   "name": "@boardui/demo",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "boardui demo: drop an IPC-2581 file, convert it locally, view it in 3D.",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "build": "tsc --noEmit -p tsconfig.json && vite build && node scripts/check-dist.mjs",
     "preview": "vite preview --port 4173 --strictPort",
     "test": "vitest run",
     "e2e": "playwright test"

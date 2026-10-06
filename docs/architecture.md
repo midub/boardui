@@ -158,9 +158,16 @@ Nothing leaves the machine. Each conversion gets a fresh worker that is terminat
 - **Conformance:** convert every sample in `spec/samples`, then run the Khronos validator and `boardui validate`, then diff against the expected outputs.
 - **WASM:** build the module (`wasm-bindgen`, `wasm-opt`), then run a Node smoke test that converts the minimal sample.
 - **Viewer:** Vitest unit tests, plus Playwright smoke and screenshot tests of the demo (software rendering with SwiftShader in CI, in the Playwright Docker image), including converting every sample in the browser.
+- **Demo build:** `pnpm build` fails if the demo's `dist/` contains an IPC consortium test case (`packages/demo/scripts/check-dist.mjs`).
+- **Release build:** pull requests that change `release.yml` build, smoke-test and package the CLI for every release target without publishing.
 - **Performance:** a `criterion` benchmark on the largest sample, with results tracked over time.
 
 ## Releases and hosting
 
-- v1 publishes nothing to crates.io or npm. The `boardui` CLI ships as prebuilt binaries (Linux, macOS, Windows) on GitHub Releases, built by a workflow from version tags. Crates set `publish = false` and npm packages `"private": true`.
-- The demo is hosted on GitHub Pages at <https://midub.github.io/boardui/>, deployed by CI from `master`. There is no custom domain: `boardui.com` and the unscoped `boardui` npm package belong to an unrelated project.
+- v1 publishes nothing to crates.io or npm. Crates set `publish = false` and npm packages `"private": true`; the README explains how to use the viewer from a source build.
+- The `boardui` CLI ships as prebuilt binaries on GitHub Releases. Pushing a tag `v<version>` (it must match the workspace version in `Cargo.toml`) runs `.github/workflows/release.yml`:
+  - it builds `x86_64-unknown-linux-musl` and `aarch64-unknown-linux-musl` (static), `x86_64-apple-darwin`, `aarch64-apple-darwin` and `x86_64-pc-windows-msvc` (static CRT), each on a runner of its own platform;
+  - it smoke-tests each binary (`--version`, then converting and validating `minimal-2layer`);
+  - it packs `boardui-<version>-<target>.tar.gz` (`.zip` on Windows) with the binary, `LICENSE` and `README.md`, and writes `SHA256SUMS`;
+  - it creates the GitHub release with notes from `scripts/release-notes.sh`, which includes the version's `CHANGELOG.md` section.
+- The demo is hosted on GitHub Pages at <https://midub.github.io/boardui/>, deployed from `master` by `.github/workflows/pages.yml`. It builds the demo with the same setup as the CI Web job (`.github/actions/setup-web`). The IPC consortium test cases are test data only, so the demo links to them in the repository instead of shipping them. There is no custom domain: `boardui.com` and the unscoped `boardui` npm package belong to an unrelated project.

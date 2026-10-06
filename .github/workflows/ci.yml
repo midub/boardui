@@ -58,25 +58,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # `pnpm build` builds the WASM module of crates/boardui-wasm for @boardui/converter.
-      - run: rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
-      # The wasm-bindgen CLI must match the wasm-bindgen crate in Cargo.lock.
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: wasm-bindgen@0.2.129
-      - name: Install wasm-opt (binaryen)
-        run: |
-          curl -sSfL https://github.com/WebAssembly/binaryen/releases/download/version_133/binaryen-version_133-x86_64-linux.tar.gz \
-            | tar -xz -C "$RUNNER_TEMP"
-          echo "$RUNNER_TEMP/binaryen-version_133/bin" >> "$GITHUB_PATH"
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # Rust, wasm-bindgen, wasm-opt, pnpm, Node, `pnpm install` (shared with pages.yml).
+      - uses: ./.github/actions/setup-web
       - run: pnpm lint
+      # Also checks that the demo's dist/ contains no IPC consortium test data.
       - run: pnpm build
       - run: pnpm test
       - uses: actions/upload-artifact@v7

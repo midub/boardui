@@ -13,7 +13,7 @@ import type { ElementInfo, LoadProgress } from '@boardui/viewer';
 import { $, append, formatBytes, formatCount, formatSeconds, h } from './dom.js';
 import { classify, filesFromDrop, filesFromList, type InputFile } from './files.js';
 import { formatValue, isElementId, kindLabel, label, summary } from './names.js';
-import { SAMPLES, type Sample } from './samples.js';
+import { SAMPLES, type Sample, TEST_CASES, testCasePath, testCaseUrl } from './samples.js';
 import { StatsOverlay } from './stats.js';
 import './style.css';
 
@@ -785,7 +785,7 @@ window.addEventListener('keydown', (e) => {
 
 // Sample pickers: the top bar's select and the cards of the empty state.
 const select = $<HTMLSelectElement>('#sample-select');
-for (const group of ['KiCad', 'IPC consortium', 'Hand-written'] as const) {
+for (const group of ['KiCad', 'Hand-written'] as const) {
   const options = SAMPLES.filter((s) => s.group === group).map((s) =>
     h('option', { value: s.id }, `${s.name} (${formatBytes(__SAMPLE_SIZES__[s.xml] ?? 0)})`),
   );
@@ -797,10 +797,11 @@ select.addEventListener('change', () => {
   if (sample) void openSample(sample);
 });
 const cards = $('#sample-cards');
+const chips = $('#sample-chips');
 for (const sample of SAMPLES) {
   const featured = sample.group !== 'Hand-written';
   append(
-    cards,
+    featured ? cards : chips,
     h(
       'button',
       {
@@ -814,6 +815,34 @@ for (const sample of SAMPLES) {
       h('span', { class: 'sample-name' }, sample.name),
       featured ? h('span', { class: 'sample-desc' }, sample.description) : null,
       h('span', { class: 'sample-size' }, formatBytes(__SAMPLE_SIZES__[sample.xml] ?? 0)),
+    ),
+  );
+}
+// The IPC consortium test cases aren't part of the demo: links to the files in the repository,
+// which the user downloads and then drops here.
+const testCases = $('#test-case-links');
+for (const testCase of TEST_CASES) {
+  append(
+    testCases,
+    h(
+      'a',
+      {
+        class: 'sample-card',
+        href: testCaseUrl(testCase),
+        download: testCase.file,
+        target: '_blank',
+        rel: 'noopener',
+        title: `Download ${testCase.file}`,
+        dataset: { testCase: testCase.id },
+      },
+      h('span', { class: 'sample-group' }, 'IPC consortium'),
+      h('span', { class: 'sample-name' }, testCase.name),
+      h('span', { class: 'sample-desc' }, testCase.description),
+      h(
+        'span',
+        { class: 'sample-size' },
+        `${formatBytes(__SAMPLE_SIZES__[testCasePath(testCase)] ?? 0)} ↓`,
+      ),
     ),
   );
 }

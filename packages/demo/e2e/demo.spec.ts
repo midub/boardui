@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { TEST_CASES_REF } from '../src/samples.js';
 import { collectErrors, openBoard, screenPoint, settle, viewerCall } from './helpers.js';
 
 const sample = (path: string) =>
@@ -11,7 +12,14 @@ test('shows the landing page', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto('./');
   await expect(page.locator('#empty')).toBeVisible();
-  await expect(page.locator('.sample-card')).toHaveCount(4);
+  await expect(page.locator('#sample-cards .sample-card')).toHaveCount(1);
+  // The IPC consortium test cases are links to the repository at the release tag.
+  const testCases = page.locator('#test-case-links a');
+  await expect(testCases).toHaveCount(3);
+  await expect(testCases.first()).toHaveAttribute(
+    'href',
+    `https://github.com/midub/boardui/raw/${TEST_CASES_REF}/spec/samples/ipc-testcases/testcase1-RevC-Assembly.xml`,
+  );
   await expect(page).toHaveScreenshot('empty.png');
   expect(errors).toEqual([]);
 });

@@ -1,23 +1,25 @@
 import { createReadStream, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
-import { sampleFiles } from './src/samples.js';
+import { sampleFiles, TEST_CASES, testCasePath } from './src/samples.js';
 
 const samplesDir = fileURLToPath(new URL('../../spec/samples/', import.meta.url));
 
 /**
  * Serves the sample boards (`src/samples.ts`) from `spec/samples` under `<base>samples/` in dev
- * and copies them into the build, and defines `__SAMPLE_SIZES__` (bytes per file).
+ * and copies them into the build, and defines `__SAMPLE_SIZES__` (bytes per file, including the
+ * IPC consortium test cases, which are only linked to: `scripts/check-dist.mjs`).
  */
 function samples(): Plugin {
   const files = sampleFiles();
+  const sized = [...files, ...TEST_CASES.map(testCasePath)];
   let base = '/';
   return {
     name: 'boardui-samples',
     config: () => ({
       define: {
         __SAMPLE_SIZES__: JSON.stringify(
-          Object.fromEntries(files.map((f) => [f, statSync(samplesDir + f).size])),
+          Object.fromEntries(sized.map((f) => [f, statSync(samplesDir + f).size])),
         ),
       },
     }),
@@ -45,7 +47,7 @@ function samples(): Plugin {
   };
 }
 
-// Served from https://midub.github.io/boardui/ (M6).
+// Served from https://midub.github.io/boardui/ (GitHub Pages, .github/workflows/pages.yml).
 export default defineConfig({
   base: '/boardui/',
   plugins: [samples()],
