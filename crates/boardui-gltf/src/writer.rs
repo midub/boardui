@@ -194,6 +194,8 @@ pub struct FeatureRow {
     pub component: Option<u32>,
     /// The fiducial type of a [`FeatureKind::Fiducial`] feature.
     pub fiducial: Option<Fiducial>,
+    /// Row in the `instances` table; `None` for the converted step's own features.
+    pub instance: Option<u32>,
 }
 
 /// A layer of the board (spec §4, §8.3).
@@ -258,6 +260,8 @@ pub struct ComponentAsset {
     pub transform: Transform,
     /// The body, if any.
     pub body: Option<BodyRef>,
+    /// Row in the `instances` table; `None` for the converted step's own components.
+    pub instance: Option<u32>,
 }
 
 /// The body of a component.
@@ -281,6 +285,35 @@ pub struct PlaceholderBody {
     pub name: String,
     /// Parts of the body, each a closed prism in the component frame.
     pub parts: Vec<(BuiltinMaterial, Prism)>,
+}
+
+/// A net (spec §8.2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NetRow {
+    /// Net name.
+    pub name: String,
+    /// Row in the `instances` table; `None` for the converted step's own nets.
+    pub instance: Option<u32>,
+}
+
+/// A placed copy of a step in a panel (spec §6.14).
+#[derive(Debug, Clone, PartialEq)]
+pub struct InstanceAsset {
+    /// Instance name, `<step>-<k>`, not percent-encoded.
+    pub name: String,
+    /// Name of the instance's step.
+    pub step: String,
+    /// Row of the instance this copy is placed in; `None` for copies placed in the converted
+    /// step.
+    pub parent: Option<u32>,
+    /// Where the step's origin lands, in metres (IPC-2581 axes).
+    pub x: f64,
+    /// See [`x`](Self::x).
+    pub y: f64,
+    /// Counter-clockwise rotation, in degrees.
+    pub angle: f64,
+    /// [`Side::Bottom`] for a flipped copy, else [`Side::Top`].
+    pub side: Side,
 }
 
 /// A component pin referenced by a feature (spec §8.2).
@@ -313,12 +346,14 @@ pub struct BoardAsset {
     pub layers: Vec<LayerAsset>,
     /// Drill layers.
     pub drills: Vec<DrillAsset>,
-    /// Net names; the index is the row.
-    pub nets: Vec<String>,
+    /// Nets; the index is the row.
+    pub nets: Vec<NetRow>,
     /// Components; the index is the row.
     pub components: Vec<ComponentAsset>,
     /// Pins; the index is the row.
     pub pins: Vec<PinRow>,
+    /// Instances of a panel's steps; the index is the row.
+    pub instances: Vec<InstanceAsset>,
     /// Shared placeholder bodies.
     pub placeholders: Vec<PlaceholderBody>,
     /// Shared user models.
@@ -390,6 +425,7 @@ impl Writer {
             nets: self.nets_table(asset),
             components: self.components_table(asset, &component_nodes),
             pins: self.pins_table(asset),
+            instances: self.instances_table(asset),
         };
 
         let mut board_layers = Vec::new();
@@ -530,20 +566,27 @@ impl Writer {
         let mut nodes = Vec::with_capacity(asset.components.len());
         for (row, component) in asset.components.iter().enumerate() {
             let info = ComponentInfo {
-                id: format!("cmp/{}", encode_id_segment(&component.ref_des)),
+                id: component_id(asset, component),
                 row: row as u32,
                 ref_des: component.ref_des.clone(),
                 part: component.part.clone(),
                 package: component.package.clone(),
                 side: component.side,
                 mount: component.mount,
+                instance: component
+                    .instance
+                    .map(|i| instance_id(&asset.instances[i as usize].name)),
+            };
+            let name = match component.instance {
+                Some(i) => format!("{}/{}", asset.instances[i as usize].name, component.ref_des),
+                None => component.ref_des.clone(),
             };
             let mut node = Node {
                 extras: Some(
                     serde_json::to_value(ComponentExtras { boardui: info })
                         .expect("extras serialize"),
                 ),
-                ..named(&component.ref_des)
+                ..named(&name)
             };
             component.transform.apply(&mut node);
             match component.body {
@@ -653,28 +696,50 @@ impl Writer {
         let ids = asset
             .nets
             .iter()
-            .map(|n| format!("net/{}", encode_id_segment(n)))
+            .map(|n| {
+                let scope = scope(asset, n.instance);
+                format!("net/{scope}{}", encode_id_segment(&n.name))
+            })
             .collect();
-        self.table(
-            "nets",
-            "net",
-            asset.nets.len(),
-            vec![
-                Column::Strings("id", ids),
-                Column::Strings("name", asset.nets.clone()),
-            ],
-        )
+        let mut columns = vec![
+            Column::Strings("id", ids),
+            Column::Strings("name", asset.nets.iter().map(|n| n.name.clone()).collect()),
+        ];
+        columns.extend(Column::optional(
+            "instance",
+            asset.nets.iter().map(|n| n.instance).collect(),
+        ));
+        self.table("nets", "net", asset.nets.len(), columns)
+    }
+
+    fn instances_table(&mut self, asset: &BoardAsset) -> Option<u32> {
+        let instances = &asset.instances;
+        let mut columns = vec![
+            Column::Strings(
+                "id",
+                instances.iter().map(|i| instance_id(&i.name)).collect(),
+            ),
+            Column::Strings("step", instances.iter().map(|i| i.step.clone()).collect()),
+        ];
+        columns.extend(Column::optional(
+            "parent",
+            instances.iter().map(|i| i.parent).collect(),
+        ));
+        columns.extend([
+            Column::F64("x", instances.iter().map(|i| i.x).collect()),
+            Column::F64("y", instances.iter().map(|i| i.y).collect()),
+            Column::F64("angle", instances.iter().map(|i| i.angle).collect()),
+            Column::U8("side", instances.iter().map(|i| i.side.value()).collect()),
+        ]);
+        self.table("instances", "instance", instances.len(), columns)
     }
 
     fn components_table(&mut self, asset: &BoardAsset, nodes: &[u32]) -> Option<u32> {
         let components = &asset.components;
-        let columns = vec![
+        let mut columns = vec![
             Column::Strings(
                 "id",
-                components
-                    .iter()
-                    .map(|c| format!("cmp/{}", encode_id_segment(&c.ref_des)))
-                    .collect(),
+                components.iter().map(|c| component_id(asset, c)).collect(),
             ),
             Column::Strings(
                 "refDes",
@@ -704,6 +769,10 @@ impl Writer {
             ),
             Column::U32("node", nodes.to_vec()),
         ];
+        columns.extend(Column::optional(
+            "instance",
+            components.iter().map(|c| c.instance).collect(),
+        ));
         self.table("components", "component", components.len(), columns)
     }
 
@@ -712,10 +781,11 @@ impl Writer {
         let ids = pins
             .iter()
             .map(|p| {
-                let component = &asset.components[p.component as usize].ref_des;
+                let component = &asset.components[p.component as usize];
                 format!(
-                    "pin/{}/{}",
-                    encode_id_segment(component),
+                    "pin/{}{}/{}",
+                    scope(asset, component.instance),
+                    encode_id_segment(&component.ref_des),
                     encode_id_segment(&p.number)
                 )
             })
@@ -754,6 +824,7 @@ impl Writer {
             ),
             ("pin", |r| r.pin),
             ("component", |r| r.component),
+            ("instance", |r| r.instance),
         ] {
             if rows.iter().any(|r| get(r).is_some()) {
                 columns.push(Column::U32(
@@ -784,14 +855,44 @@ fn named(name: &str) -> Node {
     }
 }
 
+/// The ID of a component (spec §5).
+fn component_id(asset: &BoardAsset, component: &ComponentAsset) -> String {
+    let scope = scope(asset, component.instance);
+    format!("cmp/{scope}{}", encode_id_segment(&component.ref_des))
+}
+
+/// The ID of an instance (spec §5).
+fn instance_id(name: &str) -> String {
+    format!("inst/{}", encode_id_segment(name))
+}
+
+/// The instance segment of an element ID, with its trailing `/`; empty outside instances
+/// (spec §5).
+fn scope(asset: &BoardAsset, instance: Option<u32>) -> String {
+    instance.map_or_else(String::new, |i| {
+        format!("{}/", encode_id_segment(&asset.instances[i as usize].name))
+    })
+}
+
 /// A property table column.
 enum Column {
     Strings(&'static str, Vec<String>),
     U8(&'static str, Vec<u8>),
     U32(&'static str, Vec<u32>),
+    F64(&'static str, Vec<f64>),
 }
 
 impl Column {
+    /// An optional row reference column, or nothing if every row has none.
+    fn optional(name: &'static str, rows: Vec<Option<u32>>) -> Option<Self> {
+        rows.iter().any(Option::is_some).then(|| {
+            Self::U32(
+                name,
+                rows.into_iter().map(|r| r.unwrap_or(NO_ROW)).collect(),
+            )
+        })
+    }
+
     /// Writes the column. Optional string columns whose values are all empty are left out:
     /// their `noData` is the empty string, and glTF buffer views can't be empty.
     fn write(self, out: &mut AssetBuilder) -> Option<(String, PropertyTableProperty)> {
@@ -821,6 +922,10 @@ impl Column {
             }
             Self::U8(name, values) => (name.to_owned(), plain(out, &values)),
             Self::U32(name, values) => {
+                let bytes: Vec<u8> = values.iter().flat_map(|v| v.to_le_bytes()).collect();
+                (name.to_owned(), plain(out, &bytes))
+            }
+            Self::F64(name, values) => {
                 let bytes: Vec<u8> = values.iter().flat_map(|v| v.to_le_bytes()).collect();
                 (name.to_owned(), plain(out, &bytes))
             }

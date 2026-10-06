@@ -24,5 +24,6 @@ pub use json::Root;
 pub use model::{Model, ModelError, ModelImage, ModelPrimitive, ModelTexture};
 pub use writer::{
     BoardAsset, BodyRef, BuiltinMaterial, ComponentAsset, DrillAsset, EXTENSIONS, FeatureRow,
-    LayerAsset, PinRow, PlaceholderBody, Transform, encode_id_segment, layer_id,
+    InstanceAsset, LayerAsset, NetRow, PinRow, PlaceholderBody, Transform, encode_id_segment,
+    layer_id,
 };

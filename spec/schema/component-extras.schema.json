@@ -10,13 +10,14 @@
       "type": "object",
       "required": ["id", "row", "refDes", "side"],
       "properties": {
-        "id": { "type": "string", "pattern": "^cmp/[^/]+$" },
+        "id": { "type": "string", "pattern": "^cmp/([^/]+/)?[^/]+$" },
         "row": { "type": "integer", "minimum": 0 },
         "refDes": { "type": "string" },
         "part": { "type": "string" },
         "package": { "type": "string" },
         "side": { "enum": ["TOP", "BOTTOM"] },
-        "mount": { "enum": ["SMT", "THMT", "OTHER"] }
+        "mount": { "enum": ["SMT", "THMT", "OTHER"] },
+        "instance": { "type": "string", "pattern": "^inst/[^/]+$", "description": "ID of the component's instance in a panel (spec §6.14)." }
       },
       "additionalProperties": false
     }

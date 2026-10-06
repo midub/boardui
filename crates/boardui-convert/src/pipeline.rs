@@ -7,14 +7,15 @@ use boardui_geom::{
     Region, Shape, Tolerance, par,
 };
 use boardui_gltf::{
-    BoardAsset, DrillAsset, FeatureKind, FeatureRow, Fiducial, LayerAsset, PinRow, Role, Side,
-    Source,
+    BoardAsset, DrillAsset, FeatureKind, FeatureRow, Fiducial, LayerAsset, NetRow, PinRow, Role,
+    Side, Source,
 };
 use boardui_ipc2581 as ipc;
 use glam::DAffine2;
 
 use crate::colours;
 use crate::components::{self, PadRef};
+use crate::panel::{self, Flip, Part};
 use crate::shapes::{ShapeConverter, erases, is_stroke, point};
 use crate::stackup::{self, LayerClass, Stack, Synthesize};
 use crate::{Conversion, ConvertError, Options, Stats, Timings, Warning, Warnings};
@@ -57,10 +58,23 @@ pub(crate) fn run(
     }
     let mut warnings = Warnings::default();
     let features_step = timings.step("stack-up, features, components");
-    let step = select_step(doc, options)?;
+    let step = panel::select_step(doc, options)?;
+    let (parts, instances) = panel::expand(&doc.ecad, step, &mut warnings);
     let mut stack = stackup::build(&doc.ecad, &mut warnings).map_err(ConvertError::Input)?;
-    let synthesize = package_layers(&doc.ecad, step, &stack);
-    stackup::add_optional(&mut stack, &doc.ecad, step, synthesize, &mut warnings);
+    let flip = Flip::new(&doc.ecad, &stack);
+    // Whether any part puts features on a layer: flipped copies put their counterparts'.
+    let featured = |name: &str| {
+        parts.iter().any(|part| {
+            let source = if part.flipped {
+                flip.layer(name)
+            } else {
+                Some(name)
+            };
+            source.is_some_and(|s| stackup::has_features(part.step, s))
+        })
+    };
+    let synthesize = package_layers(&doc.ecad, &parts, &stack, &featured);
+    stackup::add_optional(&mut stack, &doc.ecad, &featured, synthesize, &mut warnings);
     let colours = colours::resolve(doc, &stack, &mut warnings);
     if doc
         .ecad
@@ -71,24 +85,50 @@ pub(crate) fn run(
         warnings.push("negative layers are drawn as positive");
     }
 
-    let nets: Vec<String> = step.nets().into_iter().map(str::to_owned).collect();
-    let net_rows: HashMap<&str, u32> = nets
+    // Nets and components of every part, in part order (spec §6.14).
+    let mut nets: Vec<NetRow> = Vec::new();
+    let mut net_rows = Vec::with_capacity(parts.len());
+    let mut component_rows = Vec::with_capacity(parts.len());
+    let mut components_so_far = 0;
+    for part in &parts {
+        let mut rows: HashMap<&str, u32> = HashMap::new();
+        for net in part.step.nets() {
+            rows.insert(net, nets.len() as u32);
+            nets.push(NetRow {
+                name: net.to_owned(),
+                instance: part.instance,
+            });
+        }
+        net_rows.push(rows);
+        let rows: HashMap<&str, u32> = part
+            .step
+            .components
+            .values()
+            .enumerate()
+            .map(|(i, c)| (c.ref_des.as_str(), (components_so_far + i) as u32))
+            .collect();
+        components_so_far += part.step.components.len();
+        component_rows.push(rows);
+    }
+    // Pads per step, in the step's own coordinates.
+    let mut pads: HashMap<&str, Vec<PadRef>> = HashMap::new();
+    for part in &parts {
+        pads.entry(part.step.name.as_str())
+            .or_insert_with(|| step_pads(part.step, &stack));
+    }
+    let mut seen = HashSet::new();
+    let steps: Vec<(&ipc::Step, &[PadRef])> = parts
         .iter()
-        .enumerate()
-        .map(|(i, n)| (n.as_str(), i as u32))
+        .filter(|p| seen.insert(p.step.name.as_str()))
+        .map(|p| (p.step, pads[p.step.name.as_str()].as_slice()))
         .collect();
-    let component_rows: HashMap<&str, u32> = step
-        .components
-        .values()
-        .enumerate()
-        .map(|(i, c)| (c.ref_des.as_str(), i as u32))
-        .collect();
-    let pads = pads(step, &stack);
-    let order = components::detect_mirror_order(step, &pads);
+    let order = components::detect_mirror_order(&steps);
     tracing::debug!("mirror order: {order:?}");
     let mut ctx = Context {
         content: &doc.content,
-        step,
+        parts: &parts,
+        part: 0,
+        flip: &flip,
         shapes: ShapeConverter::new(&doc.content, tolerance, order),
         net_rows,
         component_rows,
@@ -106,41 +146,73 @@ pub(crate) fn run(
     order.sort_by_key(|&i| stack.layers[i].role.is_optional());
     for i in order {
         let layer = &stack.layers[i];
-        let source = (!layer.synthesized)
-            .then(|| step.layer_features.get(&layer.name))
-            .flatten();
-        layer_features[i] = match (layer.role, source) {
-            (Role::Dielectric, Some(lf)) if lf.feature_count() > 0 => {
-                ctx.warnings.push(format!(
-                    "features on dielectric layer `{}` were skipped",
-                    layer.name
-                ));
-                Features::default()
+        if layer.synthesized {
+            continue;
+        }
+        for (k, part) in parts.iter().enumerate() {
+            let source = if part.flipped {
+                flip.layer(&layer.name)
+            } else {
+                Some(layer.name.as_str())
+            };
+            let Some(lf) = source.and_then(|s| part.step.layer_features.get(s)) else {
+                continue;
+            };
+            match layer.role {
+                Role::Dielectric if lf.feature_count() > 0 => {
+                    ctx.warnings.push(format!(
+                        "features on dielectric layer `{}` were skipped",
+                        lf.layer_ref
+                    ));
+                }
+                Role::Dielectric => {}
+                role => {
+                    ctx.part = k;
+                    let features = ctx.features(lf, role);
+                    layer_features[i].rows.extend(features.rows);
+                    layer_features[i].shapes.extend(features.shapes);
+                }
             }
-            (role, Some(lf)) if role != Role::Dielectric => ctx.features(lf, role),
-            _ => Features::default(),
-        };
+        }
     }
     ctx.package_drawings(&stack, &mut layer_features);
     let mut skipped = Vec::new();
-    for (name, lf) in step.layer_features.iter() {
-        // Optional layers that were left out have been reported already.
-        let known =
-            stack.index(name).is_some()
-                || doc.ecad.layers.get(name).is_some_and(|l| {
-                    match stackup::classify(&l.function) {
-                        LayerClass::Drill => true,
-                        LayerClass::Layer(role) => role.is_optional(),
-                        LayerClass::Ignored => false,
-                    }
-                });
-        if !known && lf.feature_count() > 0 {
-            let function = doc
+    for part in &parts {
+        for (name, lf) in part.step.layer_features.iter() {
+            if lf.feature_count() == 0 {
+                continue;
+            }
+            let class = doc
                 .ecad
                 .layers
                 .get(name)
-                .map_or("?", |l| l.function.as_str());
-            skipped.push(format!("{name} ({function})"));
+                .map(|l| stackup::classify(&l.function));
+            let target = match class {
+                Some(LayerClass::Drill) | None => Some(name),
+                Some(_) if part.flipped => flip.layer(name),
+                Some(_) => Some(name),
+            };
+            let Some(target) = target else {
+                ctx.warnings.push(format!(
+                    "layer `{name}` has no counterpart on the other side; its features in flipped copies of step `{}` were skipped",
+                    part.step.name
+                ));
+                continue;
+            };
+            // Optional layers that were left out have been reported already.
+            let known = stack.index(target).is_some()
+                || matches!(class, Some(LayerClass::Drill))
+                || matches!(class, Some(LayerClass::Layer(role)) if role.is_optional());
+            let entry = format!(
+                "{name} ({})",
+                doc.ecad
+                    .layers
+                    .get(name)
+                    .map_or("?", |l| l.function.as_str())
+            );
+            if !known && !skipped.contains(&entry) {
+                skipped.push(entry);
+            }
         }
     }
     if !skipped.is_empty() {
@@ -151,17 +223,18 @@ pub(crate) fn run(
     }
     let drills = ctx.drills(doc, &stack);
     let components = components::build(
-        step,
+        &parts,
         &stack,
         options.models.as_ref(),
         &mut ctx.shapes,
         &pads,
         ctx.warnings,
     );
-    let outline_shape = step
-        .profile
-        .as_ref()
-        .and_then(|p| ctx.shapes.contour(p, DAffine2::IDENTITY));
+    // The board outline: the profiles of all parts (spec §6.14).
+    let profiles: Vec<Shape> = parts
+        .iter()
+        .filter_map(|p| ctx.shapes.contour(p.step.profile.as_ref()?, p.frame))
+        .collect();
     let pins = std::mem::take(&mut ctx.pins);
     for message in std::mem::take(&mut ctx.shapes.warnings) {
         ctx.warnings.push(message);
@@ -214,7 +287,16 @@ pub(crate) fn run(
     };
 
     // Board outline and soldermask openings.
-    let outline = match outline_shape.and_then(|s| s.to_region(tolerance).ok()) {
+    let mut profiles: Vec<Region> = profiles
+        .iter()
+        .filter_map(|s| s.to_region(tolerance).ok())
+        .collect();
+    let outline = match profiles.len() {
+        0 => None,
+        1 => profiles.pop(),
+        _ => Some(Region::union_all(&profiles)),
+    };
+    let outline = match outline {
         Some(region) if !region.is_empty() => region,
         _ => {
             warnings
@@ -360,6 +442,7 @@ pub(crate) fn run(
         drills: drill_assets.len(),
         components: components.components.len(),
         nets: nets.len(),
+        instances: instances.len(),
         pins: pins.len(),
         pins_checked: components.pins_checked,
         pins_misplaced: components.pins_misplaced,
@@ -394,6 +477,7 @@ pub(crate) fn run(
         nets,
         components: components.components,
         pins,
+        instances,
         placeholders: components.placeholders,
         models: components.models,
     };
@@ -422,7 +506,7 @@ pub(crate) fn run(
 }
 
 /// Pads on copper layers that reference a component pin.
-fn pads(step: &ipc::Step, stack: &Stack) -> Vec<PadRef> {
+fn step_pads(step: &ipc::Step, stack: &Stack) -> Vec<PadRef> {
     let mut pads = Vec::new();
     for i in stack.copper() {
         let Some(lf) = step.layer_features.get(&stack.layers[i].name) else {
@@ -450,42 +534,31 @@ fn pads(step: &ipc::Step, stack: &Stack) -> Vec<PadRef> {
     pads
 }
 
-fn select_step<'a>(
-    doc: &'a ipc::Document,
-    options: &Options,
-) -> Result<&'a ipc::Step, ConvertError> {
-    let steps = &doc.ecad.steps;
-    match &options.step {
-        Some(name) => steps
-            .get(name)
-            .ok_or_else(|| ConvertError::Input(format!("the file has no step `{name}`"))),
-        None => doc
-            .content
-            .step_refs
-            .iter()
-            .find_map(|name| steps.get(name))
-            .or_else(|| steps.values().next())
-            .ok_or_else(|| ConvertError::Input("the file has no step".into())),
-    }
-}
-
 /// The synthesized layers that package drawings need (spec §6.13): per side, a silkscreen
 /// layer if the side has none and one of its components' packages has a silkscreen, and an
 /// assembly layer if the side has no assembly layer with features and one of its
 /// components' packages has an assembly drawing.
-fn package_layers(ecad: &ipc::Ecad, step: &ipc::Step, stack: &Stack) -> Synthesize {
+fn package_layers(
+    ecad: &ipc::Ecad,
+    parts: &[Part<'_>],
+    stack: &Stack,
+    featured: &dyn Fn(&str) -> bool,
+) -> Synthesize {
     let mut out = Synthesize::default();
     let drawn = |d: &Option<ipc::PackageDrawing>| {
         d.as_ref()
             .is_some_and(|d| !d.outlines.is_empty() || !d.markings.is_empty())
     };
-    for c in step.components.values() {
-        let Some(package) = step.packages.get(&c.package_ref) else {
-            continue;
-        };
-        let k = (components::component_side(c, stack) == Side::Bottom) as usize;
-        out.silkscreen[k] |= drawn(&package.silkscreen);
-        out.assembly[k] |= drawn(&package.assembly_drawing);
+    for part in parts {
+        for c in part.step.components.values() {
+            let Some(package) = part.step.packages.get(&c.package_ref) else {
+                continue;
+            };
+            let side = components::placed_side(c, stack, part.flipped);
+            let k = (side == Side::Bottom) as usize;
+            out.silkscreen[k] |= drawn(&package.silkscreen);
+            out.assembly[k] |= drawn(&package.assembly_drawing);
+        }
     }
     for (k, side) in [Side::Top, Side::Bottom].into_iter().enumerate() {
         if stack
@@ -498,7 +571,7 @@ fn package_layers(ecad: &ipc::Ecad, step: &ipc::Step, stack: &Stack) -> Synthesi
     }
     for layer in ecad.layers.values() {
         if stackup::classify(&layer.function) == LayerClass::Layer(Role::Assembly)
-            && stackup::has_features(step, &layer.name)
+            && featured(&layer.name)
         {
             out.assembly[(stackup::optional_side(layer) == Side::Bottom) as usize] = false;
         }
@@ -512,9 +585,19 @@ const SILKSCREEN_COVERED: f64 = 0.1;
 
 /// Adds package drawing shapes to a layer as `MARKING` features of `component`, numbered on
 /// from the layer's last feature.
-fn push_drawing(out: &mut Features, shapes: Vec<Option<Shape>>, component: u32) {
+fn push_drawing(
+    out: &mut Features,
+    shapes: Vec<Option<Shape>>,
+    component: u32,
+    instance: Option<u32>,
+) {
     for shape in shapes {
-        let source = out.rows.last().map_or(0, |r| r.source + 1);
+        let source = out
+            .rows
+            .iter()
+            .rev()
+            .find(|r| r.instance == instance)
+            .map_or(0, |r| r.source + 1);
         out.rows.push(FeatureRow {
             kind: FeatureKind::Marking,
             source,
@@ -522,6 +605,7 @@ fn push_drawing(out: &mut Features, shapes: Vec<Option<Shape>>, component: u32) 
             pin: None,
             component: Some(component),
             fiducial: None,
+            instance,
         });
         out.shapes.push(geom::Feature {
             shape: shape.unwrap_or(Shape::Union(Vec::new())),
@@ -569,6 +653,7 @@ fn sheet_row() -> FeatureRow {
         pin: None,
         component: None,
         fiducial: None,
+        instance: None,
     }
 }
 
@@ -645,10 +730,15 @@ fn bounding_outline(stack: &Stack, regions: &[Vec<Region>]) -> Region {
 
 struct Context<'a> {
     content: &'a ipc::Content,
-    step: &'a ipc::Step,
+    parts: &'a [Part<'a>],
+    /// The part being converted.
+    part: usize,
+    flip: &'a Flip,
     shapes: ShapeConverter<'a>,
-    net_rows: HashMap<&'a str, u32>,
-    component_rows: HashMap<&'a str, u32>,
+    /// Net rows by name, per part.
+    net_rows: Vec<HashMap<&'a str, u32>>,
+    /// Component rows by refDes, per part.
+    component_rows: Vec<HashMap<&'a str, u32>>,
     pins: Vec<PinRow>,
     pin_rows: HashMap<(u32, String), u32>,
     tolerance: Tolerance,
@@ -656,15 +746,32 @@ struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
+    /// The step of the current part.
+    fn step(&self) -> &'a ipc::Step {
+        self.parts[self.part].step
+    }
+
+    /// Where an element of the current part's step lands on the board.
+    fn placement(&self, location: ipc::Point, xform: &ipc::Xform) -> DAffine2 {
+        self.parts[self.part].frame * self.shapes.placement(location, xform)
+    }
+
+    fn net_row(&self, net: Option<&str>) -> Option<u32> {
+        net.and_then(|n| self.net_rows[self.part].get(n)).copied()
+    }
+
+    fn component_row(&self, ref_des: Option<&str>) -> Option<u32> {
+        ref_des
+            .and_then(|c| self.component_rows[self.part].get(c))
+            .copied()
+    }
+
     /// The features of a copper, soldermask, silkscreen, paste or drawing layer.
     fn features(&mut self, lf: &ipc::LayerFeature, role: Role) -> Features {
         let mut out = Features::default();
+        let instance = self.parts[self.part].instance;
         for (set, feature) in lf.features() {
-            let net = set
-                .net
-                .as_deref()
-                .and_then(|n| self.net_rows.get(n))
-                .copied();
+            let net = self.net_row(set.net.as_deref());
             let mut polarity = set.polarity;
             let mut fiducial = None;
             let (kind, shape, pin_ref) = match &feature.element {
@@ -677,7 +784,7 @@ impl<'a> Context<'a> {
                     (kind, shape, pad.pin_refs.first())
                 }
                 ipc::FeatureElement::Features(f) => {
-                    let at = self.shapes.placement(f.location, &f.xform);
+                    let at = self.placement(f.location, &f.xform);
                     let shape = self.shapes.area(&f.shape, at);
                     if erases(&f.shape, self.content) {
                         polarity = ipc::Polarity::Negative;
@@ -695,7 +802,7 @@ impl<'a> Context<'a> {
                     (kind, shape, None)
                 }
                 ipc::FeatureElement::Fiducial(f) => {
-                    let at = self.shapes.placement(f.location, &f.xform);
+                    let at = self.placement(f.location, &f.xform);
                     fiducial = Some(match f.kind {
                         ipc::FiducialKind::Global => Fiducial::Global,
                         ipc::FiducialKind::Local => Fiducial::Local,
@@ -716,8 +823,7 @@ impl<'a> Context<'a> {
             let component_ref = pin_ref
                 .and_then(|p| p.component_ref.as_ref())
                 .or(set.component_ref.as_ref());
-            let component =
-                component_ref.and_then(|c| self.component_rows.get(c.as_str()).copied());
+            let component = self.component_row(component_ref.map(String::as_str));
             let pin = match (pin_ref, component, component_ref) {
                 (Some(p), Some(row), Some(ref_des)) => {
                     Some(self.pin_row(row, ref_des, &p.pin, p.title.as_deref(), net))
@@ -731,6 +837,7 @@ impl<'a> Context<'a> {
                 pin,
                 component,
                 fiducial: fiducial.filter(|_| kind == FeatureKind::Fiducial),
+                instance,
             });
             out.shapes.push(geom::Feature {
                 shape: shape.unwrap_or(Shape::Union(Vec::new())),
@@ -770,35 +877,42 @@ impl<'a> Context<'a> {
                 referenced.insert(i, rows.collect());
             }
         }
-        for c in self.step.components.values() {
-            let Some(package) = self.step.packages.get(&c.package_ref) else {
-                continue;
+        for k in 0..self.parts.len() {
+            self.part = k;
+            let (step, flipped, instance) = {
+                let part = &self.parts[k];
+                (part.step, part.flipped, part.instance)
             };
-            let Some(&row) = self.component_rows.get(c.ref_des.as_str()) else {
-                continue;
-            };
-            let side = components::component_side(c, stack);
-            let at = self.shapes.placement(c.location, &c.xform);
-            if let (Some(drawing), Some(i)) = (
-                &package.assembly_drawing,
-                layer_of(Role::Assembly, side, true),
-            ) {
-                let shapes = self.drawing_shapes(drawing, at);
-                push_drawing(&mut layer_features[i], shapes, row);
-            }
-            if let (Some(drawing), Some(i)) =
-                (&package.silkscreen, layer_of(Role::Silkscreen, side, false))
-            {
-                let shapes = self.drawing_shapes(drawing, at);
-                let draw = stack.layers[i].synthesized
-                    || !referenced.get(&i).is_some_and(|r| r.contains(&row)) && {
-                        let layer = silk_regions.entry(i).or_insert_with(|| {
-                            regions_with_bounds(&layer_features[i], self.tolerance)
-                        });
-                        !covers(layer, &shapes, self.tolerance)
-                    };
-                if draw {
-                    push_drawing(&mut layer_features[i], shapes, row);
+            for c in step.components.values() {
+                let Some(package) = step.packages.get(&c.package_ref) else {
+                    continue;
+                };
+                let Some(row) = self.component_row(Some(&c.ref_des)) else {
+                    continue;
+                };
+                let side = components::placed_side(c, stack, flipped);
+                let at = self.placement(c.location, &c.xform);
+                if let (Some(drawing), Some(i)) = (
+                    &package.assembly_drawing,
+                    layer_of(Role::Assembly, side, true),
+                ) {
+                    let shapes = self.drawing_shapes(drawing, at);
+                    push_drawing(&mut layer_features[i], shapes, row, instance);
+                }
+                if let (Some(drawing), Some(i)) =
+                    (&package.silkscreen, layer_of(Role::Silkscreen, side, false))
+                {
+                    let shapes = self.drawing_shapes(drawing, at);
+                    let draw = stack.layers[i].synthesized
+                        || !referenced.get(&i).is_some_and(|r| r.contains(&row)) && {
+                            let layer = silk_regions.entry(i).or_insert_with(|| {
+                                regions_with_bounds(&layer_features[i], self.tolerance)
+                            });
+                            !covers(layer, &shapes, self.tolerance)
+                        };
+                    if draw {
+                        push_drawing(&mut layer_features[i], shapes, row, instance);
+                    }
                 }
             }
         }
@@ -823,12 +937,12 @@ impl<'a> Context<'a> {
 
     /// A pad's shape: its own, or its padstack's regular pad on this layer.
     fn pad_shape(&mut self, pad: &ipc::Pad, layer: &str) -> Option<Shape> {
-        let at = self.shapes.placement(pad.location, &pad.xform);
+        let at = self.placement(pad.location, &pad.xform);
         if let Some(shape) = &pad.shape {
             return self.shapes.area(shape, at);
         }
         let def = self
-            .step
+            .step()
             .padstack_defs
             .get(pad.padstack_def_ref.as_deref()?)?;
         let pp = def
@@ -854,10 +968,10 @@ impl<'a> Context<'a> {
             return row;
         }
         let name = self
-            .step
+            .step()
             .components
             .get(ref_des)
-            .and_then(|c| self.step.packages.get(&c.package_ref))
+            .and_then(|c| self.step().packages.get(&c.package_ref))
             .and_then(|p| p.pins.get(number))
             .and_then(|p| p.name.clone())
             .or_else(|| title.map(str::to_owned));
@@ -872,7 +986,7 @@ impl<'a> Context<'a> {
         row
     }
 
-    /// Drill and rout layers with their holes and slots (spec §6.3).
+    /// Drill and rout layers with their holes and slots (spec §6.3), from every part.
     fn drills(&mut self, doc: &ipc::Document, stack: &Stack) -> Vec<Drill> {
         let copper = stack.copper();
         let (first, last) = (copper[0], *copper.last().expect("copper"));
@@ -881,9 +995,32 @@ impl<'a> Context<'a> {
             if stackup::classify(&layer.function) != LayerClass::Drill {
                 continue;
             }
-            let Some(lf) = self.step.layer_features.get(&layer.name) else {
+            let mut rows = Vec::new();
+            let mut holes = Vec::new();
+            let mut found = false;
+            for k in 0..self.parts.len() {
+                self.part = k;
+                let part = &self.parts[k];
+                let source = if part.flipped {
+                    self.flip.drill(&layer.name)
+                } else {
+                    &layer.name
+                };
+                let Some(lf) = part.step.layer_features.get(source) else {
+                    continue;
+                };
+                found = true;
+                if part.flipped && !self.flip.has_drill(source) && lf.feature_count() > 0 {
+                    self.warnings.push(format!(
+                        "drill layer `{source}` has no counterpart with the mirrored span; flipped copies of step `{}` keep its span",
+                        part.step.name
+                    ));
+                }
+                self.drill_features(lf, &mut rows, &mut holes);
+            }
+            if !found {
                 continue;
-            };
+            }
             let span = layer.span.as_ref().and_then(|span| {
                 let a = stack.index(&span.from_layer)?;
                 let b = stack.index(&span.to_layer)?;
@@ -898,53 +1035,6 @@ impl<'a> Context<'a> {
                 ));
             }
             let (from, to) = span.unwrap_or((first, last));
-            let mut rows = Vec::new();
-            let mut holes = Vec::new();
-            for (set, feature) in lf.features() {
-                let net = set
-                    .net
-                    .as_deref()
-                    .and_then(|n| self.net_rows.get(n))
-                    .copied();
-                let component = set
-                    .component_ref
-                    .as_deref()
-                    .and_then(|c| self.component_rows.get(c))
-                    .copied();
-                let hole = match &feature.element {
-                    ipc::FeatureElement::Hole(h) => Some(DrillHole {
-                        hole: geom::Hole::Round {
-                            center: point(h.position),
-                            diameter: h.diameter,
-                        },
-                        plated: h.plating != ipc::PlatingStatus::NonPlated,
-                    }),
-                    ipc::FeatureElement::SlotCavity(slot) => self
-                        .shapes
-                        .filled(
-                            &slot.shape,
-                            self.shapes.placement(slot.location, &slot.xform),
-                        )
-                        .map(|shape| DrillHole {
-                            hole: geom::Hole::Slot(shape),
-                            plated: slot.plating != ipc::PlatingStatus::NonPlated,
-                        }),
-                    _ => None,
-                };
-                let kind = match &hole {
-                    Some(h) if h.plated => FeatureKind::Barrel,
-                    _ => FeatureKind::Other,
-                };
-                rows.push(FeatureRow {
-                    kind,
-                    source: feature.source as u32,
-                    net,
-                    pin: None,
-                    component,
-                    fiducial: None,
-                });
-                holes.push(hole);
-            }
             drills.push(Drill {
                 name: layer.name.clone(),
                 from,
@@ -954,6 +1044,51 @@ impl<'a> Context<'a> {
             });
         }
         drills
+    }
+
+    /// The holes and slots of the current part on a drill layer.
+    fn drill_features(
+        &mut self,
+        lf: &ipc::LayerFeature,
+        rows: &mut Vec<FeatureRow>,
+        holes: &mut Vec<Option<DrillHole>>,
+    ) {
+        let part = &self.parts[self.part];
+        for (set, feature) in lf.features() {
+            let net = self.net_row(set.net.as_deref());
+            let component = self.component_row(set.component_ref.as_deref());
+            let hole = match &feature.element {
+                ipc::FeatureElement::Hole(h) => Some(DrillHole {
+                    hole: geom::Hole::Round {
+                        center: part.frame.transform_point2(point(h.position)),
+                        diameter: h.diameter,
+                    },
+                    plated: h.plating != ipc::PlatingStatus::NonPlated,
+                }),
+                ipc::FeatureElement::SlotCavity(slot) => {
+                    let at = self.placement(slot.location, &slot.xform);
+                    self.shapes.filled(&slot.shape, at).map(|shape| DrillHole {
+                        hole: geom::Hole::Slot(shape),
+                        plated: slot.plating != ipc::PlatingStatus::NonPlated,
+                    })
+                }
+                _ => None,
+            };
+            let kind = match &hole {
+                Some(h) if h.plated => FeatureKind::Barrel,
+                _ => FeatureKind::Other,
+            };
+            rows.push(FeatureRow {
+                kind,
+                source: feature.source as u32,
+                net,
+                pin: None,
+                component,
+                fiducial: None,
+                instance: part.instance,
+            });
+            holes.push(hole);
+        }
     }
 }
 

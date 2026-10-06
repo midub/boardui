@@ -167,11 +167,12 @@ pub fn optional_side(layer: &ipc::Layer) -> Side {
 }
 
 /// Adds the synthesized silkscreen layers, the paste layers and the drawing layers with
-/// features in `step` (spec §6.11–§6.13) to the stack.
+/// features (spec §6.11–§6.13) to the stack. `featured` tells whether the converted steps
+/// put features on a layer.
 pub fn add_optional(
     stack: &mut Stack,
     ecad: &ipc::Ecad,
-    step: &ipc::Step,
+    featured: &dyn Fn(&str) -> bool,
     synthesize: Synthesize,
     warnings: &mut Warnings,
 ) {
@@ -190,7 +191,7 @@ pub fn add_optional(
         .values()
         .filter(|l| {
             matches!(classify(&l.function), LayerClass::Layer(role) if role.is_optional())
-                && has_features(step, &l.name)
+                && featured(&l.name)
         })
         .collect();
     let role_of = |l: &ipc::Layer| match classify(&l.function) {
@@ -814,7 +815,8 @@ mod tests {
         let mut w = Warnings::default();
         let mut stack = build(&d.ecad, &mut w).unwrap();
         let step = d.ecad.steps.values().next().unwrap();
-        add_optional(&mut stack, &d.ecad, step, synthesize, &mut w);
+        let featured = |name: &str| has_features(step, name);
+        add_optional(&mut stack, &d.ecad, &featured, synthesize, &mut w);
         (stack, w)
     }
 

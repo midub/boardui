@@ -2,7 +2,7 @@
   "id": "boardui",
   "name": "boardui PCB metadata",
   "description": "EXT_structural_metadata schema embedded in every boardui asset. See spec/README.md §8.2. References between tables are UINT32 row indices; 4294967295 means none.",
-  "version": "0.4",
+  "version": "0.5",
   "enums": {
     "FeatureKind": {
       "valueType": "UINT8",
@@ -49,7 +49,8 @@
     "net": {
       "properties": {
         "id": { "type": "STRING", "required": true },
-        "name": { "type": "STRING", "required": true }
+        "name": { "type": "STRING", "required": true },
+        "instance": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 }
       }
     },
     "component": {
@@ -60,7 +61,8 @@
         "package": { "type": "STRING", "noData": "" },
         "side": { "type": "ENUM", "enumType": "Side", "required": true },
         "mount": { "type": "ENUM", "enumType": "Mount", "noData": "OTHER" },
-        "node": { "type": "SCALAR", "componentType": "UINT32", "required": true }
+        "node": { "type": "SCALAR", "componentType": "UINT32", "required": true },
+        "instance": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 }
       }
     },
     "pin": {
@@ -76,7 +78,7 @@
       "properties": {
         "kind": { "type": "ENUM", "enumType": "FeatureKind", "required": true },
         "source": {
-          "description": "0-based document-order index of the source feature within its layer; the feature ID is feat/<layer name>/<source>.",
+          "description": "0-based document-order index of the source feature within its layer in its step; the feature ID is feat/<layer name>/<source>, or feat/<instance>/<layer name>/<source> in an instance.",
           "type": "SCALAR",
           "componentType": "UINT32",
           "required": true
@@ -89,7 +91,20 @@
           "type": "ENUM",
           "enumType": "Fiducial",
           "noData": "NONE"
-        }
+        },
+        "instance": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 }
+      }
+    },
+    "instance": {
+      "description": "A placed copy of a step in a panel (spec §6.14). It maps a point (u, v) of its step to the board point (x, y) + R(angle) · F · (u, v) in IPC-2581 axes, where F mirrors u when side is BOTTOM.",
+      "properties": {
+        "id": { "type": "STRING", "required": true },
+        "step": { "type": "STRING", "required": true },
+        "parent": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 },
+        "x": { "type": "SCALAR", "componentType": "FLOAT64", "required": true },
+        "y": { "type": "SCALAR", "componentType": "FLOAT64", "required": true },
+        "angle": { "type": "SCALAR", "componentType": "FLOAT64", "required": true },
+        "side": { "type": "ENUM", "enumType": "Side", "required": true }
       }
     }
   }

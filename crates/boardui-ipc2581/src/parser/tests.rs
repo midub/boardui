@@ -1240,11 +1240,16 @@ mod step_repeat {
 
     #[test]
     fn optional_attributes_default_to_a_single_unrotated_copy() {
-        let d = panel(r#"<StepRepeat stepRef="B" x="0" y="0"/><StepRepeat stepRef="B" x="3" y="0" angle="180"/>"#);
+        let d = panel(
+            r#"<StepRepeat stepRef="B" x="0" y="0"/><StepRepeat stepRef="B" x="3" y="0" angle="180"/>"#,
+        );
         let repeats = &d.ecad.steps.get("P").unwrap().step_repeats;
         assert_eq!(repeats.len(), 2, "kept in document order");
         let r = &repeats[0];
-        assert_eq!((r.nx, r.ny, r.dx, r.dy, r.angle, r.mirror), (1, 1, 0.0, 0.0, 0.0, false));
+        assert_eq!(
+            (r.nx, r.ny, r.dx, r.dy, r.angle, r.mirror),
+            (1, 1, 0.0, 0.0, 0.0, false)
+        );
         assert_eq!(repeats[1].angle, 180.0);
     }
 
@@ -1265,9 +1270,13 @@ mod step_repeat {
     #[test]
     fn requires_step_ref_and_position() {
         let e = panel_err(r#"<StepRepeat x="0" y="0"/>"#);
-        assert!(matches!(e.kind(), ErrorKind::MissingAttribute { attribute, .. } if attribute == "stepRef"));
+        assert!(
+            matches!(e.kind(), ErrorKind::MissingAttribute { attribute, .. } if attribute == "stepRef")
+        );
         let e = panel_err(r#"<StepRepeat stepRef="B" x="0"/>"#);
-        assert!(matches!(e.kind(), ErrorKind::MissingAttribute { attribute, .. } if attribute == "y"));
+        assert!(
+            matches!(e.kind(), ErrorKind::MissingAttribute { attribute, .. } if attribute == "y")
+        );
         let e = panel_err(r#"<StepRepeat stepRef="B" x="0" y="0" nx="-1"/>"#);
         assert!(matches!(e.kind(), ErrorKind::InvalidValue { value, .. } if value == "-1"));
     }

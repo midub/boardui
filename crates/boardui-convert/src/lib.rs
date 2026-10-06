@@ -14,11 +14,14 @@
 //! 7. place components with placeholder bodies or user models (spec §6.8, §6.9);
 //! 8. write the metadata tables and the GLB ([`boardui_gltf`]).
 //!
+//! A panel converts with every step that its `StepRepeat`s place (spec §6.14).
+//!
 //! [`validate`] checks a GLB against the profile rules of spec §10.
 
 mod colours;
 mod components;
 mod models;
+mod panel;
 mod pipeline;
 mod shapes;
 mod stackup;
@@ -43,7 +46,8 @@ pub struct Options {
     pub tolerance: f64,
     /// Barrel wall thickness, in metres.
     pub plating_thickness: f64,
-    /// The step to convert. `None`: the first `StepRef`, or else the first step.
+    /// The step to convert. `None`: the root step, the first that no `StepRepeat`
+    /// references, preferring the order of the `StepRef`s (spec §6.14).
     pub step: Option<String>,
     /// User models for component bodies (spec §6.9).
     pub models: Option<ModelLibrary>,
@@ -117,6 +121,8 @@ pub struct Stats {
     pub components: usize,
     /// Nets.
     pub nets: usize,
+    /// Instances of steps placed by `StepRepeat`s (spec §6.14).
+    pub instances: usize,
     /// Pins.
     pub pins: usize,
     /// Package pins referenced by pads.

@@ -123,20 +123,28 @@ struct Table {
 enum Column {
     Strings(Vec<String>),
     Numbers(Vec<u32>),
+    Floats(Vec<f64>),
 }
 
 impl Table {
     fn strings(&self, name: &str) -> Option<&[String]> {
         match self.columns.get(name)? {
             Column::Strings(s) => Some(s),
-            Column::Numbers(_) => None,
+            _ => None,
         }
     }
 
     fn numbers(&self, name: &str) -> Option<&[u32]> {
         match self.columns.get(name)? {
             Column::Numbers(n) => Some(n),
-            Column::Strings(_) => None,
+            _ => None,
+        }
+    }
+
+    fn floats(&self, name: &str) -> Option<&[f64]> {
+        match self.columns.get(name)? {
+            Column::Floats(f) => Some(f),
+            _ => None,
         }
     }
 }
@@ -167,22 +175,27 @@ impl Validator<'_> {
         let components =
             self.shared_table(&tables, board.tables.components, "components", "component");
         let pins = self.shared_table(&tables, board.tables.pins, "pins", "pin");
+        let instances = self.shared_table(&tables, board.tables.instances, "instances", "instance");
         let empty = Table {
             count: 0,
             columns: HashMap::new(),
         };
-        let (Some(nets), Some(components), Some(pins)) = (nets, components, pins) else {
+        let (Some(nets), Some(components), Some(pins), Some(instances)) =
+            (nets, components, pins, instances)
+        else {
             return;
         };
-        let (nets, components, pins) = (
+        let (nets, components, pins, instances) = (
             nets.unwrap_or(&empty),
             components.unwrap_or(&empty),
             pins.unwrap_or(&empty),
+            instances.unwrap_or(&empty),
         );
-        self.nets(nets);
-        self.components(&board, components);
-        self.pins(pins, components, nets);
-        self.layers(&board, &tables, nets, components, pins);
+        let scopes = self.instances(instances);
+        self.nets(nets, &scopes);
+        self.components(&board, components, &scopes);
+        self.pins(pins, components, nets, &scopes);
+        self.layers(&board, &tables, nets, components, pins, instances);
     }
 
     fn board(&mut self) -> Option<Board> {
@@ -285,6 +298,21 @@ impl Validator<'_> {
                         .ok_or_else(|| "too few values".to_owned())
                         .map(|b| Column::Numbers(b.iter().map(|&v| u32::from(v)).collect()))
                 }),
+                _ if definition["componentType"] == "FLOAT64" => {
+                    view_bytes(self.root, self.bin, property.values).and_then(|b| {
+                        b.get(..count * 8)
+                            .ok_or_else(|| "too few values".to_owned())
+                            .map(|b| {
+                                Column::Floats(
+                                    b.as_chunks::<8>()
+                                        .0
+                                        .iter()
+                                        .map(|&c| f64::from_le_bytes(c))
+                                        .collect(),
+                                )
+                            })
+                    })
+                }
                 _ => view_bytes(self.root, self.bin, property.values).and_then(|b| {
                     b.get(..count * 4)
                         .ok_or_else(|| "too few values".to_owned())
@@ -531,13 +559,91 @@ impl Validator<'_> {
         }
     }
 
-    fn nets(&mut self, nets: &Table) {
+    /// Checks the instances (spec §6.14) and returns the ID segment of each, with its
+    /// trailing `/`.
+    fn instances(&mut self, instances: &Table) -> Vec<String> {
+        let empty = Vec::new();
+        let ids = instances.strings("id").unwrap_or(&empty);
+        let steps = instances.strings("step").unwrap_or(&empty);
+        let parents = instances.numbers("parent");
+        let sides = instances.numbers("side").unwrap_or(&[]);
+        let placements = ["x", "y", "angle"].map(|c| instances.floats(c).unwrap_or(&[]));
+        let mut scopes = Vec::with_capacity(instances.count);
+        let mut seen = HashSet::new();
+        for row in 0..instances.count.min(ids.len()) {
+            let id = &ids[row];
+            let segment = id.strip_prefix("inst/").filter(|s| !s.contains('/'));
+            match segment {
+                Some(segment) if well_formed(id) => scopes.push(format!("{segment}/")),
+                _ => {
+                    self.report
+                        .error(format!("instance ID `{id}` is not well-formed"));
+                    scopes.push(String::new());
+                }
+            }
+            if !seen.insert(id) {
+                self.report
+                    .error(format!("instance ID `{id}` is not unique"));
+            }
+            if steps.get(row).is_none_or(String::is_empty) {
+                self.report.error(format!("instance `{id}` has no step"));
+            }
+            if let Some(&parent) = parents.and_then(|p| p.get(row))
+                && parent != NO_ROW
+                && parent as usize >= row
+            {
+                self.report.error(format!(
+                    "instance `{id}` has parent row {parent}, which doesn't precede it"
+                ));
+            }
+            if !matches!(
+                sides.get(row).and_then(|&s| Side::from_value(s as u8)),
+                Some(Side::Top | Side::Bottom)
+            ) {
+                self.report
+                    .error(format!("instance `{id}` must have side TOP or BOTTOM"));
+            }
+            if placements
+                .iter()
+                .any(|column| column.get(row).is_none_or(|v| !v.is_finite()))
+            {
+                self.report
+                    .error(format!("instance `{id}` has no finite placement"));
+            }
+        }
+        scopes
+    }
+
+    /// The ID segment of a row's instance, with its trailing `/`, or nothing.
+    fn scope<'s>(
+        &mut self,
+        table: &Table,
+        name: &str,
+        row: usize,
+        scopes: &'s [String],
+    ) -> &'s str {
+        match table.numbers("instance").map(|c| c[row]) {
+            None | Some(NO_ROW) => "",
+            Some(i) => match scopes.get(i as usize) {
+                Some(scope) => scope,
+                None => {
+                    self.report.error(format!(
+                        "row {row} of `{name}` references instance {i}, out of range"
+                    ));
+                    ""
+                }
+            },
+        }
+    }
+
+    fn nets(&mut self, nets: &Table, scopes: &[String]) {
         let (Some(ids), Some(names)) = (nets.strings("id"), nets.strings("name")) else {
             return;
         };
         let mut seen = HashSet::new();
-        for (id, name) in ids.iter().zip(names) {
-            if *id != format!("net/{}", encode_id_segment(name)) {
+        for (row, (id, name)) in ids.iter().zip(names).enumerate() {
+            let scope = self.scope(nets, "nets", row, scopes);
+            if *id != format!("net/{scope}{}", encode_id_segment(name)) {
                 self.report.error(format!(
                     "net ID `{id}` is not the encoded ID of net `{name}`"
                 ));
@@ -548,7 +654,7 @@ impl Validator<'_> {
         }
     }
 
-    fn components(&mut self, board: &Board, components: &Table) {
+    fn components(&mut self, board: &Board, components: &Table, scopes: &[String]) {
         let Some(group) = self.root.scenes.first().and_then(|_| {
             let board_node = self
                 .root
@@ -579,7 +685,8 @@ impl Validator<'_> {
             .min(sides.len())
         {
             let id = &ids[row];
-            if *id != format!("cmp/{}", encode_id_segment(&ref_des[row])) {
+            let scope = self.scope(components, "components", row, scopes);
+            if *id != format!("cmp/{scope}{}", encode_id_segment(&ref_des[row])) {
                 self.report.error(format!(
                     "component ID `{id}` is not the encoded ID of `{}`",
                     ref_des[row]
@@ -611,9 +718,11 @@ impl Validator<'_> {
             }
             node_rows.insert(node, row);
             let n = &self.root.nodes[node as usize];
-            if n.name.as_deref() != Some(ref_des[row].as_str()) {
-                self.report
-                    .error(format!("the node of `{id}` must be named by its refDes"));
+            let name = format!("{}{}", decode_id_segment(scope), ref_des[row]);
+            if n.name.as_deref() != Some(name.as_str()) {
+                self.report.error(format!(
+                    "the node of `{id}` must be named by its instance and refDes"
+                ));
             }
             let extras: Option<ComponentExtras> = n
                 .extras
@@ -629,7 +738,10 @@ impl Validator<'_> {
             let text = |column: Option<&[String]>| {
                 column.map(|c| c[row].clone()).filter(|s| !s.is_empty())
             };
+            let instance =
+                (!scope.is_empty()).then(|| format!("inst/{}", &scope[..scope.len() - 1]));
             let matches = info.id == *id
+                && info.instance == instance
                 && info.row as usize == row
                 && info.ref_des == ref_des[row]
                 && info.part == text(parts)
@@ -651,7 +763,7 @@ impl Validator<'_> {
         }
     }
 
-    fn pins(&mut self, pins: &Table, components: &Table, nets: &Table) {
+    fn pins(&mut self, pins: &Table, components: &Table, nets: &Table, scopes: &[String]) {
         let empty = Vec::new();
         let ids = pins.strings("id").unwrap_or(&empty);
         let numbers = pins.strings("number").unwrap_or(&empty);
@@ -672,8 +784,9 @@ impl Validator<'_> {
                 ));
                 continue;
             };
+            let scope = self.scope(components, "components", owner, scopes);
             let expected = format!(
-                "pin/{}/{}",
+                "pin/{scope}{}/{}",
                 encode_id_segment(component),
                 encode_id_segment(&numbers[row])
             );
@@ -710,6 +823,7 @@ impl Validator<'_> {
         nets: &Table,
         components: &Table,
         pins: &Table,
+        instances: &Table,
     ) {
         let metadata = self
             .root
@@ -782,15 +896,22 @@ impl Validator<'_> {
                 }
             }
             if let Some(sources) = table.numbers("source") {
-                let distinct: HashSet<_> = sources.iter().collect();
+                // Feature IDs (§5): the instance and the source.
+                let instances = table.numbers("instance");
+                let distinct: HashSet<_> = sources
+                    .iter()
+                    .enumerate()
+                    .map(|(row, s)| (instances.map_or(NO_ROW, |i| i[row]), s))
+                    .collect();
                 if distinct.len() != sources.len() {
                     self.report
-                        .error(format!("`{id}`: feature sources are not unique"));
+                        .error(format!("`{id}`: feature IDs are not unique"));
                 }
             }
             self.references(table, id, "net", nets.count);
             self.references(table, id, "pin", pins.count);
             self.references(table, id, "component", components.count);
+            self.references(table, id, "instance", instances.count);
             let Some(node) = self.root.nodes.get(node as usize) else {
                 continue;
             };
@@ -1065,6 +1186,32 @@ fn well_formed(id: &str) -> bool {
     })
 }
 
+/// Decodes the `%XX` escapes of an ID segment (spec §5).
+fn decode_id_segment(segment: &str) -> String {
+    let bytes = segment.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let hex = bytes
+            .get(i + 1..i + 3)
+            .and_then(|h| std::str::from_utf8(h).ok());
+        match hex
+            .filter(|_| bytes[i] == b'%')
+            .and_then(|h| u8::from_str_radix(h, 16).ok())
+        {
+            Some(byte) => {
+                out.push(byte);
+                i += 3;
+            }
+            None => {
+                out.push(bytes[i]);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
 /// Whether triangles form closed surfaces: every directed edge is matched by its reverse.
 fn closed(triangles: &[u32], positions: &[[f32; 3]]) -> bool {
     let key = |i: u32| positions[i as usize].map(f32::to_bits);
@@ -1160,6 +1307,9 @@ mod tests {
         assert!(well_formed("layer/TOP"));
         assert!(well_formed("layer/@core"));
         assert!(well_formed("net/A%2FB"));
+        assert!(well_formed("feat/board-2/TOP/3"));
+        assert_eq!(decode_id_segment("A%2FB%20%C3%A9-1"), "A/B é-1");
+        assert_eq!(decode_id_segment("100%"), "100%");
         assert!(!well_formed("net/A B"));
         assert!(!well_formed("net/A%2"));
         assert!(!well_formed("layer/"));
@@ -1363,6 +1513,7 @@ mod tests {
                 pin: None,
                 component: None,
                 fiducial: None,
+                instance: None,
             };
             BoardAsset {
                 generator: "test".into(),
@@ -1394,6 +1545,7 @@ mod tests {
                 nets: Vec::new(),
                 components: Vec::new(),
                 pins: Vec::new(),
+                instances: Vec::new(),
                 placeholders: Vec::new(),
                 models: Vec::new(),
             }
