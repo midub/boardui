@@ -72,7 +72,7 @@ describe('metadata', () => {
       name: '@core',
       role: 'DIELECTRIC',
       synthesized: true,
-      visible: false,
+      visible: true,
       kind: 'layer',
     });
     expect(model.describe('board')?.properties).toMatchObject({ thickness: 0.0016 });
@@ -103,6 +103,9 @@ describe('layers', () => {
       'layer/F.SilkS',
       'layer/@soldermask-top',
       'layer/F.Cu',
+      'layer/@prepreg-1',
+      'layer/@core',
+      'layer/@prepreg-2',
       'layer/B.Cu',
       'layer/@soldermask-bottom',
       'layer/B.SilkS',

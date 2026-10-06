@@ -287,7 +287,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 - `layers` is ordered top to bottom. `thickness` is the copper-to-copper thickness.
 - `tables.*` and `featureTable` are absent for tables without rows (§8.2).
 - `role` is one of `COPPER`, `DIELECTRIC`, `SOLDERMASK`, `SILKSCREEN`. `ipcFunction` keeps the source `layerFunction`, and is absent for synthesized layers.
-- `visible` is the suggested default visibility. Inner copper and dielectric layers default to `false`.
+- `visible` is the suggested default visibility. Inner copper layers default to `false`, all other layers to `true`. Dielectric layers stay visible so that the board is opaque like a real one: with them hidden, the translucent soldermask (§7) would show the other side's copper and components through the board.
 
 ### 8.4 Component node `extras`
 

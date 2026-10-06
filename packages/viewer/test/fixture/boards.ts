@@ -250,7 +250,7 @@ function stackup(coppers: { name: string; ipcFunction: string }[], dielectrics: 
       role,
       side,
       synthesized: ipcFunction === undefined,
-      visible: role !== 'DIELECTRIC' && side !== 'INTERNAL',
+      visible: role !== 'COPPER' || side !== 'INTERNAL',
       zMin,
       zMax,
       features: [],
@@ -611,7 +611,12 @@ export function denseBoard(grid: number, { realistic = false }: DenseOptions = {
         fcu,
         { kind: 'TRACE', net: 'GND' },
         realistic
-          ? roundTrace([cx - mm(1.19), cy + mm(0.5)], [cx - mm(1.05), cy + mm(0.5)], mm(0.1), tolerance)
+          ? roundTrace(
+              [cx - mm(1.19), cy + mm(0.5)],
+              [cx - mm(1.05), cy + mm(0.5)],
+              mm(0.1),
+              tolerance,
+            )
           : trace(cx - mm(1.24), cy + mm(0.5), cx - mm(1), cy + mm(0.5), mm(0.1)),
       );
       add(fcu, { kind: 'VIA', net: netName }, annulus(viaAt, mm(0.275), hole, tolerance));

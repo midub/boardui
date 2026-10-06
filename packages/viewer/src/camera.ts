@@ -1,4 +1,4 @@
-import { MathUtils, Vector3 } from 'three';
+import { type Box3, MathUtils, Vector3 } from 'three';
 
 /** Camera presets: straight from above or below, or an oblique view. */
 export type ViewPreset = 'top' | 'bottom' | 'iso';
@@ -21,15 +21,44 @@ export function viewDirection(preset: ViewPreset, target = new Vector3()): Vecto
 }
 
 /**
- * Distance from which a perspective camera sees a sphere whole.
+ * Distance from the centre of `box` at which a perspective camera, looking at that centre from
+ * `direction`, sees the whole box.
  *
- * @param radius Sphere radius.
+ * @param direction From the box centre towards the camera.
+ * @param up The camera's up vector; must not be parallel to `direction`.
  * @param fov Vertical field of view in degrees.
  * @param aspect Viewport width / height.
- * @param margin Extra room around the sphere, as a factor.
+ * @param margin Extra room around the box, as a factor of its projected size.
  */
-export function fitDistance(radius: number, fov: number, aspect: number, margin = 1.05): number {
-  const halfY = MathUtils.degToRad(fov) / 2;
-  const halfX = Math.atan(Math.tan(halfY) * aspect);
-  return (margin * radius) / Math.sin(Math.min(halfX, halfY));
+export function fitBoxDistance(
+  box: Box3,
+  direction: Vector3,
+  up: Vector3,
+  fov: number,
+  aspect: number,
+  margin = 1.05,
+): number {
+  const back = direction.clone().normalize();
+  const right = new Vector3().crossVectors(up, back).normalize();
+  const top = new Vector3().crossVectors(back, right);
+  const tanY = Math.tan(MathUtils.degToRad(fov) / 2);
+  const tanX = tanY * aspect;
+  const center = box.getCenter(new Vector3());
+  const corner = new Vector3();
+  let distance = 0;
+  for (let i = 0; i < 8; i++) {
+    corner
+      .set(
+        i & 1 ? box.max.x : box.min.x,
+        i & 2 ? box.max.y : box.min.y,
+        i & 4 ? box.max.z : box.min.z,
+      )
+      .sub(center);
+    // The camera sits at `distance` along `back`; this corner lies `distance − z` in front of it.
+    const z = corner.dot(back);
+    const x = Math.abs(corner.dot(right)) * margin;
+    const y = Math.abs(corner.dot(top)) * margin;
+    distance = Math.max(distance, z + x / tanX, z + y / tanY);
+  }
+  return distance;
 }

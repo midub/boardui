@@ -1,6 +1,6 @@
-import { PerspectiveCamera, Vector3 } from 'three';
+import { Box3, PerspectiveCamera, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
-import { fitDistance, viewDirection } from '../src/camera.js';
+import { fitBoxDistance, viewDirection } from '../src/camera.js';
 
 /** Projects a point with a camera placed along a preset direction, looking at the origin. */
 function screen(preset: 'top' | 'bottom', point: Vector3): Vector3 {
@@ -32,13 +32,42 @@ describe('view presets', () => {
   });
 });
 
-describe('fitDistance', () => {
-  it('fits a sphere into the narrower field of view', () => {
-    // 90° vertical, square viewport: the sphere touches the frustum at r / sin(45°).
-    expect(fitDistance(1, 90, 1, 1)).toBeCloseTo(Math.SQRT2);
-    // A tall viewport narrows the horizontal field of view, so the camera backs off.
-    expect(fitDistance(1, 90, 0.5, 1)).toBeGreaterThan(fitDistance(1, 90, 1, 1));
-    expect(fitDistance(1, 90, 2, 1)).toBeCloseTo(Math.SQRT2);
-    expect(fitDistance(2, 90, 1)).toBeCloseTo(2 * Math.SQRT2 * 1.05);
+describe('fitBoxDistance', () => {
+  const up = new Vector3(0, 1, 0);
+
+  it('backs off until the nearest face fits', () => {
+    const cube = new Box3(new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, 0.5, 0.5));
+    // 90° field of view: the front face (half size 0.5, 0.5 in front of the centre) needs 0.5 more.
+    expect(fitBoxDistance(cube, new Vector3(0, 0, 1), up, 90, 1, 1)).toBeCloseTo(1);
+    // A wide viewport has room to the sides, a tall one backs off further.
+    const flat = new Box3(new Vector3(-2, -0.1, -1), new Vector3(2, 0.1, 1));
+    const from = new Vector3(0, 0, 1);
+    expect(fitBoxDistance(flat, from, up, 90, 2, 1)).toBeLessThan(
+      fitBoxDistance(flat, from, up, 90, 1, 1),
+    );
+  });
+
+  it('puts every corner of a board-shaped box inside the view, touching its edge', () => {
+    const board = new Box3(new Vector3(0.01, -0.001, -0.08), new Vector3(0.11, 0.009, -0.02));
+    for (const preset of ['top', 'bottom', 'iso'] as const) {
+      const direction = viewDirection(preset);
+      const camera = new PerspectiveCamera(35, 16 / 9, 1e-4, 10);
+      const center = board.getCenter(new Vector3());
+      const distance = fitBoxDistance(board, direction, up, camera.fov, camera.aspect, 1.1);
+      camera.position.copy(center).addScaledVector(direction, distance);
+      camera.lookAt(center);
+      camera.updateMatrixWorld();
+      let extent = 0;
+      for (let i = 0; i < 8; i++) {
+        const corner = new Vector3(
+          i & 1 ? board.max.x : board.min.x,
+          i & 2 ? board.max.y : board.min.y,
+          i & 4 ? board.max.z : board.min.z,
+        ).project(camera);
+        extent = Math.max(extent, Math.abs(corner.x), Math.abs(corner.y));
+      }
+      expect(extent, preset).toBeLessThanOrEqual(1 / 1.1 + 1e-9);
+      expect(extent, preset).toBeGreaterThan(0.85);
+    }
   });
 });

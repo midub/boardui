@@ -1,12 +1,16 @@
 /**
  * Dev page: loads a generated fixture into <board-viewer> and exposes the API through controls.
- * Query parameters: `board=small|dense`, `backend=webgl`.
+ * Query parameters: `board=small|dense`, `grid=<n>` and `realistic` (dense fixture options, see
+ * `test/fixture/boards.ts`), `backend=webgl`. `globalThis.viewer` and `globalThis.timings` are
+ * there for the console and for `dev/review.mjs`.
  */
 import '../src/index.js';
 import { denseBoardGlb, smallBoardGlb } from '../test/fixture/boards.js';
 
 const params = new URLSearchParams(location.search);
 const boardName = params.get('board') === 'dense' ? 'dense' : 'small';
+const grid = Number(params.get('grid')) || undefined;
+const realistic = params.has('realistic');
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector(selector) as T;
 
 // The backend attribute is read on connect, so set it before the element enters the page.
@@ -15,7 +19,8 @@ if (params.get('backend') === 'webgl') {
   viewer.setAttribute('backend', 'webgl');
 }
 document.body.prepend(viewer);
-Object.assign(globalThis, { viewer });
+const timings: { generated?: number; loaded?: number; firstFrame?: number } = {};
+Object.assign(globalThis, { viewer, timings });
 
 const status = $<HTMLPreElement>('#status');
 const boardSelect = $<HTMLSelectElement>('#board');
@@ -24,6 +29,8 @@ boardSelect.value = boardName;
 webgl.checked = params.get('backend') === 'webgl';
 const reload = () => {
   const next = new URLSearchParams({ board: boardSelect.value });
+  if (boardSelect.value === 'dense' && grid) next.set('grid', String(grid));
+  if (boardSelect.value === 'dense' && realistic) next.set('realistic', '');
   if (webgl.checked) next.set('backend', 'webgl');
   location.search = next.toString();
 };
@@ -33,11 +40,14 @@ webgl.addEventListener('change', reload);
 status.textContent = `Generating ${boardName} fixture…`;
 await new Promise((resolve) => setTimeout(resolve, 0));
 let start = performance.now();
-const glb = boardName === 'dense' ? denseBoardGlb() : smallBoardGlb();
+const glb = boardName === 'dense' ? denseBoardGlb(grid, { realistic }) : smallBoardGlb();
 const generated = performance.now() - start;
 start = performance.now();
 await viewer.load(glb);
 const loaded = performance.now() - start;
+// The board is drawn in the next frame; the one after it starts once that frame is done.
+await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+Object.assign(timings, { generated, loaded, firstFrame: performance.now() - start });
 const sizeMb = (glb.byteLength / 1e6).toFixed(1);
 
 const showStats = () => {

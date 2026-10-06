@@ -45,14 +45,14 @@ describe('Picker', () => {
   it('looks through skipped texels and hidden layers', () => {
     const pad = model.resolve('feat/F.Cu/4')?.texels[0];
     const skipPad = (texel: number) => texel === pad;
-    expect(idAt(down(21.3, 19.905), skipPad)).toBe('feat/@soldermask-bottom/0');
-    const mask = model.layer('layer/@soldermask-bottom');
-    if (!mask) throw new Error('no mask');
-    mask.group.visible = false;
+    expect(idAt(down(21.3, 19.905), skipPad)).toBe('feat/@prepreg-1/0');
+    const below = model.layers.filter((l) => l.group.visible && l.id !== 'layer/F.Cu');
+    for (const layer of below) layer.group.visible = false;
     try {
       expect(idAt(down(21.3, 19.905), skipPad)).toBeNull();
+      expect(idAt(down(21.3, 19.905))).toBe('feat/F.Cu/4');
     } finally {
-      mask.group.visible = true;
+      for (const layer of below) layer.group.visible = true;
     }
   });
 

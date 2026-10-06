@@ -1,4 +1,4 @@
-import { Color, type Material, Matrix4, Mesh, Ray, Vector3 } from 'three';
+import { type Box3, Color, type Material, Matrix4, Mesh, Ray, Vector3 } from 'three';
 import type { LayerRole, Side } from './board-extension.js';
 import { BoardModel, type ElementInfo, type LayerModel, type ListableKind } from './board-model.js';
 import { type ViewPreset, viewDirection } from './camera.js';
@@ -48,7 +48,10 @@ interface Loaded {
   state: ElementState;
   materials: BoardMaterials;
   picker: Picker;
-  /** Layers that the pointer picks and that hide widgets: all but the translucent soldermask. */
+  /**
+   * Layers that the pointer picks and that hide widgets: all but the translucent soldermask.
+   * Dielectric sheets only block: over bare board the pointer finds nothing.
+   */
   pickLayers: LayerModel[];
   /** Tint overlays of the copper and drill layers, with their state texel ranges. */
   overlays: { mesh: Mesh; start: number; end: number }[];
@@ -63,6 +66,7 @@ interface Loaded {
  * element connects).
  *
  * The soldermask is translucent (spec §6.5): the pointer picks, and widgets see, through it.
+ * Dielectric sheets can't be hovered or selected, but they hide what lies behind the board.
  *
  * Element IDs follow spec §5. Methods that take one ID throw a `RangeError` for an unknown ID;
  * methods that take several skip unknown ones. All need a loaded board.
@@ -72,9 +76,11 @@ export class BoardViewerElement extends HTMLElement {
 
   readonly #canvas = document.createElement('canvas');
   readonly #widgets = new WidgetLayer({
-    box: (id) => this.#loaded?.model.resolve(id)?.box ?? null,
+    box: (id) => this.#widgetBox(id),
     occluded: (id, from, to) => this.#occluded(id, from, to),
   });
+  /** Bounding boxes of the widget targets of the loaded board, resolved once each. */
+  readonly #widgetBoxes = new Map<string, Box3 | null>();
   readonly #resize = new ResizeObserver(() => this.#onResize());
   readonly #ray = new Ray();
   #renderer: BoardRenderer | null = null;
@@ -385,6 +391,7 @@ export class BoardViewerElement extends HTMLElement {
 
   #unload(): void {
     if (!this.#loaded) return;
+    this.#widgetBoxes.clear();
     this.#renderer?.setContent([]);
     this.#loaded.materials.dispose();
     this.#loaded.model.dispose();
@@ -451,7 +458,11 @@ export class BoardViewerElement extends HTMLElement {
     const { picker, state, model, pickLayers } = loaded;
     const ray = renderer.rayAt(clientX, clientY, this.#ray);
     const hit = picker.pick(ray, (t) => state.isHidden(t), pickLayers);
-    return hit ? model.idOfTexel(hit.texel) : null;
+    if (!hit) return null;
+    const layer = model.layerOfTexel(hit.texel);
+    return layer && 'role' in layer.info && layer.info.role === 'DIELECTRIC'
+      ? null
+      : model.idOfTexel(hit.texel);
   }
 
   #setHover(id: string | null): void {
@@ -464,6 +475,15 @@ export class BoardViewerElement extends HTMLElement {
   #emit(type: 'bui-hover' | 'bui-select', id: string | null): void {
     const detail = id ? this.info(id) : null;
     this.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
+  }
+
+  #widgetBox(id: string): Box3 | null {
+    let box = this.#widgetBoxes.get(id);
+    if (box === undefined && this.#loaded) {
+      box = this.#loaded.model.resolve(id)?.box ?? null;
+      this.#widgetBoxes.set(id, box);
+    }
+    return box ?? null;
   }
 
   #occluded(id: string, from: Vector3, to: Vector3): boolean {

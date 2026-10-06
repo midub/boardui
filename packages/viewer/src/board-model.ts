@@ -280,6 +280,11 @@ export class BoardModel {
     }
   }
 
+  /** The layer whose feature owns a state texel, or `null` for a component's texel. */
+  layerOfTexel(texel: number): LayerModel | null {
+    return texel < this.componentOffset ? this.#layerOfTexel(texel)[0] : null;
+  }
+
   /** The ID of the element that owns a state texel. */
   idOfTexel(texel: number): string {
     if (texel >= this.componentOffset) {

@@ -13,12 +13,12 @@ import {
   Scene,
   Sphere,
   Vector2,
-  type Vector3,
+  Vector3,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { PMREMGenerator, WebGPURenderer } from 'three/webgpu';
-import { fitDistance } from './camera.js';
+import { fitBoxDistance } from './camera.js';
 
 /** Rendering statistics of the last frame. */
 export interface RenderStats {
@@ -125,26 +125,27 @@ export class BoardRenderer {
    * Moves the camera so that `box` fills the view, looking along `direction` (from the box
    * towards the camera), or along the current view direction.
    *
-   * @param margin Room around the box, as a factor of its size.
+   * @param margin Room around the box, as a factor of its projected size.
    */
   frame(box: Box3, direction?: Vector3, animate = true, margin = 1.05): void {
-    const sphere = box.getBoundingSphere(new Sphere());
-    const radius = Math.max(sphere.radius, 1e-4);
-    const distance = fitDistance(radius, this.camera.fov, this.camera.aspect, margin);
+    const center = box.getCenter(new Vector3());
     const dir = (direction ?? this.camera.position.clone().sub(this.controls.target)).normalize();
-    const toPosition = sphere.center.clone().addScaledVector(dir, distance);
+    const { fov, aspect, up } = this.camera;
+    const fit = fitBoxDistance(box, dir, up, fov, aspect, margin);
+    const distance = Math.max(fit, this.controls.minDistance);
+    const toPosition = center.clone().addScaledVector(dir, distance);
     const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (animate && !reduced) {
       this.#flight = {
         start: performance.now(),
         fromTarget: this.controls.target.clone(),
         fromPosition: this.camera.position.clone(),
-        toTarget: sphere.center,
+        toTarget: center,
         toPosition,
       };
     } else {
       this.#flight = null;
-      this.controls.target.copy(sphere.center);
+      this.controls.target.copy(center);
       this.camera.position.copy(toPosition);
     }
     this.controls.update();
