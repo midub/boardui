@@ -281,11 +281,11 @@ export function writeBoard(board: FixtureBoard): Uint8Array<ArrayBuffer> {
     }
     const id = `cmp/${encodeIdSegment(component.refDes)}`;
     const half = (component.rotation * Math.PI) / 360;
-    // Rotation about +Y; bottom side: then 180° about the local X axis, so q = ry · rx(π).
+    // Rotation by θ about +Y; bottom side (mirrored, KiCad's order): R_y(θ) · R_z(180°).
     const rotation =
       component.side === 'TOP'
         ? [0, Math.sin(half), 0, Math.cos(half)]
-        : [Math.cos(half), 0, -Math.sin(half), 0];
+        : [Math.sin(half), 0, Math.cos(half), 0];
     const node = w.node({
       name: component.refDes,
       mesh,

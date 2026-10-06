@@ -47,7 +47,7 @@ boardui validate board.glb                     # profile rules (spec §10), plus
 
 ## Development
 
-Prerequisites: [rustup](https://rustup.rs) (the toolchain version is pinned in `rust-toolchain.toml` and installed automatically), Node.js 24 and pnpm (`corepack enable`).
+Prerequisites: [rustup](https://rustup.rs) (the toolchain version is pinned in `rust-toolchain.toml` and installed automatically), Node.js 24 and pnpm (`corepack enable`). `pnpm build` also builds the WebAssembly converter, which needs [`wasm-bindgen-cli`](https://github.com/wasm-bindgen/wasm-bindgen) at the version of the `wasm-bindgen` crate in `Cargo.lock` (`cargo install wasm-bindgen-cli --version 0.2.129`) and, optionally, `wasm-opt` from [binaryen](https://github.com/WebAssembly/binaryen).
 
 ```sh
 # Rust
@@ -61,7 +61,10 @@ pnpm install
 pnpm lint
 pnpm build
 pnpm test
+pnpm --filter @boardui/demo e2e                # Playwright tests of the demo (see packages/demo)
 ```
+
+The demo runs locally with `pnpm build && pnpm --filter @boardui/demo preview` at <http://127.0.0.1:4173/boardui/>.
 
 ## License
 

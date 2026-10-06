@@ -1,6 +1,8 @@
+import type { ConvertCallOptions, ConvertResult } from '@boardui/converter';
 import { type Box3, Color, type Material, Matrix4, Mesh, Ray, Vector3 } from 'three';
 import type { LayerRole, Side } from './board-extension.js';
 import { BoardModel, type ElementInfo, type LayerModel, type ListableKind } from './board-model.js';
+import { BvhBuilder, WORKER_MIN_TRIANGLES } from './bvh-builder.js';
 import { type ViewPreset, viewDirection } from './camera.js';
 import { type BoardSource, loadGltf } from './load.js';
 import { BoardMaterials, XRAY_COPPER_OPACITY, XRAY_OPACITY } from './materials.js';
@@ -23,13 +25,36 @@ export interface LayerState {
   visible: boolean;
 }
 
+/** Progress of {@link BoardViewerElement.loadIpc2581}. */
+export interface LoadProgress {
+  /** `'convert'` while the converter runs (in a worker), then `'load'`. */
+  stage: 'convert' | 'load';
+  /** The converter's pipeline step (e.g. `'parse'`, `'resolve'`), or `'load'`. */
+  step: string;
+  /** Estimated share of the whole job done, `0…1`. */
+  fraction: number;
+}
+
+/** Options of {@link BoardViewerElement.loadIpc2581}. */
+export interface LoadIpc2581Options extends Omit<ConvertCallOptions, 'onProgress'> {
+  /** Called as the conversion and loading progress; `bui-progress` events carry the same. */
+  onProgress?: (progress: LoadProgress) => void;
+}
+
 /** Events of `<board-viewer>`. */
 export interface BoardViewerEventMap extends HTMLElementEventMap {
   /** The element under the pointer changed; `null` when the pointer left the board. */
   'bui-hover': CustomEvent<ElementInfo | null>;
   /** The user clicked an element, or empty space (`null`). */
   'bui-select': CustomEvent<ElementInfo | null>;
+  /** Progress of {@link BoardViewerElement.loadIpc2581}. */
+  'bui-progress': CustomEvent<LoadProgress>;
 }
+
+/** Constant depth bias of the soldermask, in units of the depth buffer's resolution. */
+const MASK_DEPTH_BIAS = 4;
+/** Share of {@link LoadProgress.fraction} taken by the conversion; loading takes the rest. */
+const CONVERT_SHARE = 0.9;
 
 /** Pointer travel (CSS px) below which a press and release count as a click. */
 const CLICK_SLOP = 4;
@@ -55,6 +80,10 @@ interface Loaded {
   pickLayers: LayerModel[];
   /** Tint overlays of the copper and drill layers, with their state texel ranges. */
   overlays: { mesh: Mesh; start: number; end: number }[];
+  /** Builds the BVHs of large layer meshes in workers; `null` until needed. */
+  bvhs: BvhBuilder | null;
+  /** Resolves when every pickable layer has its BVH. */
+  pickable: Promise<void>;
 }
 
 /**
@@ -77,10 +106,15 @@ export class BoardViewerElement extends HTMLElement {
   readonly #canvas = document.createElement('canvas');
   readonly #widgets = new WidgetLayer({
     box: (id) => this.#widgetBox(id),
+    visible: (id) => this.#widgetVisible(id),
     occluded: (id, from, to) => this.#occluded(id, from, to),
   });
   /** Bounding boxes of the widget targets of the loaded board, resolved once each. */
   readonly #widgetBoxes = new Map<string, Box3 | null>();
+  /** Whether a widget target is drawn, as of {@link #visibility}. */
+  readonly #widgetVisibility = new Map<string, { version: number; visible: boolean }>();
+  /** Bumped whenever layers or elements are shown or hidden. */
+  #visibility = 0;
   readonly #resize = new ResizeObserver(() => this.#onResize());
   readonly #ray = new Ray();
   #renderer: BoardRenderer | null = null;
@@ -90,6 +124,7 @@ export class BoardViewerElement extends HTMLElement {
   #hover: string | null = null;
   #selection: string | null = null;
   #xray = false;
+  #autoRotate = false;
   /** Pointer position while it is over the canvas with no button pressed. */
   #pointer: { x: number; y: number } | null = null;
   /** Whether the element under the pointer must be picked again. */
@@ -129,6 +164,7 @@ export class BoardViewerElement extends HTMLElement {
         return;
       }
       this.#renderer = renderer;
+      renderer.autoRotate = this.#autoRotate;
       this.#onResize();
       this.#showLoaded();
     });
@@ -173,6 +209,16 @@ export class BoardViewerElement extends HTMLElement {
         const source = mesh.material as Material;
         const xray = copper ? XRAY_COPPER_OPACITY : XRAY_OPACITY;
         mesh.material = materials.layer(source, layer.stateOffset, xray);
+        if ('role' in layer.info && layer.info.role === 'SOLDERMASK') {
+          // The mask's bottom face lies on the dielectric and the copper (spec §6.5, ADR 0006):
+          // push it back a little so that the copper wins where they meet (seen from below with
+          // the dielectric hidden). A constant bias only: a slope-scaled one pushes the whole
+          // mask behind the copper (20 µm below its top) in oblique views.
+          const material = mesh.material as Material;
+          material.polygonOffset = true;
+          material.polygonOffsetFactor = 0;
+          material.polygonOffsetUnits = MASK_DEPTH_BIAS;
+        }
         if (copper) {
           const overlay = new Mesh(mesh.geometry, materials.overlay(source, layer.stateOffset));
           overlay.renderOrder = 1; // after the soldermask
@@ -193,9 +239,62 @@ export class BoardViewerElement extends HTMLElement {
       (layer) => !('role' in layer.info) || layer.info.role !== 'SOLDERMASK',
     );
     const picker = new Picker(model);
-    this.#loaded = { model, state, materials, picker, pickLayers, overlays };
+    const loaded: Loaded = {
+      model,
+      state,
+      materials,
+      picker,
+      pickLayers,
+      overlays,
+      bvhs: null,
+      pickable: Promise.resolve(),
+    };
+    this.#loaded = loaded;
     this.#showLoaded();
-    this.#prepareBvhs(this.#loaded);
+    loaded.pickable = this.#prepareBvhs(loaded);
+  }
+
+  /**
+   * Converts an IPC-2581 file with `@boardui/converter` (WebAssembly in a Web Worker; nothing
+   * leaves the machine) and loads the result, replacing the current board. Progress is reported
+   * to `options.onProgress` and as `bui-progress` events.
+   *
+   * @param input The XML file or its bytes (an `ArrayBuffer` is transferred and detached).
+   * @param options Converter options (`models`, `tolerance`, …) and `signal` to cancel.
+   * @returns The conversion: the GLB (for download), warnings, stats and timings.
+   * @throws `ConvertError` if the file can't be converted.
+   */
+  async loadIpc2581(
+    input: Blob | ArrayBuffer | Uint8Array,
+    options: LoadIpc2581Options = {},
+  ): Promise<ConvertResult> {
+    const { onProgress, ...convertOptions } = options;
+    const report = (progress: LoadProgress) => {
+      onProgress?.(progress);
+      this.dispatchEvent(
+        new CustomEvent('bui-progress', { detail: progress, bubbles: true, composed: true }),
+      );
+    };
+    report({ stage: 'convert', step: 'start', fraction: 0 });
+    const { convertIpc2581 } = await import('@boardui/converter');
+    const result = await convertIpc2581(input, {
+      ...convertOptions,
+      onProgress: ({ step, fraction }) =>
+        report({ stage: 'convert', step, fraction: fraction * CONVERT_SHARE }),
+    });
+    options.signal?.throwIfAborted();
+    report({ stage: 'load', step: 'load', fraction: CONVERT_SHARE });
+    await this.load(result.glb);
+    report({ stage: 'load', step: 'done', fraction: 1 });
+    return result;
+  }
+
+  /**
+   * Resolves when the loaded board can be picked everywhere: the BVHs of large layers are built
+   * in workers after loading, and until then hover and widget occlusion skip those layers.
+   */
+  whenPickable(): Promise<void> {
+    return this.#loaded?.pickable ?? Promise.resolve();
   }
 
   /** The layers and drill layers of the loaded board, top to bottom. */
@@ -221,6 +320,7 @@ export class BoardViewerElement extends HTMLElement {
     const layer = this.#model().layer(id);
     if (!layer) throw new RangeError(`Unknown layer: ${id}`);
     layer.group.visible = visible;
+    this.#visibility++;
     this.#requestRender();
   }
 
@@ -231,7 +331,9 @@ export class BoardViewerElement extends HTMLElement {
 
   /**
    * Turns x-ray mode on or off: every layer and component becomes translucent, copper less so
-   * than the rest, so that the copper of both sides shows.
+   * than the rest, so that the copper of both sides shows. Layer visibility stays as it is: inner
+   * copper (hidden by default) shows only when switched on, since inner planes would cover the
+   * view of a multilayer board.
    */
   setXray(on: boolean): void {
     this.#xray = on;
@@ -263,9 +365,11 @@ export class BoardViewerElement extends HTMLElement {
    */
   hide(target: ElementTarget): () => void {
     const show = this.#require().state.hide(this.#texels(target));
+    this.#visibility++;
     this.#requestRender();
     return () => {
       show();
+      this.#visibility++;
       this.#requestRender();
     };
   }
@@ -295,6 +399,19 @@ export class BoardViewerElement extends HTMLElement {
     }
     const box = this.#resolve(this.#model(), target).box;
     if (box) this.#renderer?.frame(box, undefined, true, FOCUS_MARGIN);
+  }
+
+  /**
+   * Whether the camera orbits the board on its own. The board is then rendered every frame,
+   * which is also how to measure the frame rate (see {@link stats}).
+   */
+  get autoRotate(): boolean {
+    return this.#autoRotate;
+  }
+
+  set autoRotate(on: boolean) {
+    this.#autoRotate = on;
+    if (this.#renderer) this.#renderer.autoRotate = on;
   }
 
   /** Points the camera from above, from below or obliquely, framing the whole board. */
@@ -395,7 +512,9 @@ export class BoardViewerElement extends HTMLElement {
 
   #unload(): void {
     if (!this.#loaded) return;
+    this.#loaded.bvhs?.dispose();
     this.#widgetBoxes.clear();
+    this.#widgetVisibility.clear();
     this.#renderer?.setContent([]);
     this.#loaded.materials.dispose();
     this.#loaded.model.dispose();
@@ -414,18 +533,53 @@ export class BoardViewerElement extends HTMLElement {
     renderer.frame(loaded.model.bounds, viewDirection('iso'), false);
   }
 
-  /** Builds the BVHs of the pickable layers in idle time, so the first hover doesn't stall. */
-  #prepareBvhs(loaded: Loaded): void {
-    const meshes = loaded.pickLayers.flatMap((layer) => layer.meshes);
-    const idle = globalThis.requestIdleCallback ?? ((callback) => setTimeout(callback, 50));
-    const next = () => {
-      const mesh = meshes.shift();
-      if (mesh && this.#loaded === loaded) {
-        loaded.picker.bvh(mesh);
-        idle(next);
+  /**
+   * Builds the BVHs of the pickable layers so that the first hover doesn't stall: large meshes
+   * in workers, small ones on the main thread in idle time. Resolves when all are built (or the
+   * board was replaced).
+   */
+  #prepareBvhs(loaded: Loaded): Promise<void> {
+    const idleMeshes: Mesh[] = [];
+    const builds: Promise<void>[] = [];
+    for (const mesh of loaded.pickLayers.flatMap((layer) => layer.meshes)) {
+      const triangles = (mesh.geometry.index?.count ?? 0) / 3;
+      if (!BvhBuilder.available || triangles < WORKER_MIN_TRIANGLES) {
+        idleMeshes.push(mesh);
+        continue;
       }
-    };
-    idle(next);
+      loaded.bvhs ??= new BvhBuilder();
+      loaded.picker.setPending(mesh, true);
+      const build = loaded.bvhs.build(mesh.geometry).then(
+        (bvh) => {
+          if (this.#loaded !== loaded) return;
+          loaded.picker.setBvh(mesh, bvh);
+          this.#hoverStale = true;
+          this.#settleUntil = performance.now() + 2 * OCCLUSION_INTERVAL;
+          this.#renderer?.requestRender();
+        },
+        () => {
+          // No worker (e.g. a content security policy): build on first use.
+          if (this.#loaded === loaded) loaded.picker.setPending(mesh, false);
+        },
+      );
+      builds.push(build);
+    }
+    const idle = globalThis.requestIdleCallback ?? ((callback) => setTimeout(callback, 50));
+    builds.push(
+      new Promise<void>((resolve) => {
+        const next = () => {
+          const mesh = idleMeshes.shift();
+          if (!mesh || this.#loaded !== loaded) {
+            resolve();
+            return;
+          }
+          loaded.picker.bvh(mesh);
+          idle(next);
+        };
+        idle(next);
+      }),
+    );
+    return Promise.all(builds).then(() => {});
   }
 
   #onResize(): void {
@@ -479,6 +633,29 @@ export class BoardViewerElement extends HTMLElement {
   #emit(type: 'bui-hover' | 'bui-select', id: string | null): void {
     const detail = id ? this.info(id) : null;
     this.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
+  }
+
+  /** Whether any part of a widget's element is drawn: on a visible layer and not hidden. */
+  #widgetVisible(id: string): boolean {
+    const cached = this.#widgetVisibility.get(id);
+    if (cached?.version === this.#visibility) return cached.visible;
+    const loaded = this.#loaded;
+    const element = loaded?.model.resolve(id);
+    let visible = false;
+    if (loaded && element) {
+      const { model, state } = loaded;
+      if (element.kind === 'board' || (element.kind === 'layer' && !element.texels.length)) {
+        visible = element.kind === 'board' || !!model.layer(id)?.group.visible;
+      } else {
+        visible = element.texels.some((texel) => {
+          const layer = model.layerOfTexel(texel);
+          const shown = layer ? layer.group.visible : model.componentGroup.visible;
+          return shown && !state.isHidden(texel);
+        });
+      }
+    }
+    this.#widgetVisibility.set(id, { version: this.#visibility, visible });
+    return visible;
   }
 
   #widgetBox(id: string): Box3 | null {

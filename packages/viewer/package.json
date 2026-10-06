@@ -32,6 +32,7 @@
     "three": "catalog:"
   },
   "dependencies": {
+    "@boardui/converter": "workspace:*",
     "three-mesh-bvh": "catalog:"
   },
   "devDependencies": {

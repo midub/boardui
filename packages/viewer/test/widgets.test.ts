@@ -84,7 +84,11 @@ describe('WidgetLayer', () => {
 
   it('positions widgets and throttles occlusion checks', () => {
     const occluded = vi.fn(() => true);
-    const layer = new WidgetLayer({ box: () => box([-0.1, 0, -0.1], [0.1, 0.1, 0.1]), occluded });
+    const layer = new WidgetLayer({
+      box: () => box([-0.1, 0, -0.1], [0.1, 0.1, 0.1]),
+      visible: () => true,
+      occluded,
+    });
     const widget = element();
     layer.attach('cmp/U1', widget, { offset: [0, -4] });
     const camera = topCamera();
@@ -99,15 +103,37 @@ describe('WidgetLayer', () => {
   });
 
   it('hides widgets whose element has no geometry', () => {
-    const layer = new WidgetLayer({ box: () => null, occluded: () => false });
+    const layer = new WidgetLayer({ box: () => null, visible: () => true, occluded: () => false });
     const widget = element();
     layer.attach('feat/TOP/9', widget);
     layer.update(topCamera(), 800, 400, 0);
     expect(widget.style.visibility).toBe('hidden');
   });
 
+  it('hides widgets whose element is not drawn', () => {
+    let visible = false;
+    const occluded = vi.fn(() => false);
+    const layer = new WidgetLayer({
+      box: () => box([0, 0, 0], [0.1, 0.1, 0.1]),
+      visible: () => visible,
+      occluded,
+    });
+    const widget = element();
+    layer.attach('cmp/U1', widget);
+    layer.update(topCamera(), 800, 400, 0);
+    expect(widget.style.visibility).toBe('hidden');
+    expect(occluded).not.toHaveBeenCalled();
+    visible = true;
+    layer.update(topCamera(), 800, 400, 1);
+    expect(widget.style.visibility).toBe('visible');
+  });
+
   it('clears its styles on detach', () => {
-    const layer = new WidgetLayer({ box: () => box([0, 0, 0], [0, 0, 0]), occluded: () => false });
+    const layer = new WidgetLayer({
+      box: () => box([0, 0, 0], [0, 0, 0]),
+      visible: () => true,
+      occluded: () => false,
+    });
     const widget = element();
     const detach = layer.attach('board', widget, { occlusion: 'none' });
     layer.update(topCamera(), 800, 400, 0);

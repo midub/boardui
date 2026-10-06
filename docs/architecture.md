@@ -144,10 +144,10 @@ viewer.addEventListener('bui-select', (e) => e.detail);
 `@boardui/converter` loads the WASM module in a Web Worker:
 
 - the input `File` / `ArrayBuffer` is transferred in;
-- progress events stream out;
+- progress events stream out, one per pipeline step;
 - the GLB `ArrayBuffer` is transferred back.
 
-Nothing leaves the machine.
+Nothing leaves the machine. Each conversion gets a fresh worker that is terminated afterwards, because WebAssembly memory only grows. The module is 32-bit, so a conversion can use at most 4 GiB; a board of about 240k features needs 3.1 GB. `<board-viewer>`'s `loadIpc2581` and the demo use this package.
 
 ## Testing and CI (GitHub Actions)
 
@@ -156,8 +156,8 @@ Nothing leaves the machine.
   - `insta` snapshot tests of the parsed model and metadata JSON;
   - `proptest` property tests on the geometry invariants (no overlap, closed prisms, feature contiguity).
 - **Conformance:** convert every sample in `spec/samples`, then run the Khronos validator and `boardui validate`, then diff against the expected outputs.
-- **WASM:** build the module, then run a Node smoke test that converts the minimal sample.
-- **Viewer:** Vitest unit tests, plus Playwright smoke and screenshot tests of the demo (software WebGL in CI).
+- **WASM:** build the module (`wasm-bindgen`, `wasm-opt`), then run a Node smoke test that converts the minimal sample.
+- **Viewer:** Vitest unit tests, plus Playwright smoke and screenshot tests of the demo (software rendering with SwiftShader in CI, in the Playwright Docker image), including converting every sample in the browser.
 - **Performance:** a `criterion` benchmark on the largest sample, with results tracked over time.
 
 ## Releases and hosting

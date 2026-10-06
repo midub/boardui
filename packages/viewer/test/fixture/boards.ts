@@ -128,9 +128,12 @@ const R0402: PackageDef = {
   silk: [0, 0, mm(2), mm(1.1), mm(0.1)],
 };
 
-/** Maps a ring from package coordinates to board coordinates (spec §6.8). */
+/**
+ * Maps a ring from package coordinates to board coordinates (spec §6.8). Bottom parts are
+ * mirrored about the package's y axis, then rotated (KiCad's order): `p' = R(θ) · M · p`.
+ */
 function toBoard(component: FixtureComponent, ring: Ring): Ring {
-  const local = component.side === 'TOP' ? ring : ring.map(([x, y]): Vec2 => [x, -y]);
+  const local = component.side === 'TOP' ? ring : ring.map(([x, y]): Vec2 => [-x, y]);
   return place(local, component.rotation, component.x, component.y);
 }
 

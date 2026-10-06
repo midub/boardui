@@ -22,6 +22,8 @@ export {
   type BoardViewerEventMap,
   type ElementTarget,
   type LayerState,
+  type LoadIpc2581Options,
+  type LoadProgress,
 } from './element.js';
 export { type ElementKind, encodeIdSegment, featureId } from './ids.js';
 export type { BoardSource } from './load.js';
