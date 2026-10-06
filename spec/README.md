@@ -1,6 +1,6 @@
 # boardui glTF profile
 
-**Version 0.2 — draft**
+**Version 0.3 — draft**
 
 This document specifies how boardui represents a printed circuit board as a glTF 2.0 asset. The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
@@ -289,7 +289,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 
 ```json
 "BOARDUI_board": {
-  "profileVersion": "0.2",
+  "profileVersion": "0.3",
   "source": {
     "format": "IPC-2581",
     "revision": "C",

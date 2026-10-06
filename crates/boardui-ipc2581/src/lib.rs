@@ -52,10 +52,9 @@ pub use diagnostic::{Diagnostic, DiagnosticKind, RefKind};
 pub use error::{Error, ErrorKind, Position};
 pub use model::{
     Component, Content, Document, Ecad, Feature, FeatureElement, Features, Fiducial, FiducialKind,
-    Hole, Layer,
-    LayerFeature, Marking, MountType, Package, PackageDrawing, Pad, PadUsage, PadUse, PadstackDef,
-    PadstackPad, Pin, PinRef, PlatingStatus, Polarity, Set, Side, SlotCavity, Span, Spec,
-    SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup, StackupLayer, Step, Units,
+    Hole, Layer, LayerFeature, Marking, MountType, Package, PackageDrawing, Pad, PadUsage, PadUse,
+    PadstackDef, PadstackPad, Pin, PinRef, PlatingStatus, Polarity, Set, Side, SlotCavity, Span,
+    Spec, SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup, StackupLayer, Step, Units,
     WhereMeasured,
 };
 pub use shape::{
