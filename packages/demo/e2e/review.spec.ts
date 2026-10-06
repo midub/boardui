@@ -192,6 +192,34 @@ test('KiCad board: views, selection with tags, nets, x-ray, hover', async ({ pag
   await shot(page, '11-hover-pad');
 });
 
+// The README's images (docs/images/), smaller than the review images; compressed afterwards with
+// `pngquant --quality 60-85`.
+test.describe('README images', () => {
+  test.use({ viewport: { width: 1100, height: 680 } });
+
+  test('KiCad board with tags and a net', async ({ page }) => {
+    await openBoard(page, 'sample=royalblue54l-feather');
+    await viewerCall(page, 'setView', 'top');
+    await viewerCall(page, 'whenPickable');
+    for (const id of ['cmp/U2', 'cmp/J3_1']) {
+      const p = await screenPoint(page, id);
+      await page.mouse.click(p.x, p.y);
+      await page.getByRole('button', { name: 'Pin tag' }).click();
+    }
+    await page.keyboard.press('Escape');
+    await page.locator('#net-search').fill('GND');
+    await page.locator('.net-result').first().click();
+    await page.locator('#net-search').fill('');
+    await page.locator('#net-search').blur();
+    await page.locator('#sidebar').evaluate((e) => e.scrollTo(0, 0));
+    await page.mouse.move(5, 400);
+    await viewerCall(page, 'setView', 'iso');
+    await shot(page, 'readme-viewer');
+    await page.keyboard.press('x');
+    await shot(page, 'readme-xray');
+  });
+});
+
 test('bottom-placement: bottom view lighting', async ({ page }) => {
   await openBoard(page, 'sample=bottom-placement');
   await viewerCall(page, 'setView', 'bottom');
