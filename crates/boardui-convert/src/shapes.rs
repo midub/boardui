@@ -162,11 +162,14 @@ impl<'a> ShapeConverter<'a> {
             }
             ipc::Shape::Polygon(poly) => self.polygon(poly, at, mode),
             ipc::Shape::Outline(outline) => {
+                // An outline encloses an area (KiCad writes text glyphs and slots this
+                // way, with zero width), drawn with its line on top.
                 let p = path(&outline.polygon.path, at);
                 if mode == Mode::Filled {
                     return Some(polygon(p));
                 }
-                self.stroke(close(p), &outline.line, at, mode)
+                let line = self.content.line_desc(&outline.line).copied();
+                self.filled_with_line(vec![p], Fill::Solid, line, at)
             }
             ipc::Shape::Unsupported { element } => {
                 self.warn(format!("unsupported shape `{element}` has no geometry"));
