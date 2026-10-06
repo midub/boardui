@@ -253,6 +253,36 @@ mod tests {
     }
 
     #[test]
+    fn only_corners_sharper_than_30_degrees_are_clipped() {
+        // A V with its tip at the origin and its legs symmetric about the −x axis, so the
+        // miter points to +x.
+        let tip_reach = |angle: f64| {
+            let half = (angle / 2.0).to_radians();
+            let path = Path::new(DVec2::from_angle(PI - half) * 2e-3)
+                .line_to(DVec2::ZERO)
+                .line_to(DVec2::from_angle(PI + half) * 2e-3);
+            let stroke = Stroke {
+                path,
+                width: 2e-4,
+                cap: LineCap::Flat,
+            };
+            Shape::Stroke(stroke)
+                .to_region(T)
+                .unwrap()
+                .bounds()
+                .unwrap()
+                .max
+                .x
+        };
+        // A 60° corner keeps its full miter, 0.1 mm / sin(30°).
+        assert_close(tip_reach(60.0), 2e-4, 1e-8);
+        // A 20° corner would reach 0.1 mm / sin(10°) ≈ 0.58 mm, but is clipped at the
+        // reach of a 30° miter.
+        let clipped = tip_reach(20.0);
+        assert!(clipped > 1e-4 && clipped <= 1e-4 / (15f64.to_radians()).sin() + 1e-8);
+    }
+
+    #[test]
     fn round_corners_are_rounded() {
         let path = Path::new(DVec2::ZERO)
             .line_to(DVec2::new(2e-3, 0.0))
