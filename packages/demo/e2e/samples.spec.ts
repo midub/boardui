@@ -2,7 +2,7 @@
 // converted by the WASM converter in a worker and shown.
 import { expect, test } from '@playwright/test';
 import { SAMPLES } from '../src/samples.js';
-import { collectErrors, openBoard } from './helpers.js';
+import { collectErrors, type DemoGlobal, openBoard } from './helpers.js';
 
 for (const sample of SAMPLES) {
   test(`converts ${sample.id} in the browser`, async ({ page }) => {
@@ -23,9 +23,10 @@ for (const sample of SAMPLES) {
     await expect(page.locator('.board-name')).toHaveText(sample.name);
     if (sample.models) {
       // The user model replaces the placeholder body: one model mesh, no warnings about it.
-      expect(
-        await page.evaluate(() => (globalThis as any).demo.viewer.ids('component').length),
-      ).toBe(1);
+      const components = await page.evaluate(
+        () => (globalThis as unknown as DemoGlobal).demo.viewer.ids('component').length,
+      );
+      expect(components).toBe(1);
     }
     expect(errors).toEqual([]);
     test.info().annotations.push({

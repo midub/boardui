@@ -89,6 +89,11 @@ export interface ConvertResult {
   timings: StepTiming[];
   /** Wall-clock time of the whole conversion in the worker, in seconds, including reading. */
   seconds: number;
+  /**
+   * Size of the worker's WebAssembly memory afterwards, in bytes: the conversion's peak, since
+   * WebAssembly memory only grows. At most 4 GiB (wasm32).
+   */
+  wasmMemory: number;
 }
 
 /** A finding of {@link ValidationReport}. */

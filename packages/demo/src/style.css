@@ -759,6 +759,9 @@ body:not([data-board]) board-viewer {
 
 .tag-body span {
   color: var(--muted);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tag-close {

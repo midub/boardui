@@ -1,5 +1,15 @@
 import { expect, type Page } from '@playwright/test';
 
+/** `globalThis` of the demo page (`src/main.ts`), as far as the tests use it. */
+export interface DemoGlobal {
+  demo: {
+    viewer: {
+      attachWidget(id: string, element: HTMLElement, options: object): () => void;
+      ids(kind: string): string[];
+    };
+  };
+}
+
 /** Console errors and uncaught exceptions of a page. */
 export function collectErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -38,9 +48,7 @@ export async function screenPoint(page: Page, id: string): Promise<{ x: number; 
   return page.evaluate(
     (id) =>
       new Promise<{ x: number; y: number }>((resolve) => {
-        const { viewer } = (
-          globalThis as unknown as { demo: { viewer: HTMLElement & Record<string, any> } }
-        ).demo;
+        const { viewer } = (globalThis as unknown as DemoGlobal).demo;
         const probe = document.createElement('div');
         const detach = viewer.attachWidget(id, probe, { anchor: 'center', occlusion: 'none' });
         requestAnimationFrame(() =>

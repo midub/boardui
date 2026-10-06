@@ -200,7 +200,7 @@ export class BoardModel {
       group.name = info.id;
       group.visible = kind === 'drill' || (info as BoardLayerJson).visible;
       const meshes = mergeLayer(info.id, node, ranges);
-      group.add(...meshes);
+      if (meshes.length) group.add(...meshes);
       const layer = {
         id: info.id,
         kind,

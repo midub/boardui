@@ -23,12 +23,12 @@ const scope = globalThis as unknown as {
   postMessage(message: WorkerResponse, transfer?: Transferable[]): void;
 };
 
-let ready: Promise<unknown> | null = null;
+let ready: Promise<{ memory: WebAssembly.Memory }> | null = null;
 
 scope.onmessage = async ({ data: request }) => {
   try {
     ready ??= init({ module_or_path: new URL('../wasm/boardui_wasm_bg.wasm', import.meta.url) });
-    await ready;
+    const { memory } = await ready;
     if (request.type === 'validate') {
       scope.postMessage({
         type: 'validated',
@@ -46,6 +46,7 @@ scope.onmessage = async ({ data: request }) => {
       ...converted,
       glb,
       seconds: (performance.now() - start) / 1000,
+      wasmMemory: memory.buffer.byteLength,
     };
     scope.postMessage({ type: 'converted', result }, [glb]);
   } catch (error) {
