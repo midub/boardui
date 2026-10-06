@@ -1,4 +1,4 @@
-//! Layer classification, stack-up order and Z ranges (spec §6.4–§6.6).
+//! Layer classification, stack-up order and Z ranges (spec §6.4–§6.6, §6.11–§6.13).
 
 use boardui_gltf::{Role, Side, ThicknessSource};
 use boardui_ipc2581 as ipc;
@@ -13,15 +13,19 @@ pub const DEFAULT_COPPER: f64 = 35e-6;
 pub const DEFAULT_SOLDERMASK: f64 = 20e-6;
 /// Default silkscreen thickness.
 pub const DEFAULT_SILKSCREEN: f64 = 10e-6;
+/// Default solder paste thickness: a typical stencil (spec §6.11).
+pub const DEFAULT_PASTE: f64 = 100e-6;
+/// Thickness of a drawing sheet (spec §6.12).
+pub const DRAWING_THICKNESS: f64 = 10e-6;
 
 /// What the converter does with a layer, by its `layerFunction`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayerClass {
-    /// A physical layer that becomes a layer node.
-    Physical(Role),
+    /// A layer that becomes a layer node.
+    Layer(Role),
     /// A drill or rout layer: holes and slots.
     Drill,
-    /// Not converted (paste, documentation, courtyard, …).
+    /// Not converted (glue, probe, V-cut, board outline, …).
     Ignored,
 }
 
@@ -29,19 +33,23 @@ pub enum LayerClass {
 pub fn classify(function: &str) -> LayerClass {
     match function.to_ascii_uppercase().as_str() {
         "CONDUCTOR" | "SIGNAL" | "PLANE" | "MIXED" | "CONDFOIL" | "CONDFILM" | "POWER_GROUND" => {
-            LayerClass::Physical(Role::Copper)
+            LayerClass::Layer(Role::Copper)
         }
         "DIELCORE" | "DIELPREG" | "DIELBASE" | "DIELADHV" | "DIELECTRIC" | "DIELCOVERLAY" => {
-            LayerClass::Physical(Role::Dielectric)
+            LayerClass::Layer(Role::Dielectric)
         }
-        "SOLDERMASK" => LayerClass::Physical(Role::Soldermask),
-        "SILKSCREEN" | "LEGEND" => LayerClass::Physical(Role::Silkscreen),
+        "SOLDERMASK" => LayerClass::Layer(Role::Soldermask),
+        "SILKSCREEN" | "LEGEND" => LayerClass::Layer(Role::Silkscreen),
+        "SOLDERPASTE" | "PASTEMASK" => LayerClass::Layer(Role::Paste),
+        "COURTYARD" => LayerClass::Layer(Role::Courtyard),
+        "ASSEMBLY" => LayerClass::Layer(Role::Assembly),
+        "DOCUMENT" => LayerClass::Layer(Role::Documentation),
         "DRILL" | "ROUT" | "ROUTE" => LayerClass::Drill,
         _ => LayerClass::Ignored,
     }
 }
 
-/// A physical layer with its Z range.
+/// A layer with its Z range.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StackLayer {
     /// Source layer name, or a synthesized name starting with `@`.
@@ -63,14 +71,15 @@ pub struct StackLayer {
 }
 
 impl StackLayer {
-    /// Suggested default visibility: inner copper is hidden, everything else (including the
-    /// dielectric, which keeps the board opaque) is shown (spec §8.3).
+    /// Suggested default visibility: inner copper and the optional layers are hidden,
+    /// everything else (including the dielectric, which keeps the board opaque) is shown
+    /// (spec §8.3).
     pub fn visible(&self) -> bool {
-        self.role != Role::Copper || self.side != Side::Internal
+        !self.role.is_optional() && (self.role != Role::Copper || self.side != Side::Internal)
     }
 }
 
-/// The board's physical layers, top to bottom.
+/// The board's layers, top to bottom.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Stack {
     /// Layers, top to bottom.
@@ -101,6 +110,194 @@ impl Stack {
             _ => copper.first().copied(),
         }
     }
+
+    /// The outer surface of a side: the highest top (or lowest bottom) of its layers.
+    fn surface(&self, side: Side) -> f64 {
+        let z = self.layers.iter().filter(|l| l.side == side);
+        match side {
+            Side::Bottom => z.map(|l| l.z_min).fold(f64::INFINITY, f64::min),
+            _ => z.map(|l| l.z_max).fold(f64::NEG_INFINITY, f64::max),
+        }
+    }
+
+    /// Adds layers outside the copper span (above the top copper, or below the bottom
+    /// copper), and orders that side outward by the layers' outer surfaces.
+    fn add_outer(&mut self, side: Side, new: Vec<StackLayer>) {
+        let copper = self.copper();
+        let (first, last) = (copper[0], *copper.last().expect("copper"));
+        let mut lower = self.layers.split_off(last + 1);
+        let mut upper: Vec<StackLayer> = self.layers.drain(..first).collect();
+        if side == Side::Bottom {
+            lower.extend(new);
+        } else {
+            upper.extend(new);
+        }
+        upper.sort_by(|a, b| b.z_max.total_cmp(&a.z_max));
+        lower.sort_by(|a, b| a.z_min.total_cmp(&b.z_min));
+        upper.append(&mut self.layers);
+        upper.append(&mut lower);
+        self.layers = upper;
+    }
+}
+
+/// Synthesized layers the pipeline asks for, per side (top, bottom): a silkscreen layer for
+/// package silkscreens and an assembly layer for package assembly drawings (spec §6.13).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Synthesize {
+    /// `@silkscreen-top`, `@silkscreen-bottom`.
+    pub silkscreen: [bool; 2],
+    /// `@assembly-top`, `@assembly-bottom`.
+    pub assembly: [bool; 2],
+}
+
+/// Whether the step has features on a layer.
+pub fn has_features(step: &ipc::Step, layer: &str) -> bool {
+    step.layer_features
+        .get(layer)
+        .is_some_and(|lf| lf.feature_count() > 0)
+}
+
+/// The side an optional layer goes on: `BOTTOM` layers on the bottom, all others (`TOP`,
+/// `NONE`, `ALL`, …) on the top (spec §6.11).
+pub fn optional_side(layer: &ipc::Layer) -> Side {
+    match layer.side {
+        Some(ipc::Side::Bottom) => Side::Bottom,
+        _ => Side::Top,
+    }
+}
+
+/// Adds the synthesized silkscreen layers, the paste layers and the drawing layers with
+/// features in `step` (spec §6.11–§6.13) to the stack.
+pub fn add_optional(
+    stack: &mut Stack,
+    ecad: &ipc::Ecad,
+    step: &ipc::Step,
+    synthesize: Synthesize,
+    warnings: &mut Warnings,
+) {
+    let synthesized = |name: &str, role, side, z_min, z_max| StackLayer {
+        name: name.to_owned(),
+        role,
+        ipc_function: None,
+        side,
+        z_min,
+        z_max,
+        thickness_source: ThicknessSource::Default,
+        synthesized: true,
+    };
+    let optional: Vec<&ipc::Layer> = ecad
+        .layers
+        .values()
+        .filter(|l| {
+            matches!(classify(&l.function), LayerClass::Layer(role) if role.is_optional())
+                && has_features(step, &l.name)
+        })
+        .collect();
+    let role_of = |l: &ipc::Layer| match classify(&l.function) {
+        LayerClass::Layer(role) => role,
+        _ => unreachable!("optional layers only"),
+    };
+    for (k, side) in [Side::Top, Side::Bottom].into_iter().enumerate() {
+        let on_side: Vec<&ipc::Layer> = optional
+            .iter()
+            .copied()
+            .filter(|l| optional_side(l) == side)
+            .collect();
+        let Some(copper) = stack.outer_copper(side) else {
+            if !on_side.is_empty() {
+                let names: Vec<&str> = on_side.iter().map(|l| l.name.as_str()).collect();
+                warnings.push(format!(
+                    "the board has no bottom side; layers {} were skipped",
+                    names.join(", ")
+                ));
+            }
+            continue;
+        };
+        let up = if side == Side::Bottom { -1.0 } else { 1.0 };
+        let range = |from: f64, t: f64| {
+            let to = from + up * t;
+            (from.min(to), from.max(to))
+        };
+        if synthesize.silkscreen[k] {
+            let name = ["@silkscreen-top", "@silkscreen-bottom"][k];
+            let (z_min, z_max) = range(stack.surface(side), DEFAULT_SILKSCREEN);
+            let layer = synthesized(name, Role::Silkscreen, side, z_min, z_max);
+            stack.add_outer(side, vec![layer]);
+        }
+
+        // Paste sits on the outer copper surface (spec §6.11); one layer per side.
+        let copper_surface = match side {
+            Side::Bottom => stack.layers[copper].z_min,
+            _ => stack.layers[copper].z_max,
+        };
+        let mut pastes = on_side.iter().filter(|l| role_of(l) == Role::Paste);
+        if let Some(paste) = pastes.next() {
+            let thickness = stackup_thickness(ecad, &paste.name);
+            let (z_min, z_max) = range(copper_surface, thickness.unwrap_or(DEFAULT_PASTE));
+            let layer = StackLayer {
+                name: paste.name.clone(),
+                role: Role::Paste,
+                ipc_function: Some(paste.function.clone()),
+                side,
+                z_min,
+                z_max,
+                thickness_source: if thickness.is_some() {
+                    ThicknessSource::File
+                } else {
+                    ThicknessSource::Default
+                },
+                synthesized: false,
+            };
+            stack.add_outer(side, vec![layer]);
+        }
+        for extra in pastes {
+            warnings.push(format!(
+                "layer `{}` is a second paste layer on its side and was skipped",
+                extra.name
+            ));
+        }
+
+        // Drawings are stacked outward from the side's surface (spec §6.12).
+        let rank = |role: Role| match role {
+            Role::Assembly => 0,
+            Role::Courtyard => 1,
+            _ => 2,
+        };
+        let mut drawings: Vec<(Role, String, Option<String>)> = on_side
+            .iter()
+            .filter(|l| role_of(l).is_drawing())
+            .map(|l| (role_of(l), l.name.clone(), Some(l.function.clone())))
+            .collect();
+        if synthesize.assembly[k] {
+            let name = ["@assembly-top", "@assembly-bottom"][k];
+            drawings.push((Role::Assembly, name.to_owned(), None));
+        }
+        drawings.sort_by_key(|(role, ..)| rank(*role));
+        let mut surface = stack.surface(side);
+        let mut layers = Vec::new();
+        for (role, name, function) in drawings {
+            let (z_min, z_max) = range(surface, DRAWING_THICKNESS);
+            surface += up * DRAWING_THICKNESS;
+            layers.push(StackLayer {
+                synthesized: function.is_none(),
+                ipc_function: function,
+                ..synthesized(&name, role, side, z_min, z_max)
+            });
+        }
+        stack.add_outer(side, layers);
+    }
+}
+
+/// The thickness of a layer in the first stack-up, if given (and not 0).
+fn stackup_thickness(ecad: &ipc::Ecad, layer: &str) -> Option<f64> {
+    ecad.stackups
+        .first()?
+        .groups
+        .iter()
+        .flat_map(|g| &g.layers)
+        .find(|l| l.layer_or_group_ref == layer)?
+        .thickness
+        .filter(|&t| t > 0.0)
 }
 
 /// An entry while ordering: a source layer or a synthesized one.
@@ -123,7 +320,7 @@ pub fn build(ecad: &ipc::Ecad, warnings: &mut Warnings) -> Result<Stack, String>
         .layers
         .values()
         .filter_map(|layer| match classify(&layer.function) {
-            LayerClass::Physical(role) => Some(Entry {
+            LayerClass::Layer(role) if !role.is_optional() => Some(Entry {
                 name: layer.name.clone(),
                 role,
                 function: Some(layer.function.clone()),
@@ -343,7 +540,7 @@ fn z_ranges(above: &[Entry], span: &[Entry], below: &[Entry]) -> Stack {
                     Role::Copper => Some(DEFAULT_COPPER),
                     Role::Soldermask => Some(DEFAULT_SOLDERMASK),
                     Role::Silkscreen => Some(DEFAULT_SILKSCREEN),
-                    Role::Dielectric => None,
+                    _ => None,
                 },
                 ThicknessSource::Default,
             ),

@@ -40,6 +40,14 @@ pub enum BuiltinMaterial {
     Body,
     /// `boardui/pin1`: pin-1 markers.
     Pin1,
+    /// `boardui/paste`: solder paste.
+    Paste,
+    /// `boardui/courtyard`: courtyard drawings.
+    Courtyard,
+    /// `boardui/assembly`: assembly drawings.
+    Assembly,
+    /// `boardui/documentation`: documentation drawings.
+    Documentation,
 }
 
 impl BuiltinMaterial {
@@ -52,6 +60,10 @@ impl BuiltinMaterial {
             Self::Dielectric => "boardui/dielectric",
             Self::Body => "boardui/body",
             Self::Pin1 => "boardui/pin1",
+            Self::Paste => "boardui/paste",
+            Self::Courtyard => "boardui/courtyard",
+            Self::Assembly => "boardui/assembly",
+            Self::Documentation => "boardui/documentation",
         }
     }
 
@@ -62,6 +74,10 @@ impl BuiltinMaterial {
             Role::Dielectric => Self::Dielectric,
             Role::Soldermask => Self::Soldermask,
             Role::Silkscreen => Self::Silkscreen,
+            Role::Paste => Self::Paste,
+            Role::Courtyard => Self::Courtyard,
+            Role::Assembly => Self::Assembly,
+            Role::Documentation => Self::Documentation,
         }
     }
 
@@ -80,6 +96,10 @@ impl BuiltinMaterial {
             Self::Dielectric => (0xC7B98A, 1.0, 0.0, 0.9),
             Self::Body => (0x2B2B2B, 1.0, 0.0, 0.6),
             Self::Pin1 => (0xE0E0E0, 1.0, 0.0, 0.6),
+            Self::Paste => (0xA4A7AB, 1.0, 0.0, 0.6),
+            Self::Courtyard => (0xC07AAE, 1.0, 0.0, 0.8),
+            Self::Assembly => (0x7DB2C4, 1.0, 0.0, 0.8),
+            Self::Documentation => (0x9FBF73, 1.0, 0.0, 0.8),
         }
     }
 

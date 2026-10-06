@@ -16,7 +16,7 @@ use glam::DAffine2;
 use crate::colours;
 use crate::components::{self, PadRef};
 use crate::shapes::{ShapeConverter, erases, is_stroke, point};
-use crate::stackup::{self, LayerClass, Stack};
+use crate::stackup::{self, LayerClass, Stack, Synthesize};
 use crate::{Conversion, ConvertError, Options, Stats, Timings, Warning, Warnings};
 
 /// A layer's source features, ready for `boardui-geom`.
@@ -58,7 +58,9 @@ pub(crate) fn run(
     let mut warnings = Warnings::default();
     let features_step = timings.step("stack-up, features, components");
     let step = select_step(doc, options)?;
-    let stack = stackup::build(&doc.ecad, &mut warnings).map_err(ConvertError::Input)?;
+    let mut stack = stackup::build(&doc.ecad, &mut warnings).map_err(ConvertError::Input)?;
+    let synthesize = package_layers(&doc.ecad, step, &stack);
+    stackup::add_optional(&mut stack, &doc.ecad, step, synthesize, &mut warnings);
     let colours = colours::resolve(doc, &stack, &mut warnings);
     if doc
         .ecad
@@ -113,14 +115,18 @@ pub(crate) fn run(
             _ => Features::default(),
         });
     }
+    ctx.package_drawings(&stack, &mut layer_features);
     let mut skipped = Vec::new();
     for (name, lf) in step.layer_features.iter() {
+        // Optional layers that were left out have been reported already.
         let known = stack.index(name).is_some()
-            || doc
-                .ecad
-                .layers
-                .get(name)
-                .is_some_and(|l| stackup::classify(&l.function) == LayerClass::Drill);
+            || doc.ecad.layers.get(name).is_some_and(|l| {
+                match stackup::classify(&l.function) {
+                    LayerClass::Drill => true,
+                    LayerClass::Layer(role) => role.is_optional(),
+                    LayerClass::Ignored => false,
+                }
+            });
         if !known && lf.feature_count() > 0 {
             let function = doc
                 .ecad
@@ -248,10 +254,14 @@ pub(crate) fn run(
             let holes = layer_cuts(i);
             let side = (layer.side == Side::Bottom) as usize;
             match layer.role {
-                Role::Copper => {
+                Role::Copper | Role::Paste => {
                     let cutter = HoleCutter::new(holes);
                     let cut: Vec<Region> = regions[i].iter().map(|r| cutter.cut(r)).collect();
                     (None, cut)
+                }
+                // Drawings are neither cut nor clipped (spec §6.12).
+                Role::Courtyard | Role::Assembly | Role::Documentation => {
+                    (None, regions[i].clone())
                 }
                 Role::Silkscreen => {
                     let mut clip = holes;
@@ -452,6 +462,43 @@ fn select_step<'a>(
     }
 }
 
+/// The synthesized layers that package drawings need (spec §6.13): per side, a silkscreen
+/// layer if the side has none and one of its components' packages has a silkscreen, and an
+/// assembly layer if the side has no assembly layer with features and one of its
+/// components' packages has an assembly drawing.
+fn package_layers(ecad: &ipc::Ecad, step: &ipc::Step, stack: &Stack) -> Synthesize {
+    let mut out = Synthesize::default();
+    let drawn = |d: &Option<ipc::PackageDrawing>| {
+        d.as_ref()
+            .is_some_and(|d| !d.outlines.is_empty() || !d.markings.is_empty())
+    };
+    for c in step.components.values() {
+        let Some(package) = step.packages.get(&c.package_ref) else {
+            continue;
+        };
+        let k = (components::component_side(c, stack) == Side::Bottom) as usize;
+        out.silkscreen[k] |= drawn(&package.silkscreen);
+        out.assembly[k] |= drawn(&package.assembly_drawing);
+    }
+    for (k, side) in [Side::Top, Side::Bottom].into_iter().enumerate() {
+        if stack
+            .layers
+            .iter()
+            .any(|l| l.role == Role::Silkscreen && l.side == side)
+        {
+            out.silkscreen[k] = false;
+        }
+    }
+    for layer in ecad.layers.values() {
+        if stackup::classify(&layer.function) == LayerClass::Layer(Role::Assembly)
+            && stackup::has_features(step, &layer.name)
+        {
+            out.assembly[(stackup::optional_side(layer) == Side::Bottom) as usize] = false;
+        }
+    }
+    out
+}
+
 fn sheet_row() -> FeatureRow {
     FeatureRow {
         kind: FeatureKind::Sheet,
@@ -598,7 +645,7 @@ impl<'a> Context<'a> {
                     (FeatureKind::Other, None, None)
                 }
             };
-            let kind = if role == Role::Silkscreen {
+            let kind = if role == Role::Silkscreen || role.is_drawing() {
                 FeatureKind::Marking
             } else {
                 kind
@@ -638,6 +685,82 @@ impl<'a> Context<'a> {
             });
         }
         out
+    }
+
+    /// Adds the features of package drawings (spec §6.13): assembly drawings to the
+    /// synthesized assembly layer of the component's side, and silkscreens to the side's
+    /// silkscreen layer where it has nothing for the component.
+    fn package_drawings(&mut self, stack: &Stack, layer_features: &mut [Features]) {
+        let layer_of = |role: Role, side: Side, synthesized: bool| {
+            stack.layers.iter().position(|l| {
+                l.role == role && l.side == side && (!synthesized || l.synthesized)
+            })
+        };
+        // Components that a silkscreen layer's own features reference.
+        let mut referenced: HashMap<usize, std::collections::HashSet<u32>> = HashMap::new();
+        for side in [Side::Top, Side::Bottom] {
+            if let Some(i) = layer_of(Role::Silkscreen, side, false) {
+                let rows = layer_features[i].rows.iter().filter_map(|r| r.component);
+                referenced.insert(i, rows.collect());
+            }
+        }
+        for c in self.step.components.values() {
+            let Some(package) = self.step.packages.get(&c.package_ref) else {
+                continue;
+            };
+            let Some(&row) = self.component_rows.get(c.ref_des.as_str()) else {
+                continue;
+            };
+            let side = components::component_side(c, stack);
+            let at = self.shapes.placement(c.location, &c.xform);
+            if let (Some(drawing), Some(i)) = (
+                &package.assembly_drawing,
+                layer_of(Role::Assembly, side, true),
+            ) {
+                self.drawing_features(drawing, at, row, &mut layer_features[i]);
+            }
+            if let (Some(drawing), Some(i)) = (
+                &package.silkscreen,
+                layer_of(Role::Silkscreen, side, false),
+            ) && !referenced.get(&i).is_some_and(|r| r.contains(&row))
+            {
+                self.drawing_features(drawing, at, row, &mut layer_features[i]);
+            }
+        }
+    }
+
+    /// The `Outline`s and then the `Marking`s of a package drawing, placed at `at`, as
+    /// features of `component`, numbered on from the layer's last feature.
+    fn drawing_features(
+        &mut self,
+        drawing: &ipc::PackageDrawing,
+        at: DAffine2,
+        component: u32,
+        out: &mut Features,
+    ) {
+        let mut shapes = Vec::new();
+        for outline in &drawing.outlines {
+            shapes.push(self.shapes.drawing_outline(outline, at));
+        }
+        for marking in &drawing.markings {
+            let inner = self.shapes.placement(marking.location, &marking.xform);
+            shapes.push(self.shapes.area(&marking.shape, at * inner));
+        }
+        for shape in shapes {
+            let source = out.rows.last().map_or(0, |r| r.source + 1);
+            out.rows.push(FeatureRow {
+                kind: FeatureKind::Marking,
+                source,
+                net: None,
+                pin: None,
+                component: Some(component),
+            });
+            out.shapes.push(geom::Feature {
+                shape: shape.unwrap_or(Shape::Union(Vec::new())),
+                priority: Priority::Other,
+                polarity: Polarity::Positive,
+            });
+        }
     }
 
     /// A pad's shape: its own, or its padstack's regular pad on this layer.

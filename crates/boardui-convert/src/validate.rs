@@ -501,12 +501,17 @@ impl Validator<'_> {
                 if upper.z_min + eps >= lower.z_max {
                     continue;
                 }
-                // The one exception: soldermask overlaps the outer copper of its side.
-                let mask_over_copper =
-                    |a: &boardui_gltf::BoardLayer, b: &boardui_gltf::BoardLayer| {
-                        a.role == Role::Soldermask && b.role == Role::Copper && a.side == b.side
-                    };
-                if mask_over_copper(upper, lower) || mask_over_copper(lower, upper) {
+                // The exceptions: soldermask overlaps the outer copper of its side, and paste
+                // the soldermask and silkscreen of its side (spec §6.4, §6.11).
+                let allowed = |a: &boardui_gltf::BoardLayer, b: &boardui_gltf::BoardLayer| {
+                    a.side == b.side
+                        && match a.role {
+                            Role::Soldermask => b.role == Role::Copper,
+                            Role::Paste => matches!(b.role, Role::Soldermask | Role::Silkscreen),
+                            _ => false,
+                        }
+                };
+                if allowed(upper, lower) || allowed(lower, upper) {
                     continue;
                 }
                 self.report.error(format!(

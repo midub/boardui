@@ -156,6 +156,17 @@ impl<'a> ShapeConverter<'a> {
         self.convert(shape, at, Mode::Filled, 0)
     }
 
+    /// The outline of a package drawing (spec §6.13): its line, a zero-width one as a
+    /// hairline; filled only when its polygon's `FillDesc` says so.
+    pub fn drawing_outline(&mut self, outline: &ipc::Outline, at: DAffine2) -> Option<Shape> {
+        let fill = match &outline.polygon.fill {
+            Some(style) => self.fill(style),
+            None => Fill::Hollow,
+        };
+        let line = self.content.line_desc(&outline.line).copied();
+        self.filled_with_line(vec![path(&outline.polygon.path, at)], fill, line, at)
+    }
+
     /// A polygon (and its cutouts) as a filled shape.
     pub fn contour(&mut self, contour: &ipc::Contour, at: DAffine2) -> Option<Shape> {
         Some(Shape::Polygon {

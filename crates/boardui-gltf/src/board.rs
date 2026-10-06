@@ -137,6 +137,27 @@ pub enum Role {
     Soldermask,
     /// Silkscreen.
     Silkscreen,
+    /// Solder paste (spec §6.11).
+    Paste,
+    /// Courtyard drawing (spec §6.12).
+    Courtyard,
+    /// Assembly (fab) drawing (spec §6.12).
+    Assembly,
+    /// Documentation drawing (spec §6.12).
+    Documentation,
+}
+
+impl Role {
+    /// Whether layers of this role are drawings rather than material (spec §6.12).
+    pub fn is_drawing(self) -> bool {
+        matches!(self, Self::Courtyard | Self::Assembly | Self::Documentation)
+    }
+
+    /// Whether layers of this role are optional: hidden by default, and omitted without
+    /// features (spec §6.11, §6.12).
+    pub fn is_optional(self) -> bool {
+        self == Self::Paste || self.is_drawing()
+    }
 }
 
 /// `side` of a layer or component, and the `Side` enum of the metadata schema.
