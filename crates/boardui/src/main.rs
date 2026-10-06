@@ -242,12 +242,7 @@ fn parse_report(path: &Path, xml: &[u8], error: &boardui_ipc2581::Error) -> miet
         .rposition(|&b| b == b'\n')
         .map_or(0, |i| i + 1);
     if offset - line_start > MAX_SNIPPET_COLUMN {
-        return miette::miette!(
-            "{}: {}: {}",
-            path.display(),
-            error.position(),
-            error.kind()
-        );
+        return miette::miette!("{}: {}: {}", path.display(), error.position(), error.kind());
     }
     let text = String::from_utf8_lossy(xml).into_owned();
     let offset = offset.min(text.len());

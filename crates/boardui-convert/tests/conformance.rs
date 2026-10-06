@@ -46,7 +46,7 @@ fn samples() -> Vec<(String, PathBuf)> {
 }
 
 /// Samples whose source puts some component pins off their pads, with the number of such
-/// pins. KiCad 9 writes a rotation 180° off for bottom-side footprints at 0° or 180° in a
+/// pins: KiCad 9 writes a rotation 180° off for the bottom-side footprints at 0° or 180° of a
 /// KiCad 5 board (`spec/samples/kicad-fomu-pvt/README.md`).
 const KNOWN_MISPLACED_PINS: &[(&str, usize)] = &[("fomu-pvt", 74)];
 
@@ -154,6 +154,7 @@ samples! {
     kicad_royalblue54l_feather => "royalblue54l-feather",
     kicad_fomu_pvt => "fomu-pvt",
     kicad_miao => "miao",
+    kicad_kikit_panel => "egg-ldo-panel",
     kicad_blind_buried_vias => "blind-buried-vias",
     kicad10_antenna => "antenna",
     altium_ldo_pcb => "LDO-PCB",
