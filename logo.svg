@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" xmlns:bx="https://boxy-svg.com">
+  <title>BoardUI</title>
   <defs>
     <linearGradient id="gradient-2" bx:pinned="true">
       <stop offset="0.208" style="stop-color: rgb(37, 83, 123);"/>

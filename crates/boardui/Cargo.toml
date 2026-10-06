@@ -1,0 +1,18 @@
+[package]
+name = "boardui"
+description = "Command-line tool: convert IPC-2581 to boardui glTF and validate boardui assets."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "boardui"
+path = "src/main.rs"
+
+[dependencies]
+boardui-convert.workspace = true
+
+[lints]
+workspace = true
