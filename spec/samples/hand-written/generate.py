@@ -357,8 +357,8 @@ def line_styles():
         )
 
     arc = (
-        f'<Arc startX="{d.u(16)}" startY="{d.u(14)}" endX="{d.u(22)}" endY="{d.u(14)}" '
-        f'centerX="{d.u(19)}" centerY="{d.u(14)}" clockwise="true"><LineDescRef id="DASHED"/></Arc>'
+        f'<Arc startX="{d.u(16)}" startY="{d.u(11)}" endX="{d.u(22)}" endY="{d.u(11)}" '
+        f'centerX="{d.u(19)}" centerY="{d.u(11)}" clockwise="true"><LineDescRef id="DASHED"/></Arc>'
     )
     outline = (
         f"<Polygon>{d.rect(16, 2, 22, 8)}"
