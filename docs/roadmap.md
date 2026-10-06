@@ -10,7 +10,7 @@
 | **M3 Converter CLI** | `boardui-gltf`, `boardui-convert`, `boardui convert` / `validate`, placeholder bodies, `--models` | all samples convert, pass the Khronos validator and `boardui validate`, and look right next to `kicad-cli pcb export glb` |
 | **M4 Viewer** | `<board-viewer>`: load, orbit/pan/zoom, top/bottom views, layer toggles, hover/select via the state texture, net highlight, x-ray | performance targets below met on `testcase1` |
 | **M5 Browser and widgets** | `boardui-wasm`, `@boardui/converter` worker, widget API, demo app (drop a file, convert locally, view, download) | the demo converts every sample in the browser; widgets follow their elements |
-| **M6 Release** | docs, crates.io + npm publishing, hosted demo | v1.0.0 tags published; demo live |
+| **M6 Release** | docs, CLI binaries on GitHub Releases, demo on GitHub Pages | v1.0.0 tag with release binaries; demo live at midub.github.io/boardui; issue #1 answered |
 
 ### Performance targets (verified in M4)
 
@@ -33,7 +33,5 @@ These are goals to measure against, not promises:
 
 ## Open items
 
-- Domain: `boardui.com` still resolves (DNS at Namecheap), but `demo.boardui.com` has no DNS record any more (issue #1). Decide whether the new demo uses it.
-- npm scope `@boardui`: check availability before M6.
 - Register the `BOARDUI` vendor prefix with Khronos.
 - Bottom-side placement convention (spec §6.8): verify against KiCad exports in M3.

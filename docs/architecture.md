@@ -162,6 +162,5 @@ Nothing leaves the machine.
 
 ## Releases and hosting
 
-- Crates go to crates.io (all `boardui-*` names are free). npm packages go under the `@boardui` scope, with `@midub/boardui-*` as the fallback if the scope is taken (the unscoped `boardui` package belongs to someone else).
-- Releases are published from version tags by a workflow.
-- The demo is hosted on Cloudflare Pages or GitHub Pages; the domain is still open (see roadmap).
+- v1 publishes nothing to crates.io or npm. The `boardui` CLI ships as prebuilt binaries (Linux, macOS, Windows) on GitHub Releases, built by a workflow from version tags. Crates set `publish = false` and npm packages `"private": true`.
+- The demo is hosted on GitHub Pages at <https://midub.github.io/boardui/>, deployed by CI from `master`. There is no custom domain: `boardui.com` and the unscoped `boardui` npm package belong to an unrelated project.
