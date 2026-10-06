@@ -315,6 +315,19 @@ impl<R: BufRead> Parser<R> {
             .ok_or_else(|| self.missing(attribute))
     }
 
+    /// A required string attribute that real exporters omit: `default` with a
+    /// [`MissingAttribute`](DiagnosticKind::MissingAttribute) warning when it is missing.
+    pub(super) fn str_or(&mut self, attribute: &str, default: &str) -> String {
+        self.opt_str(attribute).unwrap_or_else(|| {
+            self.warn(DiagnosticKind::MissingAttribute {
+                element: self.tag.name().to_owned(),
+                attribute: attribute.to_owned(),
+                default: default.to_owned(),
+            });
+            default.to_owned()
+        })
+    }
+
     /// An optional reference attribute: present means non-empty.
     pub(super) fn opt_ref(&mut self, attribute: &str) -> Result<Option<String>, Error> {
         self.opt_with(attribute, "a non-empty reference", |s| {

@@ -218,7 +218,8 @@ impl<R: BufRead> Parser<R> {
 
     fn read_stackup(&mut self) -> Result<Stackup, Error> {
         let mut stackup = Stackup {
-            name: self.req_str("name")?,
+            // Polar Speedstack and Altium omit it.
+            name: self.str_or("name", "(unnamed)"),
             overall_thickness: self.opt_len("overallThickness")?,
             tol_plus: self.opt_len("tolPlus")?,
             tol_minus: self.opt_len("tolMinus")?,

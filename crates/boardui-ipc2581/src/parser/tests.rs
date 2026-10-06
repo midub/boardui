@@ -920,6 +920,32 @@ mod layers {
         );
     }
 
+    /// Polar Speedstack and Altium write `<Stackup>` without `name`.
+    #[test]
+    fn stackup_without_name_gets_a_default() {
+        let d = doc(
+            "INCH",
+            "",
+            r#"<Stackup overallThickness="0.0632"><StackupGroup name="G"/></Stackup>"#,
+        )
+        .unwrap();
+        let stackup = &d.ecad.stackups[0];
+        assert_eq!(stackup.name, "(unnamed)");
+        assert_eq!(stackup.groups.len(), 1);
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [&DiagnosticKind::MissingAttribute {
+                element: "Stackup".to_owned(),
+                attribute: "name".to_owned(),
+                default: "(unnamed)".to_owned(),
+            }]
+        );
+        assert_eq!(
+            d.diagnostics[0].kind.to_string(),
+            "element `Stackup` is missing attribute `name`; using `(unnamed)`"
+        );
+    }
+
     #[test]
     fn content_layer_and_step_references_are_checked() {
         let d = doc("INCH", r#"<StepRef name="X"/><LayerRef name="Y"/>"#, "").unwrap();

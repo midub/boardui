@@ -1,0 +1,32 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step miao, ASSEMBLY
+thickness: 1.5799 mm
+counts: 380 features, 41066 vertices, 82112 triangles, 33 nets, 18 components, 95 pins (93 checked against pads)
+warnings: 15 from the reader, 1 from the converter
+  - layers outside the profile's scope were not converted: F.Paste (SOLDERPASTE), B.Paste (SOLDERPASTE), User.Drawings (DOCUMENT), Edge.Cuts (BOARD_OUTLINE), F.Courtyard (COURTYARD), F.Fab (ASSEMBLY)
+layer layer/F.Silkscreen Silkscreen Top z 0.8001..0.8101 mm Default
+  1 features {"Marking": 1}, 66 vertices, 132 triangles, top area 3.9234 mm²
+layer layer/F.Mask Soldermask Top z 0.7544..0.8001 mm File
+  1 features {"Sheet": 1}, 4736 vertices, 9888 triangles, top area 231.0954 mm²
+layer layer/F.Cu Copper Top z 0.7544..0.7899 mm File
+  186 features {"Pad": 112, "Trace": 30, "Via": 44}, 12300 vertices, 23924 triangles, top area 169.6318 mm²
+layer layer/DIELECTRIC_1 Dielectric Internal z -0.7544..0.7544 mm File
+  1 features {"Sheet": 1}, 3142 vertices, 6548 triangles, top area 338.4983 mm²
+layer layer/B.Cu Copper Bottom z -0.7899..-0.7544 mm File
+  103 features {"Pad": 42, "Trace": 17, "Via": 44}, 11158 vertices, 22100 triangles, top area 231.2050 mm²
+layer layer/B.Mask Soldermask Bottom z -0.8001..-0.7544 mm File
+  1 features {"Sheet": 1}, 3008 vertices, 6184 triangles, top area 272.6410 mm²
+layer layer/B.Silkscreen Silkscreen Bottom z -0.8101..-0.8001 mm Default
+  2 features {"Marking": 2}, 342 vertices, 708 triangles, top area 5.2747 mm²
+drill layer/F.Cu_B.Cu layer/F.Cu..layer/B.Cu
+  81 features {"Barrel": 79, "Other": 2}, 5642 vertices, 11284 triangles, top area 3.9563 mm²
+drill layer/F.Cu_B.Cu_1 layer/F.Cu..layer/B.Cu
+  4 features {"Barrel": 4}, 672 vertices, 1344 triangles, top area 0.3658 mm²
+components: 18
+  SW1 at (95.1687, 0.7899, 92.9005) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder SW_Push_SPST_NO_Alps_SKRK_1
+  U3 at (99.9998, 0.7899, 93.2510) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder xiao_drop-in_gpio_plus_4_castellated_2
+  JP2 at (94.7649, 0.7899, 99.0346) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), no body
+  U2 at (99.9998, 0.7899, 94.3889) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder SOT-23-6_4
+  R5 at (99.0498, 0.7899, 91.0996) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder R_0402_1005Metric_5

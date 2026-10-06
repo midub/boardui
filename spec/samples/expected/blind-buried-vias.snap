@@ -1,0 +1,121 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev B, step rt-bbv, ASSEMBLY
+thickness: 2.4200 mm
+counts: 142 features, 9114 vertices, 18504 triangles, 1 nets, 2 components, 4 pins (4 checked against pads)
+warnings: 14 from the reader, 1 from the converter
+  - layers outside the profile's scope were not converted: F.Paste (SOLDERPASTE), B.Paste (SOLDERPASTE), Edge.Cuts (BOARD_OUTLINE), B.Courtyard (COURTYARD), F.Courtyard (COURTYARD), B.Fab (ASSEMBLY), F.Fab (ASSEMBLY)
+layer layer/F.Silkscreen Silkscreen Top z 1.2200..1.2300 mm Default
+  3 features {"Marking": 3}, 386 vertices, 748 triangles, top area 1.6009 mm²
+layer layer/F.Mask Soldermask Top z 1.1400..1.2200 mm File
+  1 features {"Sheet": 1}, 178 vertices, 372 triangles, top area 1322.6639 mm²
+layer layer/F.Cu Copper Top z 1.1400..1.2100 mm File
+  6 features {"Pad": 2, "Via": 4}, 278 vertices, 560 triangles, top area 19.2379 mm²
+layer layer/DIELECTRIC_1 Dielectric Internal z 1.1078..1.1400 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In1.Cu Copper Internal z 1.0378..1.1078 mm File hidden
+  6 features {"Via": 6}, 276 vertices, 564 triangles, top area 27.6318 mm²
+layer layer/DIELECTRIC_2 Dielectric Internal z 1.0056..1.0378 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In2.Cu Copper Internal z 0.9356..1.0056 mm File hidden
+  4 features {"Via": 4}, 206 vertices, 416 triangles, top area 15.3537 mm²
+layer layer/DIELECTRIC_3 Dielectric Internal z 0.9035..0.9356 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In3.Cu Copper Internal z 0.8335..0.9035 mm File hidden
+  4 features {"Via": 4}, 216 vertices, 436 triangles, top area 27.9407 mm²
+layer layer/DIELECTRIC_4 Dielectric Internal z 0.8013..0.8335 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In4.Cu Copper Internal z 0.7313..0.8013 mm File hidden
+  4 features {"Via": 4}, 206 vertices, 416 triangles, top area 15.3537 mm²
+layer layer/DIELECTRIC_5 Dielectric Internal z 0.6991..0.7313 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In5.Cu Copper Internal z 0.6291..0.6991 mm File hidden
+  4 features {"Via": 4}, 216 vertices, 436 triangles, top area 27.9407 mm²
+layer layer/DIELECTRIC_6 Dielectric Internal z 0.5970..0.6291 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In6.Cu Copper Internal z 0.5270..0.5970 mm File hidden
+  4 features {"Via": 4}, 206 vertices, 416 triangles, top area 15.3537 mm²
+layer layer/DIELECTRIC_7 Dielectric Internal z 0.4948..0.5270 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In7.Cu Copper Internal z 0.4248..0.4948 mm File hidden
+  4 features {"Via": 4}, 216 vertices, 436 triangles, top area 27.9407 mm²
+layer layer/DIELECTRIC_8 Dielectric Internal z 0.3926..0.4248 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In8.Cu Copper Internal z 0.3226..0.3926 mm File hidden
+  4 features {"Via": 4}, 206 vertices, 416 triangles, top area 15.3537 mm²
+layer layer/DIELECTRIC_9 Dielectric Internal z 0.2904..0.3226 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In9.Cu Copper Internal z 0.2204..0.2904 mm File hidden
+  4 features {"Via": 4}, 216 vertices, 436 triangles, top area 27.9407 mm²
+layer layer/DIELECTRIC_10 Dielectric Internal z 0.1883..0.2204 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In10.Cu Copper Internal z 0.1183..0.1883 mm File hidden
+  4 features {"Via": 4}, 206 vertices, 416 triangles, top area 15.3537 mm²
+layer layer/DIELECTRIC_11 Dielectric Internal z 0.0861..0.1183 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In11.Cu Copper Internal z 0.0161..0.0861 mm File hidden
+  4 features {"Via": 4}, 216 vertices, 436 triangles, top area 27.9407 mm²
+layer layer/DIELECTRIC_12 Dielectric Internal z -0.0161..0.0161 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In12.Cu Copper Internal z -0.0861..-0.0161 mm File hidden
+  4 features {"Via": 4}, 206 vertices, 416 triangles, top area 15.3537 mm²
+layer layer/DIELECTRIC_13 Dielectric Internal z -0.1183..-0.0861 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In13.Cu Copper Internal z -0.1883..-0.1183 mm File hidden
+  4 features {"Via": 4}, 216 vertices, 436 triangles, top area 27.9407 mm²
+layer layer/DIELECTRIC_14 Dielectric Internal z -0.2204..-0.1883 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In14.Cu Copper Internal z -0.2904..-0.2204 mm File hidden
+  4 features {"Via": 4}, 206 vertices, 416 triangles, top area 15.3537 mm²
+layer layer/DIELECTRIC_15 Dielectric Internal z -0.3226..-0.2904 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In15.Cu Copper Internal z -0.3926..-0.3226 mm File hidden
+  4 features {"Via": 4}, 216 vertices, 436 triangles, top area 27.9407 mm²
+layer layer/DIELECTRIC_16 Dielectric Internal z -0.4248..-0.3926 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In16.Cu Copper Internal z -0.4948..-0.4248 mm File hidden
+  4 features {"Via": 4}, 206 vertices, 416 triangles, top area 15.3537 mm²
+layer layer/DIELECTRIC_17 Dielectric Internal z -0.5270..-0.4948 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In17.Cu Copper Internal z -0.5970..-0.5270 mm File hidden
+  4 features {"Via": 4}, 216 vertices, 436 triangles, top area 27.9407 mm²
+layer layer/DIELECTRIC_18 Dielectric Internal z -0.6291..-0.5970 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In18.Cu Copper Internal z -0.6991..-0.6291 mm File hidden
+  4 features {"Via": 4}, 206 vertices, 416 triangles, top area 15.3537 mm²
+layer layer/DIELECTRIC_19 Dielectric Internal z -0.7313..-0.6991 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In19.Cu Copper Internal z -0.8013..-0.7313 mm File hidden
+  4 features {"Via": 4}, 216 vertices, 436 triangles, top area 27.9407 mm²
+layer layer/DIELECTRIC_20 Dielectric Internal z -0.8335..-0.8013 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In20.Cu Copper Internal z -0.9035..-0.8335 mm File hidden
+  4 features {"Via": 4}, 206 vertices, 416 triangles, top area 15.3537 mm²
+layer layer/DIELECTRIC_21 Dielectric Internal z -0.9356..-0.9035 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In21.Cu Copper Internal z -1.0056..-0.9356 mm File hidden
+  4 features {"Via": 4}, 216 vertices, 436 triangles, top area 27.9407 mm²
+layer layer/DIELECTRIC_22 Dielectric Internal z -1.0378..-1.0056 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/In22.Cu Copper Internal z -1.1078..-1.0378 mm File hidden
+  6 features {"Via": 6}, 266 vertices, 544 triangles, top area 15.0448 mm²
+layer layer/DIELECTRIC_23 Dielectric Internal z -1.1400..-1.1078 mm File
+  1 features {"Sheet": 1}, 98 vertices, 204 triangles, top area 1325.4466 mm²
+layer layer/B.Cu Copper Bottom z -1.2100..-1.1400 mm File
+  6 features {"Pad": 2, "Via": 4}, 272 vertices, 544 triangles, top area 42.7724 mm²
+layer layer/B.Mask Soldermask Bottom z -1.2200..-1.1400 mm File
+  1 features {"Sheet": 1}, 178 vertices, 372 triangles, top area 1322.6639 mm²
+layer layer/B.Silkscreen Silkscreen Bottom z -1.2300..-1.2200 mm Default
+  3 features {"Marking": 3}, 386 vertices, 748 triangles, top area 1.6009 mm²
+drill layer/F.Cu_B.Cu layer/F.Cu..layer/B.Cu
+  1 features {"Barrel": 1}, 60 vertices, 120 triangles, top area 0.0324 mm²
+drill layer/F.Cu_In1.Cu layer/F.Cu..layer/In1.Cu
+  2 features {"Barrel": 2}, 120 vertices, 240 triangles, top area 0.0648 mm²
+drill layer/In1.Cu_In22.Cu layer/In1.Cu..layer/In22.Cu
+  2 features {"Barrel": 2}, 120 vertices, 240 triangles, top area 0.0648 mm²
+drill layer/In22.Cu_B.Cu layer/In22.Cu..layer/B.Cu
+  2 features {"Barrel": 2}, 120 vertices, 240 triangles, top area 0.0648 mm²
+components: 2
+  REF__ at (85.2100, 1.2100, 51.8100) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder C_0805_2012Metric_1
+  REF___1 at (97.0800, -1.2100, 52.6300) mm, rotation (0.7071, 0.0000, 0.7071, 0.0000), placeholder C_0805_2012Metric_2

@@ -230,9 +230,27 @@ impl std::fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
+/// Errors further right than this on their line are reported without a source snippet:
+/// some exporters write the whole file on one line, and miette cannot render a label
+/// beyond column 65,535.
+const MAX_SNIPPET_COLUMN: usize = 500;
+
 fn parse_report(path: &Path, xml: &[u8], error: &boardui_ipc2581::Error) -> miette::Report {
+    let offset = (error.position().offset as usize).min(xml.len());
+    let line_start = xml[..offset]
+        .iter()
+        .rposition(|&b| b == b'\n')
+        .map_or(0, |i| i + 1);
+    if offset - line_start > MAX_SNIPPET_COLUMN {
+        return miette::miette!(
+            "{}: {}: {}",
+            path.display(),
+            error.position(),
+            error.kind()
+        );
+    }
     let text = String::from_utf8_lossy(xml).into_owned();
-    let offset = (error.position().offset as usize).min(text.len());
+    let offset = offset.min(text.len());
     miette::Report::new(ParseError {
         message: format!("{}: {}", path.display(), error.kind()),
         source: NamedSource::new(path.display().to_string(), text),
@@ -321,4 +339,39 @@ fn khronos_validator(path: &Path) -> Option<Result<(u64, String), String>> {
             count("numHints")
         ),
     )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn render(report: &miette::Report) -> String {
+        let mut out = String::new();
+        miette::GraphicalReportHandler::new()
+            .render_report(&mut out, report.as_ref())
+            .expect("render");
+        out
+    }
+
+    /// Zuken CR5000 writes the whole file on one line; an error far into it used to
+    /// panic in miette instead of printing.
+    #[test]
+    fn parse_errors_on_very_long_lines_render_without_a_snippet() {
+        let xml = format!(
+            "<IPC-2581 revision=\"C\"><Content>{}</Ecad>",
+            "<Foo/>".repeat(20_000)
+        );
+        let xml = xml.as_bytes();
+        let error = boardui_ipc2581::parse(xml).unwrap_err();
+        let report = parse_report(Path::new("one-line.xml"), xml, &error);
+        assert!(report.source_code().is_none());
+        let text = render(&report);
+        assert!(text.contains("one-line.xml: line 1 (byte"), "{text}");
+
+        let short = b"<IPC-2581 revision=\"C\">\n<Content></Ecad>";
+        let error = boardui_ipc2581::parse(short.as_slice()).unwrap_err();
+        let report = parse_report(Path::new("short.xml"), short, &error);
+        assert!(report.source_code().is_some());
+        assert!(render(&report).contains("here"));
+    }
 }

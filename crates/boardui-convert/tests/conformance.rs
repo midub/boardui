@@ -21,14 +21,14 @@ fn samples_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/samples")
 }
 
-/// Every `.xml` sample under `spec/samples`, by name.
+/// Every `.xml` or `.cvg` sample under `spec/samples`, by name.
 fn samples() -> Vec<(String, PathBuf)> {
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         for entry in std::fs::read_dir(dir).expect("samples directory") {
             let path = entry.expect("entry").path();
             if path.is_dir() {
                 walk(&path, out);
-            } else if path.extension().is_some_and(|e| e == "xml") {
+            } else if path.extension().is_some_and(|e| e == "xml" || e == "cvg") {
                 out.push(path);
             }
         }
@@ -44,6 +44,11 @@ fn samples() -> Vec<(String, PathBuf)> {
         })
         .collect()
 }
+
+/// Samples whose source puts some component pins off their pads, with the number of such
+/// pins. KiCad 9 writes a rotation 180° off for bottom-side footprints at 0° or 180° in a
+/// KiCad 5 board (`spec/samples/kicad-fomu-pvt/README.md`).
+const KNOWN_MISPLACED_PINS: &[(&str, usize)] = &[("fomu-pvt", 74)];
 
 fn run(path: &Path) -> Conversion {
     let xml = std::fs::read(path).expect("sample");
@@ -64,7 +69,11 @@ fn check(name: &str, path: &Path) {
     let issues: Vec<String> = report.issues.iter().map(ToString::to_string).collect();
     assert!(report.issues.is_empty(), "{name}: {issues:#?}");
     assert_eq!(
-        conversion.stats.pins_misplaced, 0,
+        conversion.stats.pins_misplaced,
+        KNOWN_MISPLACED_PINS
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map_or(0, |&(_, pins)| pins),
         "{name}: component pins are not on their pads"
     );
     if let Ok(dir) = std::env::var("BOARDUI_CONFORMANCE_OUT") {
@@ -140,7 +149,14 @@ samples! {
     testcase1 => "testcase1-RevC-Assembly",
     testcase3 => "testcase3-RevC-Assembly",
     testcase10 => "testcase10-RevC-Assembly",
+    testcase11 => "testcase11-rdgflx-RevC-full",
+    polar_speedstack => "IPC-2581-8-Layer-Design",
     kicad_royalblue54l_feather => "royalblue54l-feather",
+    kicad_fomu_pvt => "fomu-pvt",
+    kicad_miao => "miao",
+    kicad_blind_buried_vias => "blind-buried-vias",
+    kicad10_antenna => "antenna",
+    altium_ldo_pcb => "LDO-PCB",
 }
 
 /// Spec §3: the same board in inches, millimetres and microns gives the same geometry.
