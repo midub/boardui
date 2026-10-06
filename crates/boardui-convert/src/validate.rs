@@ -145,22 +145,27 @@ impl Validator<'_> {
     fn run(&mut self) {
         let root = self.root;
         if root.asset.version != "2.0" {
-            self.report
-                .error(format!("asset.version is {:?}, expected \"2.0\"", root.asset.version));
+            self.report.error(format!(
+                "asset.version is {:?}, expected \"2.0\"",
+                root.asset.version
+            ));
         }
         for name in EXTENSIONS {
             if !root.extensions_used.iter().any(|e| e == name) {
-                self.report.error(format!("extensionsUsed does not list {name}"));
+                self.report
+                    .error(format!("extensionsUsed does not list {name}"));
             }
             if root.extensions_required.iter().any(|e| e == name) {
-                self.report.error(format!("{name} must not be in extensionsRequired"));
+                self.report
+                    .error(format!("{name} must not be in extensionsRequired"));
             }
         }
         let Some(board) = self.board() else { return };
         let Some(tables) = self.tables() else { return };
         self.scene(&board);
         let nets = self.shared_table(&tables, board.tables.nets, "nets", "net");
-        let components = self.shared_table(&tables, board.tables.components, "components", "component");
+        let components =
+            self.shared_table(&tables, board.tables.components, "components", "component");
         let pins = self.shared_table(&tables, board.tables.pins, "pins", "pin");
         let (Some(nets), Some(components), Some(pins)) = (nets, components, pins) else {
             return;
@@ -203,8 +208,13 @@ impl Validator<'_> {
             }
         }
         let sha = &board.source.sha256;
-        if sha.len() != 64 || !sha.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()) {
-            self.report.error("BOARDUI_board.source.sha256 is not 64 lowercase hex digits");
+        if sha.len() != 64
+            || !sha
+                .bytes()
+                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+        {
+            self.report
+                .error("BOARDUI_board.source.sha256 is not 64 lowercase hex digits");
         }
         for (what, value) in [
             ("tolerance", board.tolerance),
@@ -212,7 +222,8 @@ impl Validator<'_> {
             ("thickness", board.thickness),
         ] {
             if !(value.is_finite() && value > 0.0) {
-                self.report.error(format!("BOARDUI_board.{what} must be positive"));
+                self.report
+                    .error(format!("BOARDUI_board.{what} must be positive"));
             }
         }
         Some(board)
@@ -220,15 +231,15 @@ impl Validator<'_> {
 
     fn tables(&mut self) -> Option<Vec<Option<Table>>> {
         let Some(metadata) = &self.root.extensions.structural_metadata else {
-            self.report.error("the root has no EXT_structural_metadata extension");
+            self.report
+                .error("the root has no EXT_structural_metadata extension");
             return None;
         };
         let expected: serde_json::Value =
             serde_json::from_str(SCHEMA_JSON).expect("embedded schema");
         if metadata.schema.as_ref() != Some(&expected) {
-            self.report.error(
-                "EXT_structural_metadata does not embed the profile's schema (spec §8.2)",
-            );
+            self.report
+                .error("EXT_structural_metadata does not embed the profile's schema (spec §8.2)");
         }
         Some(
             metadata
@@ -260,19 +271,20 @@ impl Validator<'_> {
             };
             let read = match definition["type"].as_str() {
                 Some("STRING") => self.read_strings(property, count).map(Column::Strings),
-                Some("ENUM") => view_bytes(self.root, self.bin, property.values)
-                    .and_then(|b| {
-                        b.get(..count)
-                            .ok_or_else(|| "too few values".to_owned())
-                            .map(|b| Column::Numbers(b.iter().map(|&v| u32::from(v)).collect()))
-                    }),
+                Some("ENUM") => view_bytes(self.root, self.bin, property.values).and_then(|b| {
+                    b.get(..count)
+                        .ok_or_else(|| "too few values".to_owned())
+                        .map(|b| Column::Numbers(b.iter().map(|&v| u32::from(v)).collect()))
+                }),
                 _ => view_bytes(self.root, self.bin, property.values).and_then(|b| {
                     b.get(..count * 4)
                         .ok_or_else(|| "too few values".to_owned())
                         .map(|b| {
                             Column::Numbers(
-                                b.chunks_exact(4)
-                                    .map(|c| u32::from_le_bytes(c.try_into().expect("4")))
+                                b.as_chunks::<4>()
+                                    .0
+                                    .iter()
+                                    .map(|&c| u32::from_le_bytes(c))
                                     .collect(),
                             )
                         })
@@ -282,9 +294,9 @@ impl Validator<'_> {
                 Ok(column) => {
                     columns.insert(name.clone(), column);
                 }
-                Err(e) => self.report.error(format!(
-                    "property `{name}` of table {index}: {e}"
-                )),
+                Err(e) => self
+                    .report
+                    .error(format!("property `{name}` of table {index}: {e}")),
             }
         }
         if let Some(props) = class["properties"].as_object() {
@@ -321,7 +333,9 @@ impl Validator<'_> {
         }
         let offset = |i: usize| -> usize {
             let b = &offsets[i * width..(i + 1) * width];
-            b.iter().rev().fold(0usize, |acc, &x| acc << 8 | usize::from(x))
+            b.iter()
+                .rev()
+                .fold(0usize, |acc, &x| acc << 8 | usize::from(x))
         };
         (0..count)
             .map(|i| {
@@ -352,8 +366,9 @@ impl Validator<'_> {
                 None
             }
             None => {
-                self.report
-                    .error(format!("BOARDUI_board.tables.{what} ({index}) does not exist"));
+                self.report.error(format!(
+                    "BOARDUI_board.tables.{what} ({index}) does not exist"
+                ));
                 None
             }
         }
@@ -372,7 +387,8 @@ impl Validator<'_> {
         let node = |i: u32| root.nodes.get(i as usize);
         let name = |i: u32| node(i).and_then(|n| n.name.as_deref());
         let [board_node] = scene.nodes[..] else {
-            self.report.error("the scene must have exactly one root node");
+            self.report
+                .error("the scene must have exactly one root node");
             return;
         };
         if name(board_node) != Some("board") {
@@ -384,9 +400,8 @@ impl Validator<'_> {
         };
         let groups: Vec<Option<&str>> = board_node.children.iter().map(|&c| name(c)).collect();
         if groups != [Some("layers"), Some("drills"), Some("components")] {
-            self.report.error(
-                "the root node's children must be `layers`, `drills` and `components`",
-            );
+            self.report
+                .error("the root node's children must be `layers`, `drills` and `components`");
             return;
         }
         let group = |k: usize| node(board_node.children[k]).expect("named, so it exists");
@@ -425,19 +440,26 @@ impl Validator<'_> {
                             .error(format!("the node of `{id}` must be named `{id}`"));
                     }
                     if !n.is_identity() {
-                        self.report
-                            .error(format!("the node of `{id}` must have an identity transform"));
+                        self.report.error(format!(
+                            "the node of `{id}` must have an identity transform"
+                        ));
                     }
                     if !n.children.is_empty() {
-                        self.report.error(format!("the node of `{id}` must not have children"));
+                        self.report
+                            .error(format!("the node of `{id}` must not have children"));
                     }
                 }
-                None => self.report.error(format!("the node of `{id}` does not exist")),
+                None => self
+                    .report
+                    .error(format!("the node of `{id}` does not exist")),
             }
         }
         for drill in &board.drills {
             for end in [&drill.from, &drill.to] {
-                let copper = board.layers.iter().any(|l| &l.id == end && l.role == Role::Copper);
+                let copper = board
+                    .layers
+                    .iter()
+                    .any(|l| &l.id == end && l.role == Role::Copper);
                 if !copper {
                     self.report.error(format!(
                         "drill `{}` spans to `{end}`, which is not a copper layer",
@@ -452,9 +474,8 @@ impl Validator<'_> {
     fn z_order(&mut self, board: &Board) {
         let layers = &board.layers;
         for l in layers {
-            if !(l.z_min < l.z_max) {
-                self.report
-                    .error(format!("`{}` has zMin ≥ zMax", l.id));
+            if l.z_min.is_nan() || l.z_max.is_nan() || l.z_min >= l.z_max {
+                self.report.error(format!("`{}` has zMin ≥ zMax", l.id));
             }
             if l.role == Role::Copper && l.side == Side::Internal {
                 continue;
@@ -467,9 +488,10 @@ impl Validator<'_> {
                     continue;
                 }
                 // The one exception: soldermask overlaps the outer copper of its side.
-                let mask_over_copper = |a: &boardui_gltf::BoardLayer, b: &boardui_gltf::BoardLayer| {
-                    a.role == Role::Soldermask && b.role == Role::Copper && a.side == b.side
-                };
+                let mask_over_copper =
+                    |a: &boardui_gltf::BoardLayer, b: &boardui_gltf::BoardLayer| {
+                        a.role == Role::Soldermask && b.role == Role::Copper && a.side == b.side
+                    };
                 if mask_over_copper(upper, lower) || mask_over_copper(lower, upper) {
                     continue;
                 }
@@ -485,9 +507,8 @@ impl Validator<'_> {
             && ((top.z_max + bottom.z_min).abs() > 1e-9
                 || (top.z_max - bottom.z_min - board.thickness).abs() > 1e-9)
         {
-            self.report.warn(
-                "the outer copper surfaces are not at ±thickness/2 (spec §3, §8.3)",
-            );
+            self.report
+                .warn("the outer copper surfaces are not at ±thickness/2 (spec §3, §8.3)");
         }
     }
 
@@ -498,8 +519,9 @@ impl Validator<'_> {
         let mut seen = HashSet::new();
         for (id, name) in ids.iter().zip(names) {
             if *id != format!("net/{}", encode_id_segment(name)) {
-                self.report
-                    .error(format!("net ID `{id}` is not the encoded ID of net `{name}`"));
+                self.report.error(format!(
+                    "net ID `{id}` is not the encoded ID of net `{name}`"
+                ));
             }
             if !seen.insert(id) {
                 self.report.error(format!("net ID `{id}` is not unique"));
@@ -509,7 +531,11 @@ impl Validator<'_> {
 
     fn components(&mut self, board: &Board, components: &Table) {
         let Some(group) = self.root.scenes.first().and_then(|_| {
-            let board_node = self.root.nodes.iter().position(|n| n.name.as_deref() == Some("board"))?;
+            let board_node = self
+                .root
+                .nodes
+                .iter()
+                .position(|n| n.name.as_deref() == Some("board"))?;
             let index = *self.root.nodes[board_node].children.get(2)?;
             self.root.nodes.get(index as usize)
         }) else {
@@ -526,7 +552,13 @@ impl Validator<'_> {
         let nodes = components.numbers("node").unwrap_or(&[]);
         let mut seen = HashSet::new();
         let mut node_rows = HashMap::new();
-        for row in 0..components.count.min(ids.len()).min(ref_des.len()).min(nodes.len()).min(sides.len()) {
+        for row in 0..components
+            .count
+            .min(ids.len())
+            .min(ref_des.len())
+            .min(nodes.len())
+            .min(sides.len())
+        {
             let id = &ids[row];
             if *id != format!("cmp/{}", encode_id_segment(&ref_des[row])) {
                 self.report.error(format!(
@@ -535,18 +567,21 @@ impl Validator<'_> {
                 ));
             }
             if !seen.insert(id) {
-                self.report.error(format!("component ID `{id}` is not unique"));
+                self.report
+                    .error(format!("component ID `{id}` is not unique"));
             }
             let side = match Side::from_value(sides[row] as u8) {
                 Some(side @ (Side::Top | Side::Bottom)) => side,
                 _ => {
-                    self.report.error(format!("component `{id}` has side {}", sides[row]));
+                    self.report
+                        .error(format!("component `{id}` has side {}", sides[row]));
                     continue;
                 }
             };
             let mount = mounts.map(|m| Mount::from_value(m[row] as u8));
             if mount == Some(None) {
-                self.report.error(format!("component `{id}` has an invalid mount"));
+                self.report
+                    .error(format!("component `{id}` has an invalid mount"));
             }
             let node = nodes[row];
             if !group.children.contains(&node) {
@@ -573,9 +608,7 @@ impl Validator<'_> {
             };
             let info = extras.boardui;
             let text = |column: Option<&[String]>| {
-                column
-                    .map(|c| c[row].clone())
-                    .filter(|s| !s.is_empty())
+                column.map(|c| c[row].clone()).filter(|s| !s.is_empty())
             };
             let matches = info.id == *id
                 && info.row as usize == row
@@ -606,12 +639,18 @@ impl Validator<'_> {
         let owners = pins.numbers("component").unwrap_or(&[]);
         let ref_des = components.strings("refDes").unwrap_or(&empty);
         let mut seen = HashSet::new();
-        for row in 0..pins.count.min(ids.len()).min(numbers.len()).min(owners.len()) {
+        for row in 0..pins
+            .count
+            .min(ids.len())
+            .min(numbers.len())
+            .min(owners.len())
+        {
             let id = &ids[row];
             let owner = owners[row] as usize;
             let Some(component) = ref_des.get(owner) else {
-                self.report
-                    .error(format!("pin `{id}` references component row {owner}, out of range"));
+                self.report.error(format!(
+                    "pin `{id}` references component row {owner}, out of range"
+                ));
                 continue;
             };
             let expected = format!(
@@ -620,7 +659,8 @@ impl Validator<'_> {
                 encode_id_segment(&numbers[row])
             );
             if *id != expected {
-                self.report.error(format!("pin ID `{id}` should be `{expected}`"));
+                self.report
+                    .error(format!("pin ID `{id}` should be `{expected}`"));
             }
             if !seen.insert(id) {
                 self.report.error(format!("pin ID `{id}` is not unique"));
@@ -671,8 +711,9 @@ impl Validator<'_> {
         let mut used_tables = HashSet::new();
         for (id, node, table_index, layer) in entries {
             let Some(Some(table)) = tables.get(table_index as usize) else {
-                self.report
-                    .error(format!("`{id}`: feature table {table_index} does not exist"));
+                self.report.error(format!(
+                    "`{id}`: feature table {table_index} does not exist"
+                ));
                 continue;
             };
             if !used_tables.insert(table_index) {
@@ -681,11 +722,16 @@ impl Validator<'_> {
             }
             let property_table = &metadata.property_tables[table_index as usize];
             if property_table.class != "feature" {
-                self.report.error(format!("`{id}`: feature table has class `{}`", property_table.class));
+                self.report.error(format!(
+                    "`{id}`: feature table has class `{}`",
+                    property_table.class
+                ));
                 continue;
             }
             if let Some(kinds) = table.numbers("kind")
-                && kinds.iter().any(|&k| FeatureKind::from_value(k as u8).is_none())
+                && kinds
+                    .iter()
+                    .any(|&k| FeatureKind::from_value(k as u8).is_none())
             {
                 self.report.error(format!("`{id}`: invalid feature kinds"));
             }
@@ -704,14 +750,22 @@ impl Validator<'_> {
             };
             let Some(mesh) = node.mesh else { continue };
             let Some(mesh) = self.root.meshes.get(mesh as usize) else {
-                self.report.error(format!("`{id}`: mesh {mesh} does not exist"));
+                self.report
+                    .error(format!("`{id}`: mesh {mesh} does not exist"));
                 continue;
             };
             let mut caps = Vec::new();
             let mut seen_features = HashSet::new();
             for (k, primitive) in mesh.primitives.iter().enumerate() {
                 let what = format!("`{id}` primitive {k}");
-                if let Some(cap) = self.primitive(&what, primitive, table_index, table.count, layer, &mut seen_features) {
+                if let Some(cap) = self.primitive(
+                    &what,
+                    primitive,
+                    table_index,
+                    table.count,
+                    layer,
+                    &mut seen_features,
+                ) {
                     caps.extend(cap);
                 }
             }
@@ -735,7 +789,8 @@ impl Validator<'_> {
     ) -> Option<Vec<Cap>> {
         let features = primitive.extensions.mesh_features.as_ref();
         let Some(features) = features else {
-            self.report.error(format!("{what} has no EXT_mesh_features"));
+            self.report
+                .error(format!("{what} has no EXT_mesh_features"));
             return None;
         };
         let [set] = &features.feature_ids[..] else {
@@ -749,10 +804,12 @@ impl Validator<'_> {
             ));
         }
         if set.null_feature_id.is_some() {
-            self.report.error(format!("{what}: nullFeatureId must not be used"));
+            self.report
+                .error(format!("{what}: nullFeatureId must not be used"));
         }
         if primitive.mode.is_some_and(|m| m != 4) {
-            self.report.error(format!("{what}: only triangles are allowed"));
+            self.report
+                .error(format!("{what}: only triangles are allowed"));
             return None;
         }
         let (Some(&ids_accessor), Some(&positions), Some(indices)) = (
@@ -760,9 +817,8 @@ impl Validator<'_> {
             primitive.attributes.get("POSITION"),
             primitive.indices,
         ) else {
-            self.report.error(format!(
-                "{what} needs POSITION, _FEATURE_ID_0 and indices"
-            ));
+            self.report
+                .error(format!("{what} needs POSITION, _FEATURE_ID_0 and indices"));
             return None;
         };
         let expected_type = if rows < 65_536 { UNSIGNED_SHORT } else { FLOAT };
@@ -774,7 +830,11 @@ impl Validator<'_> {
         {
             self.report.error(format!(
                 "{what}: _FEATURE_ID_0 must be {} for a table of {rows} rows",
-                if expected_type == FLOAT { "FLOAT" } else { "UNSIGNED_SHORT" }
+                if expected_type == FLOAT {
+                    "FLOAT"
+                } else {
+                    "UNSIGNED_SHORT"
+                }
             ));
         }
         let read = (|| {
@@ -792,16 +852,16 @@ impl Validator<'_> {
             }
         };
         if ids.len() != positions.len() {
-            self.report
-                .error(format!("{what}: _FEATURE_ID_0 and POSITION differ in length"));
+            self.report.error(format!(
+                "{what}: _FEATURE_ID_0 and POSITION differ in length"
+            ));
             return None;
         }
         if positions.len() > 65_535 {
             let single = ids.first() == ids.last();
             if !single {
-                self.report.warn(format!(
-                    "{what} has more than 65,535 vertices (spec §4)"
-                ));
+                self.report
+                    .warn(format!("{what} has more than 65,535 vertices (spec §4)"));
             }
         }
         if indices.len() % 3 != 0 || indices.iter().any(|&i| i as usize >= positions.len()) {
@@ -809,8 +869,9 @@ impl Validator<'_> {
             return None;
         }
         if let Some(&id) = ids.iter().find(|&&id| id as usize >= rows) {
-            self.report
-                .error(format!("{what}: feature ID {id} is not a row of the feature table"));
+            self.report.error(format!(
+                "{what}: feature ID {id} is not a row of the feature table"
+            ));
             return None;
         }
         // Contiguity (spec §8.1).
@@ -821,7 +882,7 @@ impl Validator<'_> {
             return None;
         }
         let mut triangle_ids = Vec::with_capacity(indices.len() / 3);
-        for t in indices.chunks_exact(3) {
+        for t in indices.as_chunks::<3>().0 {
             let id = ids[t[0] as usize];
             if ids[t[1] as usize] != id || ids[t[2] as usize] != id {
                 self.report
@@ -846,21 +907,22 @@ impl Validator<'_> {
         }
         let with_triangles: BTreeSet<u32> = triangle_ids.iter().copied().collect();
         if with_triangles != distinct {
-            self.report
-                .warn(format!("{what}: some features have vertices but no triangles"));
+            self.report.warn(format!(
+                "{what}: some features have vertices but no triangles"
+            ));
         }
         for &id in &distinct {
             if !seen_features.insert(id) {
-                self.report
-                    .error(format!("{what}: feature {id} spans two primitives (spec §4)"));
+                self.report.error(format!(
+                    "{what}: feature {id} spans two primitives (spec §4)"
+                ));
             }
         }
         if let Some(layer) = layer {
             let (lo, hi) = (layer.z_min as f32, layer.z_max as f32);
             if positions.iter().any(|p| p[1] < lo || p[1] > hi) {
-                self.report.error(format!(
-                    "{what}: geometry lies outside the layer's Z range"
-                ));
+                self.report
+                    .error(format!("{what}: geometry lies outside the layer's Z range"));
             }
         }
 
@@ -873,7 +935,11 @@ impl Validator<'_> {
         let mut open = 0;
         while start < triangle_ids.len() {
             let id = triangle_ids[start];
-            let end = start + triangle_ids[start..].iter().take_while(|&&t| t == id).count();
+            let end = start
+                + triangle_ids[start..]
+                    .iter()
+                    .take_while(|&&t| t == id)
+                    .count();
             let triangles = &indices[start * 3..end * 3];
             if !closed(triangles, &positions) {
                 open += 1;
@@ -898,11 +964,14 @@ impl Validator<'_> {
             .iter()
             .flat_map(|c| c.contours.iter().flatten())
             .fold(0.0f64, |m, p| m.max(p.x.abs()).max(p.y.abs()));
-        let contours = caps.iter().flat_map(|c| c.contours.iter().map(Vec::as_slice));
+        let contours = caps
+            .iter()
+            .flat_map(|c| c.contours.iter().map(Vec::as_slice));
         let union = match Region::from_contours_nonzero(contours) {
             Ok(region) => region.area(),
             Err(e) => {
-                self.report.error(format!("`{id}`: cannot compute the copper union: {e}"));
+                self.report
+                    .error(format!("`{id}`: cannot compute the copper union: {e}"));
                 return;
             }
         };
@@ -954,7 +1023,7 @@ fn well_formed(id: &str) -> bool {
 fn closed(triangles: &[u32], positions: &[[f32; 3]]) -> bool {
     let key = |i: u32| positions[i as usize].map(f32::to_bits);
     let mut edges: HashMap<([u32; 3], [u32; 3]), i32> = HashMap::with_capacity(triangles.len());
-    for t in triangles.chunks_exact(3) {
+    for t in triangles.as_chunks::<3>().0 {
         for (a, b) in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
             let (a, b) = (key(a), key(b));
             if a == b {
@@ -986,7 +1055,7 @@ fn cap(_id: u32, triangles: &[u32], positions: &[[f32; 3]], top: f32) -> Cap {
     let mut area = 0.0;
     let mut directed: HashMap<(u32, u32), u32> = HashMap::new();
     let mut point_of: HashMap<u32, DVec2> = HashMap::new();
-    for t in triangles.chunks_exact(3) {
+    for t in triangles.as_chunks::<3>().0 {
         if t.iter().any(|&i| positions[i as usize][1] != top) {
             continue;
         }

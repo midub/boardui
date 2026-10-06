@@ -56,13 +56,18 @@ pub(crate) fn build(
     let mut model_indices: HashMap<usize, usize> = HashMap::new();
     let mut pads_by_component: HashMap<&str, Vec<&PadRef>> = HashMap::new();
     for pad in pads {
-        pads_by_component.entry(&pad.component).or_default().push(pad);
+        pads_by_component
+            .entry(&pad.component)
+            .or_default()
+            .push(pad);
     }
 
     for c in step.components.values() {
         let side = component_side(c, stack);
         let surface = match side {
-            Side::Bottom => stack.outer_copper(Side::Bottom).map(|i| stack.layers[i].z_min),
+            Side::Bottom => stack
+                .outer_copper(Side::Bottom)
+                .map(|i| stack.layers[i].z_min),
             _ => stack.outer_copper(Side::Top).map(|i| stack.layers[i].z_max),
         }
         .unwrap_or(0.0);
@@ -175,7 +180,11 @@ pub(crate) fn detect_mirror_order(step: &ipc::Step, pads: &[PadRef]) -> MirrorOr
             votes[k] += checked - misplaced;
         }
     }
-    if votes[1] > votes[0] { orders[1] } else { orders[0] }
+    if votes[1] > votes[0] {
+        orders[1]
+    } else {
+        orders[0]
+    }
 }
 
 /// Counts the package pins that pads reference, and those of them with no pad where the
@@ -193,7 +202,8 @@ fn check_pins(
             continue;
         }
         checked += 1;
-        let landing = (at * placement(pin.location, &pin.xform, order)).transform_point2(DVec2::ZERO);
+        let landing =
+            (at * placement(pin.location, &pin.xform, order)).transform_point2(DVec2::ZERO);
         if !referencing.any(|p| p.location.distance(landing) <= PAD_TOLERANCE) {
             misplaced += 1;
         }
@@ -243,8 +253,14 @@ fn body_range(
     shapes: &mut ShapeConverter<'_>,
 ) -> Option<(f64, f64, Region)> {
     let outline = package_outline(package, shapes)?;
-    let standoff = c.standoff.filter(|s| s.is_finite() && *s > 0.0).unwrap_or(0.0);
-    let height = c.height.or(package.height).filter(|h| h.is_finite() && *h > 0.0);
+    let standoff = c
+        .standoff
+        .filter(|s| s.is_finite() && *s > 0.0)
+        .unwrap_or(0.0);
+    let height = c
+        .height
+        .or(package.height)
+        .filter(|h| h.is_finite() && *h > 0.0);
     let height = match height {
         Some(h) => h,
         // Without a height, only real components (not fiducials, test points, …) get one.
@@ -280,10 +296,10 @@ fn placeholder(
 ) -> Option<PlaceholderBody> {
     let body = outline.extrude(standoff, height).ok()?;
     let mut parts = vec![(BuiltinMaterial::Body, body)];
-    if let Some(marker) = pin1_marker(package, outline, shapes) {
-        if let Ok(prism) = marker.extrude(height, height + PIN1_THICKNESS) {
-            parts.push((BuiltinMaterial::Pin1, prism));
-        }
+    if let Some(marker) = pin1_marker(package, outline, shapes)
+        && let Ok(prism) = marker.extrude(height, height + PIN1_THICKNESS)
+    {
+        parts.push((BuiltinMaterial::Pin1, prism));
     }
     Some(PlaceholderBody {
         name: package.name.clone(),
@@ -339,7 +355,11 @@ mod tests {
             rotation: 90.0,
             ..ipc::Xform::default()
         };
-        let at = placement(ipc::Point { x: 0.01, y: 0.02 }, &xform, MirrorOrder::RotateThenMirror);
+        let at = placement(
+            ipc::Point { x: 0.01, y: 0.02 },
+            &xform,
+            MirrorOrder::RotateThenMirror,
+        );
         let t = transform(at, Side::Top, 0.0008);
         assert_eq!(t.scale, [1.0; 3]);
         // Package point (1, 0) at height 0.5 mm: rotated to (0, 1) in the board.
@@ -350,7 +370,10 @@ mod tests {
     #[test]
     fn bottom_side_mirrors_and_points_down() {
         let orders = [MirrorOrder::MirrorThenRotate, MirrorOrder::RotateThenMirror];
-        for (order, rotation) in orders.into_iter().flat_map(|o| [0.0, 30.0, 90.0, 270.0].map(|r| (o, r))) {
+        for (order, rotation) in orders
+            .into_iter()
+            .flat_map(|o| [0.0, 30.0, 90.0, 270.0].map(|r| (o, r)))
+        {
             let xform = ipc::Xform {
                 rotation,
                 mirror: true,
@@ -373,7 +396,11 @@ mod tests {
 
     #[test]
     fn unmirrored_bottom_placement_is_a_reflection() {
-        let at = placement(ipc::Point::default(), &ipc::Xform::default(), MirrorOrder::MirrorThenRotate);
+        let at = placement(
+            ipc::Point::default(),
+            &ipc::Xform::default(),
+            MirrorOrder::MirrorThenRotate,
+        );
         let t = transform(at, Side::Bottom, -1.0);
         assert_eq!(t.scale, [1.0, -1.0, 1.0]);
         assert_close(apply(&t, DVec3::new(1.0, 1.0, 0.0)), gltf(1.0, 0.0, -2.0));

@@ -19,7 +19,11 @@ use crate::metadata::{
 use crate::model::Model;
 
 /// Extension names a boardui asset lists in `extensionsUsed` (spec §2).
-pub const EXTENSIONS: [&str; 3] = ["BOARDUI_board", "EXT_mesh_features", "EXT_structural_metadata"];
+pub const EXTENSIONS: [&str; 3] = [
+    "BOARDUI_board",
+    "EXT_mesh_features",
+    "EXT_structural_metadata",
+];
 
 /// The profile's materials (spec §7).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -384,7 +388,6 @@ impl Writer {
             });
         }
 
-
         let board = Board {
             profile_version: PROFILE_VERSION.into(),
             source: asset.source.clone(),
@@ -439,8 +442,11 @@ impl Writer {
                 Indices::U32(indices) => self.out.push_indices_u32(indices),
             };
             primitives.push(Primitive {
-                attributes: [("POSITION".into(), position), ("_FEATURE_ID_0".into(), feature_ids)]
-                    .into(),
+                attributes: [
+                    ("POSITION".into(), position),
+                    ("_FEATURE_ID_0".into(), feature_ids),
+                ]
+                .into(),
                 indices: Some(indices),
                 material: Some(material),
                 mode: None,
@@ -466,10 +472,7 @@ impl Writer {
                 },
             )
         });
-        self.node(Node {
-            mesh,
-            ..named(id)
-        })
+        self.node(Node { mesh, ..named(id) })
     }
 
     fn components(&mut self, asset: &BoardAsset, group: u32) -> Vec<u32> {
@@ -613,7 +616,10 @@ impl Writer {
                     .map(|c| format!("cmp/{}", encode_id_segment(&c.ref_des)))
                     .collect(),
             ),
-            Column::Strings("refDes", components.iter().map(|c| c.ref_des.clone()).collect()),
+            Column::Strings(
+                "refDes",
+                components.iter().map(|c| c.ref_des.clone()).collect(),
+            ),
             Column::Strings(
                 "part",
                 components
@@ -682,7 +688,10 @@ impl Writer {
             Column::U32("source", rows.iter().map(|r| r.source).collect()),
         ];
         for (name, get) in [
-            ("net", (|r: &FeatureRow| r.net) as fn(&FeatureRow) -> Option<u32>),
+            (
+                "net",
+                (|r: &FeatureRow| r.net) as fn(&FeatureRow) -> Option<u32>,
+            ),
             ("pin", |r| r.pin),
             ("component", |r| r.component),
         ] {

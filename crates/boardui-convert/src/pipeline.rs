@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 
 use boardui_geom::{
-    self as geom, DVec2, HoleCutter, LayerMesh, LayerMeshBuilder, Polarity, Priority, Region, Shape,
-    Tolerance, par,
+    self as geom, DVec2, HoleCutter, LayerMesh, LayerMeshBuilder, Polarity, Priority, Region,
+    Shape, Tolerance, par,
 };
 use boardui_gltf::{
     BoardAsset, DrillAsset, FeatureKind, FeatureRow, LayerAsset, PinRow, Role, Side, Source,
@@ -55,7 +55,12 @@ pub(crate) fn run(
     let mut warnings = Warnings::default();
     let step = select_step(doc, options)?;
     let stack = stackup::build(&doc.ecad, &mut warnings).map_err(ConvertError::Input)?;
-    if doc.ecad.layers.values().any(|l| l.polarity == ipc::Polarity::Negative) {
+    if doc
+        .ecad
+        .layers
+        .values()
+        .any(|l| l.polarity == ipc::Polarity::Negative)
+    {
         warnings.push("negative layers are drawn as positive");
     }
 
@@ -112,7 +117,11 @@ pub(crate) fn run(
                 .get(name)
                 .is_some_and(|l| stackup::classify(&l.function) == LayerClass::Drill);
         if !known && lf.feature_count() > 0 {
-            let function = doc.ecad.layers.get(name).map_or("?", |l| l.function.as_str());
+            let function = doc
+                .ecad
+                .layers
+                .get(name)
+                .map_or("?", |l| l.function.as_str());
             skipped.push(format!("{name} ({function})"));
         }
     }
@@ -189,7 +198,8 @@ pub(crate) fn run(
     let outline = match outline_shape.and_then(|s| s.to_region(tolerance).ok()) {
         Some(region) if !region.is_empty() => region,
         _ => {
-            warnings.push("the step has no usable profile; the outline is the copper's bounding box");
+            warnings
+                .push("the step has no usable profile; the outline is the copper's bounding box");
             bounding_outline(&stack, &regions)
         }
     };
@@ -199,9 +209,11 @@ pub(crate) fn run(
             .iter()
             .position(|l| l.role == Role::Soldermask && l.side == side);
         match mask {
-            Some(m) if !stack.layers[m].synthesized => {
-                regions[m].iter().filter(|r| !r.is_empty()).cloned().collect()
-            }
+            Some(m) if !stack.layers[m].synthesized => regions[m]
+                .iter()
+                .filter(|r| !r.is_empty())
+                .cloned()
+                .collect(),
             _ => match stack.outer_copper(side) {
                 Some(c) => layer_features[c]
                     .rows
@@ -269,7 +281,13 @@ pub(crate) fn run(
     {
         let _span = tracing::info_span!("extrude").entered();
         for (layer, (rows, regions)) in stack.layers.iter().zip(finals) {
-            let mesh = extrude(&layer.name, &regions, layer.z_min, layer.z_max, &mut warnings);
+            let mesh = extrude(
+                &layer.name,
+                &regions,
+                layer.z_min,
+                layer.z_max,
+                &mut warnings,
+            );
             layers.push(LayerAsset {
                 name: layer.name.clone(),
                 role: layer.role,
@@ -386,7 +404,11 @@ fn pads(step: &ipc::Step, stack: &Stack) -> Vec<PadRef> {
                 continue;
             };
             for pin_ref in &pad.pin_refs {
-                if let Some(component) = pin_ref.component_ref.as_ref().or(set.component_ref.as_ref()) {
+                if let Some(component) = pin_ref
+                    .component_ref
+                    .as_ref()
+                    .or(set.component_ref.as_ref())
+                {
                     pads.push(PadRef {
                         component: component.clone(),
                         pin: pin_ref.pin.clone(),
@@ -399,7 +421,10 @@ fn pads(step: &ipc::Step, stack: &Stack) -> Vec<PadRef> {
     pads
 }
 
-fn select_step<'a>(doc: &'a ipc::Document, options: &Options) -> Result<&'a ipc::Step, ConvertError> {
+fn select_step<'a>(
+    doc: &'a ipc::Document,
+    options: &Options,
+) -> Result<&'a ipc::Step, ConvertError> {
     let steps = &doc.ecad.steps;
     match &options.step {
         Some(name) => steps
@@ -427,7 +452,11 @@ fn sheet_row() -> FeatureRow {
 
 /// Resolves a layer's features (spec §6.2). A feature whose shape is invalid is dropped
 /// with a warning and the layer is resolved again.
-fn resolve(layer: &str, features: &[geom::Feature], tolerance: Tolerance) -> (Vec<Region>, Vec<String>) {
+fn resolve(
+    layer: &str,
+    features: &[geom::Feature],
+    tolerance: Tolerance,
+) -> (Vec<Region>, Vec<String>) {
     let mut features = std::borrow::Cow::Borrowed(features);
     let mut messages = Vec::new();
     loop {
@@ -451,7 +480,9 @@ fn extrude(
     z_max: f64,
     warnings: &mut Warnings,
 ) -> LayerMesh {
-    let prisms = par::map(regions, |_, r| r.extrude(z_min, z_max).map_err(|e| e.to_string()));
+    let prisms = par::map(regions, |_, r| {
+        r.extrude(z_min, z_max).map_err(|e| e.to_string())
+    });
     assemble(layer, prisms, warnings)
 }
 
@@ -463,12 +494,12 @@ fn assemble(
     let mut builder = LayerMeshBuilder::new();
     for (id, prism) in prisms.into_iter().enumerate() {
         let prism = prism.unwrap_or_else(|e| {
-            warnings.push(format!("feature {id} of layer `{layer}` can't be meshed ({e})"));
+            warnings.push(format!(
+                "feature {id} of layer `{layer}` can't be meshed ({e})"
+            ));
             geom::Prism::default()
         });
-        builder
-            .push(id as u32, &prism)
-            .expect("feature IDs ascend");
+        builder.push(id as u32, &prism).expect("feature IDs ascend");
     }
     builder.finish()
 }
@@ -514,7 +545,11 @@ impl<'a> Context<'a> {
     fn features(&mut self, lf: &ipc::LayerFeature, role: Role) -> Features {
         let mut out = Features::default();
         for (set, feature) in lf.features() {
-            let net = set.net.as_deref().and_then(|n| self.net_rows.get(n)).copied();
+            let net = set
+                .net
+                .as_deref()
+                .and_then(|n| self.net_rows.get(n))
+                .copied();
             let (kind, shape, pin_ref) = match &feature.element {
                 ipc::FeatureElement::Pad(pad) => {
                     let kind = match set.pad_usage {
@@ -551,7 +586,8 @@ impl<'a> Context<'a> {
             let component_ref = pin_ref
                 .and_then(|p| p.component_ref.as_ref())
                 .or(set.component_ref.as_ref());
-            let component = component_ref.and_then(|c| self.component_rows.get(c.as_str()).copied());
+            let component =
+                component_ref.and_then(|c| self.component_rows.get(c.as_str()).copied());
             let pin = match (pin_ref, component, component_ref) {
                 (Some(p), Some(row), Some(ref_des)) => {
                     Some(self.pin_row(row, ref_des, &p.pin, p.title.as_deref(), net))
@@ -589,7 +625,10 @@ impl<'a> Context<'a> {
         if let Some(shape) = &pad.shape {
             return self.shapes.area(shape, at);
         }
-        let def = self.step.padstack_defs.get(pad.padstack_def_ref.as_deref()?)?;
+        let def = self
+            .step
+            .padstack_defs
+            .get(pad.padstack_def_ref.as_deref()?)?;
         let pp = def
             .pads
             .iter()
@@ -646,7 +685,8 @@ impl<'a> Context<'a> {
             let span = layer.span.as_ref().and_then(|span| {
                 let a = stack.index(&span.from_layer)?;
                 let b = stack.index(&span.to_layer)?;
-                let ok = stack.layers[a].role == Role::Copper && stack.layers[b].role == Role::Copper;
+                let ok =
+                    stack.layers[a].role == Role::Copper && stack.layers[b].role == Role::Copper;
                 ok.then(|| (a.min(b), a.max(b)))
             });
             if layer.span.is_some() && span.is_none() {
@@ -659,7 +699,11 @@ impl<'a> Context<'a> {
             let mut rows = Vec::new();
             let mut holes = Vec::new();
             for (set, feature) in lf.features() {
-                let net = set.net.as_deref().and_then(|n| self.net_rows.get(n)).copied();
+                let net = set
+                    .net
+                    .as_deref()
+                    .and_then(|n| self.net_rows.get(n))
+                    .copied();
                 let component = set
                     .component_ref
                     .as_deref()
@@ -675,7 +719,10 @@ impl<'a> Context<'a> {
                     }),
                     ipc::FeatureElement::SlotCavity(slot) => self
                         .shapes
-                        .filled(&slot.shape, self.shapes.placement(slot.location, &slot.xform))
+                        .filled(
+                            &slot.shape,
+                            self.shapes.placement(slot.location, &slot.xform),
+                        )
                         .map(|shape| DrillHole {
                             hole: geom::Hole::Slot(shape),
                             plated: slot.plating != ipc::PlatingStatus::NonPlated,

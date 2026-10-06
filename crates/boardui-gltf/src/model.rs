@@ -145,7 +145,9 @@ impl Model {
             reader.node(&mut model, &node, glam::Mat4::IDENTITY)?;
         }
         if gltf.skins().next().is_some() || gltf.animations().next().is_some() {
-            model.warnings.push("skins and animations are ignored".into());
+            model
+                .warnings
+                .push("skins and animations are ignored".into());
         }
         if model.primitives.is_empty() {
             return Err(ModelError(format!("{name} has no triangles")));
@@ -310,7 +312,11 @@ impl<L: FnMut(&str) -> Result<Vec<u8>, ModelError>> Reader<'_, L> {
         let normal_matrix = glam::Mat3::from_mat4(world).inverse().transpose();
         let normals = reader.read_normals().map(|normals| {
             normals
-                .map(|n| (normal_matrix * glam::Vec3::from(n)).normalize_or_zero().into())
+                .map(|n| {
+                    (normal_matrix * glam::Vec3::from(n))
+                        .normalize_or_zero()
+                        .into()
+                })
                 .collect()
         });
         let tex_coords = reader
@@ -328,7 +334,7 @@ impl<L: FnMut(&str) -> Result<Vec<u8>, ModelError>> Reader<'_, L> {
             return Err(ModelError(format!("{}: index out of range", model.name)));
         }
         if world.determinant() < 0.0 {
-            for triangle in indices.chunks_exact_mut(3) {
+            for triangle in indices.as_chunks_mut::<3>().0 {
                 triangle.swap(1, 2);
             }
         }

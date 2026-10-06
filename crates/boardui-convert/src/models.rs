@@ -119,7 +119,11 @@ impl ModelLibrary {
         let mut warnings = Vec::new();
         for rule in &mapping.models {
             if !(rule.scale.is_finite() && rule.scale > 0.0)
-                || !rule.offset_mm.iter().chain(&rule.rotation_deg).all(|v| v.is_finite())
+                || !rule
+                    .offset_mm
+                    .iter()
+                    .chain(&rule.rotation_deg)
+                    .all(|v| v.is_finite())
             {
                 return Err(MappingError(format!(
                     "the rule for `{}` has an invalid offset, rotation or scale",
@@ -236,16 +240,38 @@ mod tests {
         assert_eq!(library.find(None, "0402").unwrap().0, 0);
         assert!(library.find(None, "QFN").is_none());
         let p = &library.models[0].primitives[0];
-        assert_eq!(p.positions[2], [0.0, 0.002, 0.0], "node transforms are baked");
+        assert_eq!(
+            p.positions[2],
+            [0.0, 0.002, 0.0],
+            "node transforms are baked"
+        );
     }
 
     #[test]
     fn bad_mappings_are_rejected() {
         let ok = |_: &str| Ok(triangle_gltf().into_bytes());
         assert!(ModelLibrary::from_json(r#"{"version":2,"models":[]}"#, ok).is_err());
-        assert!(ModelLibrary::from_json(r#"{"version":1,"models":[{"match":{"x":"y"},"file":"a"}]}"#, ok).is_err());
-        assert!(ModelLibrary::from_json(r#"{"version":1,"models":[{"match":{"part":"p"},"file":"a","scale":0}]}"#, ok).is_err());
+        assert!(
+            ModelLibrary::from_json(
+                r#"{"version":1,"models":[{"match":{"x":"y"},"file":"a"}]}"#,
+                ok
+            )
+            .is_err()
+        );
+        assert!(
+            ModelLibrary::from_json(
+                r#"{"version":1,"models":[{"match":{"part":"p"},"file":"a","scale":0}]}"#,
+                ok
+            )
+            .is_err()
+        );
         let missing = |_: &str| Err("no such file".to_owned());
-        assert!(ModelLibrary::from_json(r#"{"version":1,"models":[{"match":{"part":"p"},"file":"a"}]}"#, missing).is_err());
+        assert!(
+            ModelLibrary::from_json(
+                r#"{"version":1,"models":[{"match":{"part":"p"},"file":"a"}]}"#,
+                missing
+            )
+            .is_err()
+        );
     }
 }

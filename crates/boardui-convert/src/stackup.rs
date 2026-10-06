@@ -147,8 +147,14 @@ pub fn build(ecad: &ipc::Ecad, warnings: &mut Warnings) -> Result<Stack, String>
     let ordered = ordered.unwrap_or_else(|| default_order(&physical));
 
     // Split into the copper span and the layers above and below it.
-    let first = ordered.iter().position(|e| e.role == Role::Copper).expect("copper");
-    let last = ordered.iter().rposition(|e| e.role == Role::Copper).expect("copper");
+    let first = ordered
+        .iter()
+        .position(|e| e.role == Role::Copper)
+        .expect("copper");
+    let last = ordered
+        .iter()
+        .rposition(|e| e.role == Role::Copper)
+        .expect("copper");
     let mut above = Vec::new();
     let mut below = Vec::new();
     for (i, entry) in ordered.iter().enumerate() {
@@ -176,8 +182,12 @@ pub fn build(ecad: &ipc::Ecad, warnings: &mut Warnings) -> Result<Stack, String>
         span.push(entry.clone());
     }
     synthesize_dielectric(&mut span);
-    for (side, list) in [(ipc::Side::Top, &mut above), (ipc::Side::Bottom, &mut below)] {
-        let has_copper_side = side == ipc::Side::Top || span.iter().filter(|e| e.role == Role::Copper).count() > 1;
+    for (side, list) in [
+        (ipc::Side::Top, &mut above),
+        (ipc::Side::Bottom, &mut below),
+    ] {
+        let has_copper_side =
+            side == ipc::Side::Top || span.iter().filter(|e| e.role == Role::Copper).count() > 1;
         if has_copper_side && !list.iter().any(|e| e.role == Role::Soldermask) {
             let name = if side == ipc::Side::Top {
                 "@soldermask-top"
@@ -399,7 +409,11 @@ fn z_ranges(above: &[Entry], span: &[Entry], below: &[Entry]) -> Stack {
     for e in above.iter().rev() {
         let (t, source) = thickness_of(e);
         let t = t.expect("outer layers have a default thickness");
-        let z_min = if e.role == Role::Soldermask { base } else { surface };
+        let z_min = if e.role == Role::Soldermask {
+            base
+        } else {
+            surface
+        };
         upper.push(layer(e, Side::Top, z_min, surface + t, source));
         surface += t;
         base = surface;
@@ -413,7 +427,11 @@ fn z_ranges(above: &[Entry], span: &[Entry], below: &[Entry]) -> Stack {
         for e in below {
             let (t, source) = thickness_of(e);
             let t = t.expect("outer layers have a default thickness");
-            let z_max = if e.role == Role::Soldermask { base } else { surface };
+            let z_max = if e.role == Role::Soldermask {
+                base
+            } else {
+                surface
+            };
             lower.push(layer(e, Side::Bottom, surface - t, z_max, source));
             surface -= t;
             base = surface;
@@ -451,15 +469,24 @@ mod tests {
 
     #[test]
     fn two_layers_get_defaults_and_synthesized_layers() {
-        let d = doc(r#"<Layer name="BOTTOM" layerFunction="CONDUCTOR" side="BOTTOM"/>
+        let d = doc(
+            r#"<Layer name="BOTTOM" layerFunction="CONDUCTOR" side="BOTTOM"/>
             <Layer name="TOP" layerFunction="CONDUCTOR" side="TOP"/>
             <Layer name="SST" layerFunction="SILKSCREEN" side="TOP"/>
-            <Layer name="D" layerFunction="DRILL" side="ALL"/>"#);
+            <Layer name="D" layerFunction="DRILL" side="ALL"/>"#,
+        );
         let mut w = Warnings::default();
         let stack = build(&d.ecad, &mut w).unwrap();
         assert_eq!(
             names(&stack),
-            ["SST", "@soldermask-top", "TOP", "@core", "BOTTOM", "@soldermask-bottom"]
+            [
+                "SST",
+                "@soldermask-top",
+                "TOP",
+                "@core",
+                "BOTTOM",
+                "@soldermask-bottom"
+            ]
         );
         close(stack.thickness, 1.6e-3);
         let [silk, mask, top, core, bottom, bmask] = &stack.layers[..] else {
@@ -493,7 +520,17 @@ mod tests {
         let stack = build(&d.ecad, &mut Warnings::default()).unwrap();
         assert_eq!(
             names(&stack),
-            ["@soldermask-top", "L1", "@prepreg-1", "L2", "@core", "L3", "@prepreg-3", "L4", "M"]
+            [
+                "@soldermask-top",
+                "L1",
+                "@prepreg-1",
+                "L2",
+                "@core",
+                "L3",
+                "@prepreg-3",
+                "L4",
+                "M"
+            ]
         );
         let gap = (1.6e-3 - 4.0 * 35e-6) / 3.0;
         close(stack.layers[2].z_max - stack.layers[2].z_min, gap);
@@ -503,7 +540,8 @@ mod tests {
 
     #[test]
     fn stackup_thicknesses_and_order_are_used() {
-        let d = doc(r#"<Layer name="F.Mask" layerFunction="SOLDERMASK" side="TOP"/>
+        let d = doc(
+            r#"<Layer name="F.Mask" layerFunction="SOLDERMASK" side="TOP"/>
             <Layer name="F.Cu" layerFunction="CONDUCTOR" side="TOP"/>
             <Layer name="D1" layerFunction="DIELCORE" side="INTERNAL"/>
             <Layer name="B.Cu" layerFunction="CONDUCTOR" side="BOTTOM"/>
@@ -514,11 +552,19 @@ mod tests {
               <StackupLayer layerOrGroupRef="F.Mask" thickness="0.01" sequence="1"/>
               <StackupLayer layerOrGroupRef="F.Cu" thickness="0.018" sequence="2"/>
               <StackupLayer layerOrGroupRef="D1" thickness="0.5" sequence="3"/>
-            </StackupGroup></Stackup>"#);
+            </StackupGroup></Stackup>"#,
+        );
         let stack = build(&d.ecad, &mut Warnings::default()).unwrap();
         assert_eq!(
             names(&stack),
-            ["F.Silk", "F.Mask", "F.Cu", "D1", "B.Cu", "@soldermask-bottom"]
+            [
+                "F.Silk",
+                "F.Mask",
+                "F.Cu",
+                "D1",
+                "B.Cu",
+                "@soldermask-bottom"
+            ]
         );
         close(stack.thickness, 0.536e-3);
         let top = &stack.layers[2];

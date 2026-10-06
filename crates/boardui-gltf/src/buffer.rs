@@ -82,13 +82,23 @@ impl AssetBuilder {
     /// Appends `UNSIGNED_SHORT` triangle indices.
     pub fn push_indices_u16(&mut self, indices: &[u16]) -> u32 {
         let bytes: Vec<u8> = indices.iter().flat_map(|i| i.to_le_bytes()).collect();
-        self.push_scalar(&bytes, UNSIGNED_SHORT, indices.len(), Some(ELEMENT_ARRAY_BUFFER))
+        self.push_scalar(
+            &bytes,
+            UNSIGNED_SHORT,
+            indices.len(),
+            Some(ELEMENT_ARRAY_BUFFER),
+        )
     }
 
     /// Appends `UNSIGNED_INT` triangle indices.
     pub fn push_indices_u32(&mut self, indices: &[u32]) -> u32 {
         let bytes: Vec<u8> = indices.iter().flat_map(|i| i.to_le_bytes()).collect();
-        self.push_scalar(&bytes, UNSIGNED_INT, indices.len(), Some(ELEMENT_ARRAY_BUFFER))
+        self.push_scalar(
+            &bytes,
+            UNSIGNED_INT,
+            indices.len(),
+            Some(ELEMENT_ARRAY_BUFFER),
+        )
     }
 
     /// Appends a `_FEATURE_ID_n` attribute: `UNSIGNED_SHORT` when `float` is false, `FLOAT`
@@ -98,7 +108,10 @@ impl AssetBuilder {
     /// `UNSIGNED_SHORT` IDs are written with a byte stride of 4.
     pub fn push_feature_ids(&mut self, ids: &[u32], float: bool) -> u32 {
         let (bytes, component_type, stride): (Vec<u8>, _, _) = if float {
-            let bytes = ids.iter().flat_map(|&id| (id as f32).to_le_bytes()).collect();
+            let bytes = ids
+                .iter()
+                .flat_map(|&id| (id as f32).to_le_bytes())
+                .collect();
             (bytes, FLOAT, None)
         } else {
             let bytes = ids

@@ -221,12 +221,17 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         };
         let bytes = view_bytes(&root, bin, p.values).expect("column");
         if name == "kind" {
-            bytes[..t.count as usize].iter().map(|&b| u32::from(b)).collect()
+            bytes[..t.count as usize]
+                .iter()
+                .map(|&b| u32::from(b))
+                .collect()
         } else {
             bytes
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .take(t.count as usize)
-                .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+                .map(|&c| u32::from_le_bytes(c))
                 .collect()
         }
     };
@@ -263,7 +268,10 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         let mut histogram: BTreeMap<String, usize> = BTreeMap::new();
         for &k in &kinds {
             *histogram
-                .entry(format!("{:?}", FeatureKind::from_value(k as u8).expect("kind")))
+                .entry(format!(
+                    "{:?}",
+                    FeatureKind::from_value(k as u8).expect("kind")
+                ))
                 .or_default() += 1;
         }
         let areas = feature_areas(&root, bin, node);
@@ -295,13 +303,22 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
     }
     let components = &root.nodes[root.nodes[0].children[2] as usize].children;
     writeln!(out, "components: {}", components.len()).unwrap();
-    for &c in components.iter().take(if detailed { usize::MAX } else { 5 }) {
+    for &c in components
+        .iter()
+        .take(if detailed { usize::MAX } else { 5 })
+    {
         let n = &root.nodes[c as usize];
         let t = n.translation.unwrap_or_default().map(|v| v * 1e3);
         let r = n.rotation.unwrap_or([0.0, 0.0, 0.0, 1.0]);
         let body = match (n.mesh, n.children.first()) {
-            (Some(m), _) => format!("placeholder {}", root.meshes[m as usize].name.as_deref().unwrap_or("?")),
-            (None, Some(&child)) => format!("model {}", root.nodes[child as usize].name.as_deref().unwrap_or("?")),
+            (Some(m), _) => format!(
+                "placeholder {}",
+                root.meshes[m as usize].name.as_deref().unwrap_or("?")
+            ),
+            (None, Some(&child)) => format!(
+                "model {}",
+                root.nodes[child as usize].name.as_deref().unwrap_or("?")
+            ),
             (None, None) => "no body".into(),
         };
         writeln!(
@@ -348,7 +365,7 @@ fn feature_areas(root: &Root, bin: &[u8], node: u32) -> BTreeMap<u32, f64> {
         let ids = read_u32s(root, bin, p.attributes["_FEATURE_ID_0"]).expect("ids");
         let indices = read_u32s(root, bin, p.indices.expect("indices")).expect("indices");
         let top = positions.iter().map(|p| p[1]).fold(f32::MIN, f32::max);
-        for t in indices.chunks_exact(3) {
+        for t in indices.as_chunks::<3>().0 {
             let [a, b, c] = [t[0], t[1], t[2]].map(|i| positions[i as usize]);
             if a[1] != top || b[1] != top || c[1] != top {
                 continue;

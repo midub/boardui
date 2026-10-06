@@ -112,7 +112,13 @@ impl<'a> ShapeConverter<'a> {
         })
     }
 
-    fn convert(&mut self, shape: &ipc::Shape, at: DAffine2, mode: Mode, depth: usize) -> Option<Shape> {
+    fn convert(
+        &mut self,
+        shape: &ipc::Shape,
+        at: DAffine2,
+        mode: Mode,
+        depth: usize,
+    ) -> Option<Shape> {
         if depth > MAX_DEPTH {
             self.warn("user primitives nested too deeply (cyclic?) were dropped".into());
             return None;
@@ -336,7 +342,9 @@ impl<'a> ShapeConverter<'a> {
                 })
             }
             PrimitiveKind::Unsupported { element } => {
-                self.warn(format!("unsupported standard primitive `{element}` has no geometry"));
+                self.warn(format!(
+                    "unsupported standard primitive `{element}` has no geometry"
+                ));
                 None
             }
             kind => {
@@ -392,7 +400,7 @@ fn direction(clockwise: bool, at: DAffine2) -> ArcDirection {
 }
 
 fn stroke(path: Path, desc: ipc::LineDesc, scale: f64) -> Option<Shape> {
-    if !(desc.width > 0.0) {
+    if desc.width.is_nan() || desc.width <= 0.0 {
         return None;
     }
     Some(Shape::Stroke(Stroke {
@@ -705,9 +713,19 @@ mod tests {
             rotation: 90.0,
             ..ipc::Xform::default()
         };
-        let at = placement(ipc::Point { x: 1e-3, y: 2e-3 }, &xform, MirrorOrder::MirrorThenRotate);
+        let at = placement(
+            ipc::Point { x: 1e-3, y: 2e-3 },
+            &xform,
+            MirrorOrder::MirrorThenRotate,
+        );
         let s = conv
-            .area(&std(PrimitiveKind::RectCenter { width: 2e-3, height: 1e-3 }), at)
+            .area(
+                &std(PrimitiveKind::RectCenter {
+                    width: 2e-3,
+                    height: 1e-3,
+                }),
+                at,
+            )
             .unwrap();
         close_to(area(&s), 2e-6, 1e-15);
         let (min, max) = bounds(&s);
@@ -782,11 +800,23 @@ mod tests {
         let c = content();
         let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
         let oval = conv
-            .area(&std(PrimitiveKind::Oval { width: 3e-3, height: 1e-3 }), DAffine2::IDENTITY)
+            .area(
+                &std(PrimitiveKind::Oval {
+                    width: 3e-3,
+                    height: 1e-3,
+                }),
+                DAffine2::IDENTITY,
+            )
             .unwrap();
         close_to(area(&oval), 2e-3 * 1e-3 + PI * 0.25e-6, 8e-3 * T.metres());
         let tall = conv
-            .area(&std(PrimitiveKind::Oval { width: 1e-3, height: 3e-3 }), DAffine2::IDENTITY)
+            .area(
+                &std(PrimitiveKind::Oval {
+                    width: 1e-3,
+                    height: 3e-3,
+                }),
+                DAffine2::IDENTITY,
+            )
             .unwrap();
         close_to(bounds(&tall).1.y, 1.5e-3, 1e-8);
         let donut = conv
@@ -824,7 +854,9 @@ mod tests {
             path: ipc::Path {
                 start: ipc::Point { x: 0.0, y: 0.0 },
                 steps: [(1e-3, 0.0), (1e-3, 1e-3), (0.0, 1e-3), (0.0, 0.0)]
-                    .map(|(x, y)| ipc::PolyStep::Segment { to: ipc::Point { x, y } })
+                    .map(|(x, y)| ipc::PolyStep::Segment {
+                        to: ipc::Point { x, y },
+                    })
                     .to_vec(),
             },
             line: Some(ipc::LineStyle::Desc(ipc::LineDesc {
@@ -841,11 +873,15 @@ mod tests {
             }))),
         };
         let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
-        let s = conv.area(&ipc::Shape::Polygon(poly.clone()), DAffine2::IDENTITY).unwrap();
+        let s = conv
+            .area(&ipc::Shape::Polygon(poly.clone()), DAffine2::IDENTITY)
+            .unwrap();
         // Round joins round the outer corners.
         let ring = 1.1e-3 * 1.1e-3 - 0.9e-3 * 0.9e-3 - (4.0 - PI) * 0.05e-3 * 0.05e-3;
         close_to(area(&s), ring, 8e-3 * T.metres());
-        let filled = conv.filled(&ipc::Shape::Polygon(poly), DAffine2::IDENTITY).unwrap();
+        let filled = conv
+            .filled(&ipc::Shape::Polygon(poly), DAffine2::IDENTITY)
+            .unwrap();
         close_to(area(&filled), 1e-6, 1e-15);
     }
 
@@ -869,9 +905,14 @@ mod tests {
             mirror: true,
             ..ipc::Xform::default()
         };
-        let s = conv.area(&half_disc, conv.placement(ipc::Point::default(), &xform)).unwrap();
+        let s = conv
+            .area(&half_disc, conv.placement(ipc::Point::default(), &xform))
+            .unwrap();
         close_to(area(&s), PI * 1e-6 / 2.0, 6e-3 * T.metres());
-        assert!(bounds(&s).1.y > 0.9e-3, "the upper half stays the upper half");
+        assert!(
+            bounds(&s).1.y > 0.9e-3,
+            "the upper half stays the upper half"
+        );
         let r: Region = s.to_region(T).unwrap();
         assert!(!r.is_empty());
     }

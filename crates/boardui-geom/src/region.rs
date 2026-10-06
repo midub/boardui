@@ -103,7 +103,11 @@ impl Region {
     ) -> Result<Self, GeomError> {
         let contours = contours
             .into_iter()
-            .map(|c| c.iter().map(|&p| grid_point(p)).collect::<Result<Vec<_>, _>>())
+            .map(|c| {
+                c.iter()
+                    .map(|&p| grid_point(p))
+                    .collect::<Result<Vec<_>, _>>()
+            })
             .collect::<Result<Vec<_>, _>>()?;
         let mut overlay = Overlay::new(contours.iter().map(Vec::len).sum());
         for contour in contours.iter().filter(|c| c.len() >= 3) {
