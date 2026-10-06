@@ -53,8 +53,9 @@ pub use error::{Error, ErrorKind, Position};
 pub use model::{
     Component, Content, Document, Ecad, Feature, FeatureElement, Features, Hole, Layer,
     LayerFeature, Marking, MountType, Package, PackageDrawing, Pad, PadUsage, PadUse, PadstackDef,
-    PadstackPad, Pin, PinRef, PlatingStatus, Polarity, Set, Side, SlotCavity, Span, Stackup,
-    StackupGroup, StackupLayer, Step, Units, WhereMeasured,
+    PadstackPad, Pin, PinRef, PlatingStatus, Polarity, Set, Side, SlotCavity, Span, Spec,
+    SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup, StackupLayer, Step, Units,
+    WhereMeasured,
 };
 pub use shape::{
     Arc, ButterflyShape, Color, Contour, Corners, FillDesc, FillProperty, FillStyle, Line,

@@ -6,6 +6,7 @@ import {
   Box3,
   BufferAttribute,
   BufferGeometry,
+  Color,
   Group,
   InstancedMesh,
   type Material,
@@ -57,6 +58,11 @@ export interface LayerModel {
   readonly group: Group;
   /** Merged meshes, one per material, in board coordinates. */
   readonly meshes: readonly Mesh[];
+  /**
+   * Base colour of the layer's material as a CSS hex colour (sRGB), e.g. `#1e6b2e`; the file
+   * may set it from the source (spec §6.10). `undefined` for a layer without geometry.
+   */
+  readonly color: string | undefined;
 }
 
 /** Component meshes that share geometry and material, drawn as one instanced mesh. */
@@ -210,6 +216,7 @@ export class BoardModel {
         ranges,
         group,
         meshes,
+        color: baseColor(meshes[0]?.material as Material | undefined),
       };
       stateOffset += features.count;
       return layer;
@@ -566,4 +573,10 @@ function includes(sorted: Uint32Array, value: number): boolean {
     else hi = mid - 1;
   }
   return false;
+}
+
+/** The base colour of a glTF material as a CSS hex colour (sRGB). */
+function baseColor(material: Material | undefined): string | undefined {
+  const color = (material as { color?: unknown } | undefined)?.color;
+  return color instanceof Color ? `#${color.getHexString()}` : undefined;
 }

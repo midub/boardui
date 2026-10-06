@@ -116,7 +116,7 @@ impl<R: BufRead> Parser<R> {
         result
     }
 
-    fn read_color(&mut self) -> Result<Color, Error> {
+    pub(super) fn read_color(&mut self) -> Result<Color, Error> {
         let color = Color {
             r: self.req_u8("r")?,
             g: self.req_u8("g")?,

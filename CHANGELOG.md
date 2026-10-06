@@ -10,6 +10,11 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   revision B, a KiKit panel) and KiCad 10. A `Stackup` without `name` (Polar, Altium) is now a
   warning instead of an error, and the CLI no longer panics on a parse error far into a file
   written on one line.
+- Soldermask and silkscreen take their colours from the IPC-2581 file (`Spec` colours and KiCad's
+  `Color : <name>`), with one material per colour; the demo's layer swatches follow them
+  ([spec §6.10](spec/README.md#610-colours)).
+- Profile 0.2: a material with a colour from the source is named `boardui/<kind>/<rrggbb>`
+  ([spec §7](spec/README.md#7-materials)).
 
 ## [1.0.0] - 2026-10-06
 

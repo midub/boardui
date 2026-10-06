@@ -65,21 +65,39 @@ impl BuiltinMaterial {
         }
     }
 
-    fn material(self) -> Material {
-        // (sRGB colour, alpha, metallic, roughness)
-        let (rgb, alpha, metallic, roughness) = match self {
+    /// The default base colour, sRGB.
+    pub fn base_color(self) -> [u8; 3] {
+        let [_, r, g, b] = self.style().0.to_be_bytes();
+        [r, g, b]
+    }
+
+    /// (sRGB colour, alpha, metallic, roughness)
+    fn style(self) -> (u32, f32, f32, f32) {
+        match self {
             Self::Copper => (0xC9A15A, 1.0, 1.0, 0.35),
             Self::Soldermask => (0x1E6B2E, 0.85, 0.0, 0.4),
             Self::Silkscreen => (0xF2F2F2, 1.0, 0.0, 0.8),
             Self::Dielectric => (0xC7B98A, 1.0, 0.0, 0.9),
             Self::Body => (0x2B2B2B, 1.0, 0.0, 0.6),
             Self::Pin1 => (0xE0E0E0, 1.0, 0.0, 0.6),
+        }
+    }
+
+    /// The material with the default base colour, or with `color` (sRGB) from the source: then
+    /// it is named `<name>/<rrggbb>` and keeps the default's alpha, metallic and roughness
+    /// (spec §7).
+    fn material(self, color: Option<[u8; 3]>) -> Material {
+        let (_, alpha, metallic, roughness) = self.style();
+        let rgb = color.unwrap_or_else(|| self.base_color());
+        let name = match color {
+            Some([r, g, b]) => format!("{}/{r:02x}{g:02x}{b:02x}", self.name()),
+            None => self.name().to_owned(),
         };
-        let channel = |shift: u32| srgb_to_linear(((rgb >> shift) & 0xff) as u8);
+        let [r, g, b] = rgb.map(srgb_to_linear);
         Material {
-            name: Some(self.name().to_owned()),
+            name: Some(name),
             pbr_metallic_roughness: Some(PbrMetallicRoughness {
-                base_color_factor: Some([channel(16), channel(8), channel(0), alpha]),
+                base_color_factor: Some([r, g, b, alpha]),
                 metallic_factor: Some(metallic),
                 roughness_factor: Some(roughness),
                 ..PbrMetallicRoughness::default()
@@ -177,6 +195,9 @@ pub struct LayerAsset {
     pub synthesized: bool,
     /// Suggested default visibility.
     pub visible: bool,
+    /// Base colour from the source, sRGB; `None` for the role's default (spec §6.10). A
+    /// colour equal to the default is written as the default material.
+    pub color: Option<[u8; 3]>,
     /// Geometry; feature IDs are rows of `features`.
     pub mesh: LayerMesh,
     /// The feature table.
@@ -318,7 +339,7 @@ impl BoardAsset {
 #[derive(Default)]
 struct Writer {
     out: AssetBuilder,
-    materials: HashMap<BuiltinMaterial, u32>,
+    materials: HashMap<(BuiltinMaterial, Option<[u8; 3]>), u32>,
     tables: Vec<PropertyTable>,
 }
 
@@ -353,7 +374,9 @@ impl Writer {
         for layer in &asset.layers {
             let id = layer_id(&layer.name, layer.synthesized);
             let table = self.feature_table(&id, &layer.features);
-            let material = self.material(BuiltinMaterial::for_role(layer.role));
+            let builtin = BuiltinMaterial::for_role(layer.role);
+            let color = layer.color.filter(|&c| c != builtin.base_color());
+            let material = self.colored_material(builtin, color);
             let node = self.layer_node(&id, &layer.mesh, material, table, layer.features.len());
             self.out.root.nodes[layers as usize].children.push(node);
             board_layers.push(BoardLayer {
@@ -415,11 +438,15 @@ impl Writer {
     }
 
     fn material(&mut self, builtin: BuiltinMaterial) -> u32 {
-        if let Some(&index) = self.materials.get(&builtin) {
+        self.colored_material(builtin, None)
+    }
+
+    fn colored_material(&mut self, builtin: BuiltinMaterial, color: Option<[u8; 3]>) -> u32 {
+        if let Some(&index) = self.materials.get(&(builtin, color)) {
             return index;
         }
-        let index = push(&mut self.out.root.materials, builtin.material());
-        self.materials.insert(builtin, index);
+        let index = push(&mut self.out.root.materials, builtin.material(color));
+        self.materials.insert((builtin, color), index);
         index
     }
 
@@ -792,7 +819,20 @@ mod tests {
     fn materials_are_linear() {
         assert_eq!(srgb_to_linear(255), 1.0);
         assert_eq!(srgb_to_linear(0), 0.0);
-        let m = BuiltinMaterial::Soldermask.material();
+        let m = BuiltinMaterial::Soldermask.material(None);
         assert_eq!(m.alpha_mode.as_deref(), Some("BLEND"));
+    }
+
+    #[test]
+    fn source_colours_keep_the_role_style() {
+        assert_eq!(BuiltinMaterial::Soldermask.base_color(), [0x1E, 0x6B, 0x2E]);
+        let m = BuiltinMaterial::Soldermask.material(Some([0, 0x80, 0xff]));
+        assert_eq!(m.name.as_deref(), Some("boardui/soldermask/0080ff"));
+        assert_eq!(m.alpha_mode.as_deref(), Some("BLEND"));
+        let pbr = m.pbr_metallic_roughness.unwrap();
+        assert_eq!(pbr.base_color_factor, Some([0.0, 0.2159, 1.0, 0.85]));
+        assert_eq!(pbr.roughness_factor, Some(0.4));
+        let silk = BuiltinMaterial::Silkscreen.material(Some([0x20; 3]));
+        assert_eq!(silk.alpha_mode, None);
     }
 }

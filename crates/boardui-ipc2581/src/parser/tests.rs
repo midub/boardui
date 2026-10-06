@@ -1591,3 +1591,125 @@ mod features {
         assert_eq!(s.nets(), ["B", "A", "C"]);
     }
 }
+
+mod specs {
+    use super::*;
+    use crate::{Color, SpecColor, SpecProperty};
+
+    /// Parses a document with the given `CadHeader` children, [`LAYERS`] and `cad_data`.
+    fn header_doc(content: &str, header: &str, cad_data: &str) -> Document {
+        let xml = format!(
+            r#"<IPC-2581 revision="C"><Content>{content}</Content>
+<Ecad name="e"><CadHeader units="MILLIMETER">{header}</CadHeader><CadData>{LAYERS}{cad_data}</CadData></Ecad>
+</IPC-2581>"#
+        );
+        parse_bytes(xml.as_bytes()).unwrap()
+    }
+
+    fn text(text: &str) -> SpecProperty {
+        SpecProperty {
+            text: Some(text.to_owned()),
+            ..SpecProperty::default()
+        }
+    }
+
+    #[test]
+    fn reads_specs_with_properties_and_colours() {
+        let d = header_doc(
+            r#"<DictionaryColor><EntryColor id="BLUE"><Color r="0" g="0" b="128"/></EntryColor></DictionaryColor>"#,
+            r#"<Spec name="MASK">
+                 <General type="MATERIAL">
+                   <Property text="SOLDERMASK"/><Property text="Color : Blue"/>
+                 </General>
+                 <Dielectric type="DIELECTRIC_CONSTANT"><Property value="3.8"/></Dielectric>
+               </Spec>
+               <Spec name="RGB"><General type="OTHER"><Property value="1" unit="MM"/><Color r="1" g="2" b="3"/></General></Spec>
+               <Spec name="REF"><General type="MATERIAL"><ColorRef id="BLUE"/></General></Spec>
+               <Spec name="TERM"><General type="MATERIAL"><ColorTerm name="OTHER" comment="Matte Black"/></General></Spec>"#,
+            "",
+        );
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [&DiagnosticKind::UnknownElement {
+                element: "Dielectric".to_owned(),
+                parent: "Spec".to_owned()
+            }]
+        );
+        let names: Vec<_> = d.ecad.specs.iter().map(|(k, _)| k).collect();
+        assert_eq!(names, ["MASK", "RGB", "REF", "TERM"]);
+        let mask = &d.ecad.specs.get("MASK").unwrap().general[0];
+        assert_eq!(mask.general_type, "MATERIAL");
+        assert_eq!(mask.properties, [text("SOLDERMASK"), text("Color : Blue")]);
+        assert_eq!(mask.color, None);
+        let rgb = &d.ecad.specs.get("RGB").unwrap().general[0];
+        assert_eq!(
+            rgb.properties,
+            [SpecProperty {
+                text: None,
+                value: Some("1".to_owned()),
+                unit: Some("MM".to_owned())
+            }]
+        );
+        assert_eq!(rgb.color, Some(SpecColor::Rgb(Color { r: 1, g: 2, b: 3 })));
+        let colour = |name: &str| d.ecad.specs.get(name).unwrap().general[0].color.clone();
+        assert_eq!(colour("REF"), Some(SpecColor::Ref("BLUE".to_owned())));
+        assert_eq!(
+            colour("TERM"),
+            Some(SpecColor::Term {
+                name: "OTHER".to_owned(),
+                comment: Some("Matte Black".to_owned())
+            })
+        );
+    }
+
+    #[test]
+    fn layers_and_stackup_layers_refer_to_specs() {
+        let d = header_doc(
+            "",
+            r#"<Spec name="A"/><Spec name="B"/>"#,
+            r#"<Layer name="MASK" layerFunction="SOLDERMASK" side="TOP"><SpecRef id="A"/></Layer>
+               <Stackup name="S"><StackupGroup name="G">
+                 <StackupLayer layerOrGroupRef="MASK"><SpecRef id="B"/><SpecRef id="SPEC_MASK"/></StackupLayer>
+                 <StackupLayer layerOrGroupRef="TOP"/>
+               </StackupGroup></Stackup>"#,
+        );
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [&dangling(RefKind::Spec, "SPEC_MASK")]
+        );
+        assert_eq!(d.ecad.layers.get("MASK").unwrap().spec_refs, ["A"]);
+        assert!(d.ecad.layers.get("TOP").unwrap().spec_refs.is_empty());
+        let layers = &d.ecad.stackups[0].groups[0].layers;
+        assert_eq!(layers[0].spec_refs, ["B", "SPEC_MASK"]);
+        assert!(layers[1].spec_refs.is_empty());
+    }
+
+    #[test]
+    fn spec_colours_are_checked() {
+        let d = header_doc(
+            "",
+            r#"<Spec name="A"><General type="MATERIAL"><ColorRef id="NOPE"/><Color r="1" g="1" b="1"/></General></Spec>
+               <Spec name="A"/>"#,
+            "",
+        );
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [
+                &DiagnosticKind::DuplicateElement {
+                    element: "Color".to_owned(),
+                    parent: "General".to_owned()
+                },
+                &DiagnosticKind::DuplicateKey {
+                    kind: RefKind::Spec,
+                    key: "A".to_owned()
+                },
+                &dangling(RefKind::Color, "NOPE"),
+            ]
+        );
+        let spec = d.ecad.specs.get("A").unwrap();
+        assert_eq!(
+            spec.general[0].color,
+            Some(SpecColor::Ref("NOPE".to_owned()))
+        );
+    }
+}

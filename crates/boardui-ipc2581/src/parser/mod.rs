@@ -23,7 +23,8 @@ use quick_xml::Reader;
 use crate::diagnostic::Diagnostics;
 use crate::{
     Content, DiagnosticKind, Document, Ecad, Error, ErrorKind, Layer, Position, RefKind, Span,
-    Stackup, StackupGroup, StackupLayer, Step, Table, Units,
+    Spec, SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup, StackupLayer, Step, Table,
+    Units,
 };
 use refs::Deferred;
 use xml::{Next, Tag};
@@ -40,6 +41,7 @@ pub(crate) struct Parser<R> {
     /// Nesting depth of `UserSpecial` elements, bounded to keep recursion finite.
     nesting: usize,
     content: Content,
+    specs: Table<Spec>,
     layers: Table<Layer>,
     stackups: Vec<Stackup>,
     steps: Table<Step>,
@@ -62,6 +64,7 @@ impl<R: BufRead> Parser<R> {
             scale: None,
             nesting: 0,
             content: Content::default(),
+            specs: Table::default(),
             layers: Table::default(),
             stackups: Vec::new(),
             steps: Table::default(),
@@ -117,6 +120,7 @@ impl<R: BufRead> Parser<R> {
             ecad: Ecad {
                 name,
                 units,
+                specs: self.specs,
                 layers: self.layers,
                 stackups: self.stackups,
                 steps: self.steps,
@@ -136,7 +140,7 @@ impl<R: BufRead> Parser<R> {
                 let unit: Units = p.req_enum("units")?;
                 units = Some(unit);
                 p.scale = Some(unit.metres());
-                p.leaf("CadHeader")
+                p.read_cad_header()
             }
             "CadData" if !has_cad_data => {
                 if units.is_none() {
@@ -158,6 +162,83 @@ impl<R: BufRead> Parser<R> {
             return Err(missing_element("Ecad", "`CadData`", position));
         }
         Ok((name, units))
+    }
+
+    /// Reads the children of `CadHeader`: `Spec`s go into the parser.
+    fn read_cad_header(&mut self) -> Result<(), Error> {
+        self.children("CadHeader", |p| match p.tag.name() {
+            "Spec" => {
+                let position = p.tag.position;
+                let spec = p.read_spec()?;
+                insert(
+                    &mut p.diagnostics,
+                    &mut p.specs,
+                    RefKind::Spec,
+                    spec.name.clone(),
+                    spec,
+                    position,
+                );
+                Ok(())
+            }
+            _ => p.unknown("CadHeader"),
+        })
+    }
+
+    fn read_spec(&mut self) -> Result<Spec, Error> {
+        let name = self.req_str("name")?;
+        let mut general = Vec::new();
+        self.children("Spec", |p| match p.tag.name() {
+            "General" => {
+                general.push(p.read_spec_general()?);
+                Ok(())
+            }
+            _ => p.unknown("Spec"),
+        })?;
+        Ok(Spec { name, general })
+    }
+
+    fn read_spec_general(&mut self) -> Result<SpecGeneral, Error> {
+        let general_type = self.opt_str("type").unwrap_or_default();
+        let mut properties = Vec::new();
+        let mut color = None;
+        self.children("General", |p| match p.tag.name() {
+            "Property" => {
+                let property = SpecProperty {
+                    text: p.opt_str("text"),
+                    value: p.opt_str("value"),
+                    unit: p.opt_str("unit"),
+                };
+                p.leaf("Property")?;
+                properties.push(property);
+                Ok(())
+            }
+            "Color" | "ColorRef" | "ColorTerm" if color.is_some() => p.duplicate("General"),
+            "Color" => {
+                color = Some(SpecColor::Rgb(p.read_color()?));
+                Ok(())
+            }
+            "ColorRef" => {
+                color = Some(SpecColor::Ref(p.read_ref(
+                    "ColorRef",
+                    "id",
+                    RefKind::Color,
+                )?));
+                Ok(())
+            }
+            "ColorTerm" => {
+                let name = p.req_str("name")?;
+                let comment = p.opt_str("comment");
+                p.leaf("ColorTerm")?;
+                color = Some(SpecColor::Term { name, comment });
+                Ok(())
+            }
+            _ => p.unknown("General"),
+        })?;
+        Ok(SpecGeneral {
+            general_type,
+            properties,
+            color,
+        })
     }
 
     fn read_cad_data(&mut self) -> Result<(), Error> {
@@ -191,7 +272,12 @@ impl<R: BufRead> Parser<R> {
         let side = self.opt_enum("side")?;
         let polarity = self.opt_enum("polarity")?.unwrap_or_default();
         let mut span = None;
+        let mut spec_refs = Vec::new();
         self.children("Layer", |p| match p.tag.name() {
+            "SpecRef" => {
+                spec_refs.push(p.read_ref("SpecRef", "id", RefKind::Spec)?);
+                Ok(())
+            }
             "Span" if span.is_none() => {
                 let from_layer = p.req_ref("fromLayer")?;
                 let to_layer = p.req_ref("toLayer")?;
@@ -213,6 +299,7 @@ impl<R: BufRead> Parser<R> {
             side,
             polarity,
             span,
+            spec_refs,
         })
     }
 
@@ -247,15 +334,23 @@ impl<R: BufRead> Parser<R> {
         };
         self.children("StackupGroup", |p| match p.tag.name() {
             "StackupLayer" => {
-                let layer = StackupLayer {
+                let mut layer = StackupLayer {
                     layer_or_group_ref: p.req_ref("layerOrGroupRef")?,
                     thickness: p.opt_len("thickness")?,
                     tol_plus: p.opt_len("tolPlus")?,
                     tol_minus: p.opt_len("tolMinus")?,
                     sequence: p.opt_u32("sequence")?,
+                    spec_refs: Vec::new(),
                 };
                 p.check_ref(RefKind::LayerOrGroup, &layer.layer_or_group_ref);
-                p.leaf("StackupLayer")?;
+                p.children("StackupLayer", |p| match p.tag.name() {
+                    "SpecRef" => {
+                        let id = p.read_ref("SpecRef", "id", RefKind::Spec)?;
+                        layer.spec_refs.push(id);
+                        Ok(())
+                    }
+                    _ => p.unknown("StackupLayer"),
+                })?;
                 group.layers.push(layer);
                 Ok(())
             }

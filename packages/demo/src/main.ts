@@ -439,7 +439,8 @@ function refreshLayers(): void {
   if (!list) return;
   list.replaceChildren(
     ...viewer.layers.map((layer) => {
-      const color = ROLE_COLORS[layer.kind === 'drill' ? 'drill' : (layer.role ?? '')] ?? '#888';
+      const color =
+        layer.color ?? ROLE_COLORS[layer.kind === 'drill' ? 'drill' : (layer.role ?? '')] ?? '#888';
       const checkbox = h('input', {
         type: 'checkbox',
         checked: layer.visible,
