@@ -121,7 +121,7 @@ impl Stack {
     }
 
     /// Adds layers outside the copper span (above the top copper, or below the bottom
-    /// copper), and orders that side outward by the layers' outer surfaces.
+    /// copper), and orders both sides top to bottom by the layers' outer surfaces.
     fn add_outer(&mut self, side: Side, new: Vec<StackLayer>) {
         let copper = self.copper();
         let (first, last) = (copper[0], *copper.last().expect("copper"));
@@ -133,7 +133,7 @@ impl Stack {
             upper.extend(new);
         }
         upper.sort_by(|a, b| b.z_max.total_cmp(&a.z_max));
-        lower.sort_by(|a, b| a.z_min.total_cmp(&b.z_min));
+        lower.sort_by(|a, b| b.z_min.total_cmp(&a.z_min));
         upper.append(&mut self.layers);
         upper.append(&mut lower);
         self.layers = upper;
@@ -777,6 +777,226 @@ mod tests {
         assert_eq!(names(&stack), ["@soldermask-top", "TOP", "@core"]);
         close(stack.layers[1].z_max, 0.8e-3);
         close(stack.layers[2].z_min, -0.8e-3);
+    }
+
+    /// A document whose step has one feature on each of `featured`.
+    fn doc_with_features(layers: &str, featured: &[&str]) -> ipc::Document {
+        let features: String = featured
+            .iter()
+            .map(|l| {
+                format!(
+                    r#"<LayerFeature layerRef="{l}"><Set><Features><Location x="0" y="0"/>
+                    <Circle diameter="1"/></Features></Set></LayerFeature>"#
+                )
+            })
+            .collect();
+        let xml = format!(
+            r#"<IPC-2581 revision="C"><Content><FunctionMode mode="FABRICATION"/></Content>
+            <Ecad name="b"><CadHeader units="MILLIMETER"/><CadData>{layers}<Step name="s">{features}</Step>
+            </CadData></Ecad></IPC-2581>"#
+        );
+        ipc::parse_bytes(xml.as_bytes()).unwrap()
+    }
+
+    const KICAD_LAYERS: &str = r#"<Layer name="F.Cu" layerFunction="CONDUCTOR" side="TOP"/>
+        <Layer name="B.Cu" layerFunction="CONDUCTOR" side="BOTTOM"/>
+        <Layer name="F.Silkscreen" layerFunction="SILKSCREEN" side="TOP"/>
+        <Layer name="F.Paste" layerFunction="SOLDERPASTE" side="TOP"/>
+        <Layer name="B.Paste" layerFunction="SOLDERPASTE" side="BOTTOM"/>
+        <Layer name="User.Comments" layerFunction="DOCUMENT" side="NONE"/>
+        <Layer name="User.Eco1" layerFunction="DOCUMENT" side="NONE"/>
+        <Layer name="F.Courtyard" layerFunction="COURTYARD" side="TOP"/>
+        <Layer name="F.Fab" layerFunction="ASSEMBLY" side="TOP"/>
+        <Layer name="B.Fab" layerFunction="ASSEMBLY" side="BOTTOM"/>
+        <Layer name="F.Adhesive" layerFunction="GLUE" side="TOP"/>"#;
+
+    fn optional_stack(d: &ipc::Document, synthesize: Synthesize) -> (Stack, Warnings) {
+        let mut w = Warnings::default();
+        let mut stack = build(&d.ecad, &mut w).unwrap();
+        let step = d.ecad.steps.values().next().unwrap();
+        add_optional(&mut stack, &d.ecad, step, synthesize, &mut w);
+        (stack, w)
+    }
+
+    #[test]
+    fn paste_and_drawings_are_placed_outside_the_surface() {
+        let d = doc_with_features(
+            KICAD_LAYERS,
+            &[
+                "F.Paste",
+                "B.Paste",
+                "User.Comments",
+                "F.Courtyard",
+                "F.Fab",
+                "B.Fab",
+                "F.Adhesive",
+            ],
+        );
+        let (stack, w) = optional_stack(&d, Synthesize::default());
+        assert_eq!(
+            names(&stack),
+            [
+                "User.Comments",
+                "F.Courtyard",
+                "F.Fab",
+                "F.Paste",
+                "F.Silkscreen",
+                "@soldermask-top",
+                "F.Cu",
+                "@core",
+                "B.Cu",
+                "@soldermask-bottom",
+                "B.Paste",
+                "B.Fab"
+            ]
+        );
+        assert!(w.is_empty());
+        let layer = |name: &str| &stack.layers[stack.index(name).unwrap()];
+        // Paste stands on the copper, through the mask and silkscreen.
+        close(layer("F.Paste").z_min, 0.8e-3);
+        close(layer("F.Paste").z_max, 0.8e-3 + DEFAULT_PASTE);
+        close(layer("B.Paste").z_max, -0.8e-3);
+        close(layer("B.Paste").z_min, -0.8e-3 - DEFAULT_PASTE);
+        // Drawings are stacked outward from the outermost surface (here the paste).
+        let surface = 0.8e-3 + DEFAULT_PASTE;
+        for (k, name) in ["F.Fab", "F.Courtyard", "User.Comments"].iter().enumerate() {
+            close(layer(name).z_min, surface + k as f64 * DRAWING_THICKNESS);
+            close(
+                layer(name).z_max,
+                surface + (k + 1) as f64 * DRAWING_THICKNESS,
+            );
+        }
+        close(layer("B.Fab").z_max, -surface);
+        assert_eq!(layer("User.Comments").side, Side::Top);
+        assert_eq!(layer("B.Fab").side, Side::Bottom);
+        assert_eq!(layer("F.Fab").role, Role::Assembly);
+        for name in [
+            "F.Paste",
+            "B.Paste",
+            "User.Comments",
+            "F.Courtyard",
+            "F.Fab",
+        ] {
+            assert!(!layer(name).visible(), "{name}");
+            assert!(!layer(name).synthesized, "{name}");
+        }
+        assert!(layer("F.Silkscreen").visible());
+    }
+
+    #[test]
+    fn paste_thickness_comes_from_the_stackup() {
+        let layers = format!(
+            r#"{KICAD_LAYERS}<Stackup name="S"><StackupGroup name="G">
+              <StackupLayer layerOrGroupRef="F.Paste" thickness="0.12" sequence="0"/>
+              <StackupLayer layerOrGroupRef="F.Cu" thickness="0.035" sequence="1"/>
+              <StackupLayer layerOrGroupRef="B.Cu" thickness="0.035" sequence="2"/>
+              <StackupLayer layerOrGroupRef="B.Paste" thickness="0" sequence="3"/>
+            </StackupGroup></Stackup>"#
+        );
+        let d = doc_with_features(&layers, &["F.Paste", "B.Paste"]);
+        let (stack, _) = optional_stack(&d, Synthesize::default());
+        let paste = &stack.layers[stack.index("F.Paste").unwrap()];
+        close(paste.z_max - paste.z_min, 0.12e-3);
+        assert_eq!(paste.thickness_source, ThicknessSource::File);
+        let paste = &stack.layers[stack.index("B.Paste").unwrap()];
+        close(paste.z_max - paste.z_min, DEFAULT_PASTE);
+        assert_eq!(paste.thickness_source, ThicknessSource::Default);
+    }
+
+    #[test]
+    fn empty_and_extra_optional_layers_are_left_out() {
+        let layers =
+            format!(r#"{KICAD_LAYERS}<Layer name="P2" layerFunction="PASTEMASK" side="TOP"/>"#);
+        let d = doc_with_features(&layers, &["F.Paste", "P2"]);
+        let (stack, w) = optional_stack(&d, Synthesize::default());
+        assert!(stack.index("F.Paste").is_some());
+        assert!(stack.index("P2").is_none());
+        assert!(stack.index("F.Fab").is_none(), "no features");
+        assert_eq!(
+            w.into_vec()[0].message,
+            "layer `P2` is a second paste layer on its side and was skipped"
+        );
+    }
+
+    #[test]
+    fn package_drawings_get_synthesized_layers() {
+        let d = doc_with_features(
+            r#"<Layer name="TOP" layerFunction="CONDUCTOR" side="TOP"/>
+            <Layer name="BOTTOM" layerFunction="CONDUCTOR" side="BOTTOM"/>
+            <Layer name="DOC" layerFunction="DOCUMENT" side="BOTTOM"/>"#,
+            &["DOC"],
+        );
+        let synthesize = Synthesize {
+            silkscreen: [true, false],
+            assembly: [true, true],
+        };
+        let (stack, _) = optional_stack(&d, synthesize);
+        assert_eq!(
+            names(&stack),
+            [
+                "@assembly-top",
+                "@silkscreen-top",
+                "@soldermask-top",
+                "TOP",
+                "@core",
+                "BOTTOM",
+                "@soldermask-bottom",
+                "@assembly-bottom",
+                "DOC"
+            ]
+        );
+        let silk = &stack.layers[1];
+        assert_eq!((silk.role, silk.synthesized), (Role::Silkscreen, true));
+        assert!(silk.visible());
+        close(silk.z_min, 0.82e-3);
+        close(silk.z_max, 0.83e-3);
+        let assembly = &stack.layers[0];
+        assert_eq!(
+            (assembly.role, assembly.synthesized),
+            (Role::Assembly, true)
+        );
+        assert_eq!(assembly.ipc_function, None);
+        close(assembly.z_min, 0.83e-3);
+        close(stack.layers[7].z_max, -0.82e-3);
+        close(stack.layers[8].z_max, -0.82e-3 - DRAWING_THICKNESS);
+    }
+
+    #[test]
+    fn a_single_sided_board_has_no_bottom_drawings() {
+        let d = doc_with_features(
+            r#"<Layer name="TOP" layerFunction="CONDUCTOR" side="TOP"/>
+            <Layer name="BF" layerFunction="ASSEMBLY" side="BOTTOM"/>"#,
+            &["BF"],
+        );
+        let (stack, w) = optional_stack(&d, Synthesize::default());
+        assert_eq!(names(&stack), ["@soldermask-top", "TOP", "@core"]);
+        assert_eq!(
+            w.into_vec()[0].message,
+            "the board has no bottom side; layers BF were skipped"
+        );
+    }
+
+    #[test]
+    fn optional_functions_are_classified() {
+        for (function, role) in [
+            ("SOLDERPASTE", Role::Paste),
+            ("PASTEMASK", Role::Paste),
+            ("COURTYARD", Role::Courtyard),
+            ("ASSEMBLY", Role::Assembly),
+            ("DOCUMENT", Role::Documentation),
+        ] {
+            assert_eq!(classify(function), LayerClass::Layer(role), "{function}");
+        }
+        for function in [
+            "GLUE",
+            "PROBE",
+            "VCUT",
+            "SCORE",
+            "BOARD_OUTLINE",
+            "COATINGCOND",
+        ] {
+            assert_eq!(classify(function), LayerClass::Ignored, "{function}");
+        }
     }
 
     #[test]

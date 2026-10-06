@@ -3,9 +3,15 @@ source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step egg250-panel, ASSEMBLY
 thickness: 1.5800 mm
-counts: 329 features, 51794 vertices, 103108 triangles, 20 nets, 101 components, 157 pins (106 checked against pads)
+counts: 663 features, 64230 vertices, 125236 triangles, 20 nets, 101 components, 157 pins (106 checked against pads)
 warnings: 20 from the reader, 1 from the converter
-  - layers outside the profile's scope were not converted: F.Paste (SOLDERPASTE), B.Paste (SOLDERPASTE), Edge.Cuts (BOARD_OUTLINE), B.Courtyard (COURTYARD), F.Courtyard (COURTYARD), B.Fab (ASSEMBLY), F.Fab (ASSEMBLY)
+  - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
+layer layer/F.Courtyard Courtyard Top z 0.9000..0.9100 mm Default hidden
+  99 features {"Marking": 99}, 3970 vertices, 6756 triangles, top area 32.4492 mm²
+layer layer/F.Fab Assembly Top z 0.8900..0.9000 mm Default hidden
+  107 features {"Marking": 107}, 4782 vertices, 8364 triangles, top area 34.3809 mm²
+layer layer/F.Paste Paste Top z 0.7900..0.8900 mm Default hidden
+  103 features {"Pad": 103}, 1746 vertices, 3144 triangles, top area 131.6069 mm²
 layer layer/F.Silkscreen Silkscreen Top z 0.8000..0.8100 mm Default
   17 features {"Marking": 17}, 1490 vertices, 2892 triangles, top area 14.1579 mm²
 layer layer/F.Mask Soldermask Top z 0.7550..0.8000 mm File
@@ -20,6 +26,12 @@ layer layer/B.Mask Soldermask Bottom z -0.8000..-0.7550 mm File
   1 features {"Sheet": 1}, 2610 vertices, 5464 triangles, top area 1294.6842 mm²
 layer layer/B.Silkscreen Silkscreen Bottom z -0.8100..-0.8000 mm Default
   20 features {"Marking": 20}, 19944 vertices, 39568 triangles, top area 37.4087 mm²
+layer layer/B.Paste Paste Bottom z -0.8900..-0.7900 mm Default hidden
+  19 features {"Pad": 19}, 1074 vertices, 2136 triangles, top area 34.5608 mm²
+layer layer/B.Fab Assembly Bottom z -0.9000..-0.8900 mm Default hidden
+  3 features {"Marking": 3}, 414 vertices, 828 triangles, top area 0.4697 mm²
+layer layer/B.Courtyard Courtyard Bottom z -0.9100..-0.9000 mm Default hidden
+  3 features {"Marking": 3}, 450 vertices, 900 triangles, top area 0.5639 mm²
 drill layer/F.Cu_B.Cu layer/F.Cu..layer/B.Cu
   83 features {"Barrel": 32, "Other": 51}, 2432 vertices, 4864 triangles, top area 1.7908 mm²
 components: 101
