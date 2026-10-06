@@ -71,6 +71,8 @@ pub struct Conversion {
     pub warnings: Vec<Warning>,
     /// Counts describing the output.
     pub stats: Stats,
+    /// Wall-clock time of each pipeline step in seconds, in order. Empty on WebAssembly.
+    pub timings: Vec<(&'static str, f64)>,
 }
 
 /// A warning about input that was skipped, approximated or inconsistent.
@@ -158,11 +160,12 @@ impl std::error::Error for ConvertError {
 /// Returns [`ConvertError::Parse`] if the XML can't be read and [`ConvertError::Input`] if
 /// it has nothing to convert (no step or no copper layer) or the options are invalid.
 pub fn convert(xml: &[u8], options: &Options) -> Result<Conversion, ConvertError> {
+    let timings = Timings::default();
     let document = {
-        let _span = tracing::info_span!("parse").entered();
+        let _step = timings.step("parse");
         ipc::parse_bytes(xml).map_err(ConvertError::Parse)?
     };
-    convert_document(&document, &sha256(xml), options)
+    pipeline::run(&document, &sha256(xml), options, timings)
 }
 
 /// Converts a parsed document. `sha256` is the hex digest of the source file.
@@ -175,7 +178,7 @@ pub fn convert_document(
     sha256: &str,
     options: &Options,
 ) -> Result<Conversion, ConvertError> {
-    pipeline::run(document, sha256, options)
+    pipeline::run(document, sha256, options, Timings::default())
 }
 
 /// Lowercase hex SHA-256 of `bytes`.
@@ -183,6 +186,48 @@ pub fn sha256(bytes: &[u8]) -> String {
     use sha2::Digest;
     let digest = sha2::Sha256::digest(bytes);
     digest.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// Times pipeline steps: a tracing span each and, on native targets, the wall-clock time.
+#[derive(Debug, Default)]
+pub(crate) struct Timings(std::cell::RefCell<Vec<(&'static str, f64)>>);
+
+impl Timings {
+    /// Starts a step; it ends when the returned guard is dropped.
+    pub(crate) fn step(&self, name: &'static str) -> Step<'_> {
+        Step {
+            timings: self,
+            name,
+            _span: tracing::info_span!("step", name).entered(),
+            #[cfg(not(target_arch = "wasm32"))]
+            start: std::time::Instant::now(),
+        }
+    }
+
+    pub(crate) fn into_vec(self) -> Vec<(&'static str, f64)> {
+        self.0.into_inner()
+    }
+}
+
+/// A running pipeline step.
+pub(crate) struct Step<'a> {
+    timings: &'a Timings,
+    name: &'static str,
+    _span: tracing::span::EnteredSpan,
+    #[cfg(not(target_arch = "wasm32"))]
+    start: std::time::Instant,
+}
+
+impl Drop for Step<'_> {
+    fn drop(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        self.timings
+            .0
+            .borrow_mut()
+            .push((self.name, self.start.elapsed().as_secs_f64()));
+        #[cfg(target_arch = "wasm32")]
+        let _ = (self.timings, self.name);
+    }
 }
 
 /// Converter warnings, merged by message.

@@ -105,7 +105,7 @@ fn init_tracing(verbose: u8, quiet: bool) {
         (false, 1) => tracing::Level::INFO,
         (false, _) => tracing::Level::DEBUG,
     };
-    let spans = if verbose > 0 {
+    let spans = if verbose > 1 {
         FmtSpan::CLOSE
     } else {
         FmtSpan::NONE
@@ -186,10 +186,24 @@ fn convert(args: &ConvertArgs) -> miette::Result<ExitCode> {
             start.elapsed().as_secs_f64()
         );
     }
+    for (step, seconds) in &conversion.timings {
+        info!("{step:>32}: {seconds:7.3} s");
+    }
+    if let Some(peak) = peak_memory() {
+        info!("peak memory {:.0} MB", peak as f64 / 1e6);
+    }
     if args.validate {
         return check(&args.output, false);
     }
     Ok(ExitCode::SUCCESS)
+}
+
+/// Peak resident memory of this process in bytes, where the OS reports it (Linux).
+fn peak_memory() -> Option<u64> {
+    let status = std::fs::read_to_string("/proc/self/status").ok()?;
+    let line = status.lines().find(|l| l.starts_with("VmHWM:"))?;
+    let kb: u64 = line.split_whitespace().nth(1)?.parse().ok()?;
+    Some(kb * 1024)
 }
 
 /// Whether normal output is wanted (not `--quiet`).

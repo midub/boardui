@@ -15,7 +15,7 @@ use glam::DAffine2;
 use crate::components::{self, PadRef};
 use crate::shapes::{ShapeConverter, is_stroke, point};
 use crate::stackup::{self, LayerClass, Stack};
-use crate::{Conversion, ConvertError, Options, Stats, Warning, Warnings};
+use crate::{Conversion, ConvertError, Options, Stats, Timings, Warning, Warnings};
 
 /// A layer's source features, ready for `boardui-geom`.
 #[derive(Default)]
@@ -43,6 +43,7 @@ pub(crate) fn run(
     doc: &ipc::Document,
     sha256: &str,
     options: &Options,
+    timings: Timings,
 ) -> Result<Conversion, ConvertError> {
     let tolerance = Tolerance::new(options.tolerance)
         .map_err(|e| ConvertError::Input(format!("invalid tolerance: {e}")))?;
@@ -53,6 +54,7 @@ pub(crate) fn run(
         )));
     }
     let mut warnings = Warnings::default();
+    let features_step = timings.step("stack-up, features, components");
     let step = select_step(doc, options)?;
     let stack = stackup::build(&doc.ecad, &mut warnings).map_err(ConvertError::Input)?;
     if doc
@@ -149,10 +151,11 @@ pub(crate) fn run(
         ctx.warnings.push(message);
     }
     drop(ctx);
+    drop(features_step);
 
     // Overlap resolution, in parallel over layers.
     let resolved: Vec<(Vec<Region>, Vec<String>)> = {
-        let _span = tracing::info_span!("resolve").entered();
+        let _step = timings.step("resolve");
         par::map(&layer_features, |i, features| {
             resolve(&stack.layers[i].name, &features.shapes, tolerance)
         })
@@ -171,7 +174,7 @@ pub(crate) fn run(
         .filter(|&(d, h)| drills[d].holes[h].is_some())
         .collect();
     let cuts: Vec<Option<Region>> = {
-        let _span = tracing::info_span!("hole cuts").entered();
+        let _step = timings.step("hole cuts");
         par::map(&hole_list, |_, &(d, h)| {
             let hole = drills[d].holes[h].as_ref().expect("filtered");
             let clearance = if hole.plated { plating } else { 0.0 };
@@ -230,7 +233,7 @@ pub(crate) fn run(
 
     // Final regions per layer: holes cut, sheets built, silkscreen clipped.
     let finals: Vec<(Vec<FeatureRow>, Vec<Region>)> = {
-        let _span = tracing::info_span!("cut and sheets").entered();
+        let _step = timings.step("cut and sheets");
         let indices: Vec<usize> = (0..stack.layers.len()).collect();
         let mut rows: Vec<Option<Vec<FeatureRow>>> =
             layer_features.into_iter().map(|f| Some(f.rows)).collect();
@@ -276,18 +279,16 @@ pub(crate) fn run(
             .collect()
     };
 
-    // Extrusion.
+    // Extrusion and mesh assembly, in parallel over layers and features.
     let mut layers = Vec::with_capacity(stack.layers.len());
     {
-        let _span = tracing::info_span!("extrude").entered();
-        for (layer, (rows, regions)) in stack.layers.iter().zip(finals) {
-            let mesh = extrude(
-                &layer.name,
-                &regions,
-                layer.z_min,
-                layer.z_max,
-                &mut warnings,
-            );
+        let _step = timings.step("extrude");
+        let meshes = par::map(&finals, |i, (_, regions)| {
+            let layer = &stack.layers[i];
+            extrude(&layer.name, regions, layer.z_min, layer.z_max)
+        });
+        for ((layer, (rows, _)), (mesh, messages)) in stack.layers.iter().zip(finals).zip(meshes) {
+            messages.into_iter().for_each(|m| warnings.push(m));
             layers.push(LayerAsset {
                 name: layer.name.clone(),
                 role: layer.role,
@@ -304,7 +305,7 @@ pub(crate) fn run(
         }
     }
     let drill_assets: Vec<DrillAsset> = {
-        let _span = tracing::info_span!("barrels").entered();
+        let _step = timings.step("barrels");
         drills
             .into_iter()
             .map(|drill| {
@@ -316,7 +317,8 @@ pub(crate) fn run(
                         .map_err(|e| e.to_string()),
                     _ => Ok(geom::Prism::default()),
                 });
-                let mesh = assemble(&drill.name, prisms, &mut warnings);
+                let (mesh, messages) = assemble(&drill.name, prisms);
+                messages.into_iter().for_each(|m| warnings.push(m));
                 DrillAsset {
                     name: drill.name,
                     from: top.name.clone(),
@@ -371,7 +373,7 @@ pub(crate) fn run(
         models: components.models,
     };
     let glb = {
-        let _span = tracing::info_span!("write").entered();
+        let _step = timings.step("write");
         asset.to_glb()
     };
 
@@ -389,6 +391,7 @@ pub(crate) fn run(
         glb,
         warnings: all,
         stats,
+        timings: timings.into_vec(),
     })
 }
 
@@ -473,35 +476,27 @@ fn resolve(
     }
 }
 
-fn extrude(
-    layer: &str,
-    regions: &[Region],
-    z_min: f64,
-    z_max: f64,
-    warnings: &mut Warnings,
-) -> LayerMesh {
+/// Extrudes a layer's regions and assembles its mesh; also returns warnings.
+fn extrude(layer: &str, regions: &[Region], z_min: f64, z_max: f64) -> (LayerMesh, Vec<String>) {
     let prisms = par::map(regions, |_, r| {
         r.extrude(z_min, z_max).map_err(|e| e.to_string())
     });
-    assemble(layer, prisms, warnings)
+    assemble(layer, prisms)
 }
 
-fn assemble(
-    layer: &str,
-    prisms: Vec<Result<geom::Prism, String>>,
-    warnings: &mut Warnings,
-) -> LayerMesh {
+fn assemble(layer: &str, prisms: Vec<Result<geom::Prism, String>>) -> (LayerMesh, Vec<String>) {
     let mut builder = LayerMeshBuilder::new();
+    let mut messages = Vec::new();
     for (id, prism) in prisms.into_iter().enumerate() {
         let prism = prism.unwrap_or_else(|e| {
-            warnings.push(format!(
+            messages.push(format!(
                 "feature {id} of layer `{layer}` can't be meshed ({e})"
             ));
             geom::Prism::default()
         });
         builder.push(id as u32, &prism).expect("feature IDs ascend");
     }
-    builder.finish()
+    (builder.finish(), messages)
 }
 
 /// A rectangle 1 mm around everything on the copper layers, for boards without a profile.
