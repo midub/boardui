@@ -212,6 +212,26 @@ def negative_polarity():
     return d
 
 
+def zero_width_lines():
+    """Silkscreen strokes with zero-width lines are 0.1 mm hairlines (spec §6.1)."""
+    d = Doc()
+    d.line_desc("ZERO", 0)
+    d.layer("TOP", "CONDUCTOR", "TOP")
+    d.layer("SILK", "SILKSCREEN", "TOP")
+    profile(d, 6, 4)
+    line = (
+        f'<Line startX="{d.u(1)}" startY="{d.u(3)}" endX="{d.u(3)}" endY="{d.u(3)}">'
+        '<LineDescRef id="ZERO"/></Line>'
+    )
+    d.step.append(
+        '<LayerFeature layerRef="SILK">'
+        f'<Set>{trace(d, [(1, 1), (5, 1), (5, 3)], "ZERO")}</Set>'
+        f'<Set><Features><Location x="0" y="0"/>{line}</Features></Set>'
+        "</LayerFeature>"
+    )
+    return d
+
+
 def slots():
     """A plated slot with pads and a non-plated slot (spec §6.3)."""
     d = Doc()
@@ -329,6 +349,7 @@ def main():
         "units-micron": minimal("MICRON"),
         "overlap-priority": overlap_priority(),
         "negative-polarity": negative_polarity(),
+        "zero-width-lines": zero_width_lines(),
         "slots": slots(),
         "bottom-placement": bottom_placement(),
         "user-models": minimal("MILLIMETER"),
