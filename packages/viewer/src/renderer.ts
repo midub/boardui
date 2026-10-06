@@ -136,7 +136,12 @@ export class BoardRenderer {
    */
   frame(box: Box3, direction?: Vector3, animate = true, margin = 1.05): void {
     const center = box.getCenter(new Vector3());
-    const dir = (direction ?? this.camera.position.clone().sub(this.controls.target)).normalize();
+    // Without a direction, keep the current one; during a flight, the one it is heading for.
+    const flight = this.#flight;
+    const current = flight
+      ? flight.toPosition.clone().sub(flight.toTarget)
+      : this.camera.position.clone().sub(this.controls.target);
+    const dir = (direction ?? current).normalize();
     const { fov, aspect, up } = this.camera;
     const fit = fitBoxDistance(box, dir, up, fov, aspect, margin);
     const distance = Math.max(fit, this.controls.minDistance);

@@ -42,6 +42,39 @@ async function loadNumbers(page: Page): Promise<Record<string, unknown>> {
   });
 }
 
+/** Records the page's long tasks (`globalThis.longTasks`). Call before loading the page. */
+async function recordLongTasks(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const tasks: { start: number; ms: number }[] = [];
+    Object.assign(globalThis, { longTasks: tasks });
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) tasks.push({ start: e.startTime, ms: e.duration });
+    }).observe({ type: 'longtask', buffered: true });
+  });
+}
+
+/**
+ * How long after the board is shown hover covers the whole board (BVHs built in workers), and
+ * the longest main-thread task meanwhile.
+ */
+async function pickability(page: Page): Promise<Record<string, number>> {
+  return page.evaluate(async () => {
+    const g = globalThis as unknown as {
+      demo: { viewer: { whenPickable(): Promise<void> } };
+      longTasks: { start: number; ms: number }[];
+    };
+    const shown = performance.now();
+    await g.demo.viewer.whenPickable();
+    const pickable = performance.now();
+    const during = g.longTasks.filter((t) => t.start >= shown && t.start < pickable);
+    return {
+      pickableMs: pickable - shown,
+      longTasks: during.length,
+      maxLongTaskMs: Math.max(0, ...during.map((t) => t.ms)),
+    };
+  });
+}
+
 /** Frame rate while the camera orbits by itself, over `seconds`. */
 async function orbitFps(page: Page, seconds: number): Promise<Record<string, number>> {
   return page.evaluate(async (seconds) => {
@@ -73,6 +106,7 @@ test('landing page', async ({ page }) => {
 });
 
 test('testcase1: progress, views, timings', async ({ page }) => {
+  await recordLongTasks(page);
   await page.goto('./?stats');
   await page.locator('.sample-card[data-sample="testcase1"]').click();
   await expect(page.locator('#progress-title')).toContainText('Converting', { timeout: 60_000 });
@@ -81,19 +115,13 @@ test('testcase1: progress, views, timings', async ({ page }) => {
   });
   await page.screenshot({ path: `${out}/02-progress.png` });
   await expect(page.locator('body')).toHaveAttribute('data-state', 'ready', { timeout: 600_000 });
-  const numbers = await loadNumbers(page);
+  const numbers = { ...(await loadNumbers(page)), ...(await pickability(page)) };
   await shot(page, '05-testcase1-iso');
   await viewerCall(page, 'setView', 'top');
   await shot(page, '06-testcase1-top');
   await viewerCall(page, 'setView', 'bottom');
   await shot(page, '06-testcase1-bottom');
-  const t = Date.now();
-  await viewerCall(page, 'whenPickable');
-  record('testcase1', {
-    ...numbers,
-    pickableAfterLoadMs: Date.now() - t,
-    orbit: await orbitFps(page, 20),
-  });
+  record('testcase1', { ...numbers, orbit: await orbitFps(page, 20) });
 });
 
 test('KiCad board: views, selection with tags, nets, x-ray, hover', async ({ page }) => {
@@ -141,6 +169,7 @@ test('KiCad board: views, selection with tags, nets, x-ray, hover', async ({ pag
 
   // Hover a pad of the bottom header J1 from the top: tooltip and hover tint on copper.
   await page.keyboard.press('t');
+  await settle(page);
   await viewerCall(page, 'focus', 'pin/J1/5');
   await settle(page);
   const pad = await screenPoint(page, 'pin/J1/5');
@@ -161,6 +190,7 @@ test('bottom-placement: bottom view lighting', async ({ page }) => {
 
 test('synthetic board (PERF_XML)', async ({ page }) => {
   test.skip(!perfXml, 'set PERF_XML');
+  await recordLongTasks(page);
   await page.goto('./?stats');
   const start = Date.now();
   await page.locator('#file-input').setInputFiles(perfXml as string);
@@ -171,6 +201,7 @@ test('synthetic board (PERF_XML)', async ({ page }) => {
     record('synthetic', { error: await page.locator('#error-message').innerText() });
     return;
   }
-  record('synthetic', { ...(await loadNumbers(page)), wallMs: Date.now() - start });
+  const wallMs = Date.now() - start;
+  record('synthetic', { ...(await loadNumbers(page)), wallMs, ...(await pickability(page)) });
   await shot(page, '14-synthetic');
 });

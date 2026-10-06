@@ -29,7 +29,7 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 | `whenPickable()` | Resolves when hover and picking cover the whole board (see "Picking" below). |
 | `layers` | Layers and drill layers, top to bottom, with their current visibility. |
 | `setLayerVisible(id, visible)` | Defaults come from `BOARDUI_board.layers[].visible`; drill layers start visible. |
-| `setXray(on)`, `xray` | Makes the board translucent (copper less than the rest); tinted elements stay opaque. Inner copper that is hidden by default is shown while x-ray is on, unless `setLayerVisible` hid it. |
+| `setXray(on)`, `xray` | Makes the board translucent (copper less than the rest); tinted elements stay opaque. Layer visibility doesn't change: inner copper shows only when switched on. |
 | `highlight({ ids } \| { net }, { color })` | Tints elements with a CSS colour. Returns a function that removes the highlight. |
 | `hide({ ids } \| { net })` | Hides elements. Returns a function that shows them again. |
 | `select(id \| null)`, `selection` | Selects any element; a net selects all its copper. |

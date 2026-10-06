@@ -1,6 +1,6 @@
 import type { ConvertCallOptions, ConvertResult } from '@boardui/converter';
 import { type Box3, Color, type Material, Matrix4, Mesh, Ray, Vector3 } from 'three';
-import type { BoardLayerJson, LayerRole, Side } from './board-extension.js';
+import type { LayerRole, Side } from './board-extension.js';
 import { BoardModel, type ElementInfo, type LayerModel, type ListableKind } from './board-model.js';
 import { BvhBuilder, WORKER_MIN_TRIANGLES } from './bvh-builder.js';
 import { type ViewPreset, viewDirection } from './camera.js';
@@ -115,8 +115,6 @@ export class BoardViewerElement extends HTMLElement {
   readonly #widgetVisibility = new Map<string, { version: number; visible: boolean }>();
   /** Bumped whenever layers or elements are shown or hidden. */
   #visibility = 0;
-  /** Layer visibility set with {@link setLayerVisible}; other layers follow the defaults. */
-  readonly #layerChoices = new Map<string, boolean>();
   readonly #resize = new ResizeObserver(() => this.#onResize());
   readonly #ray = new Ray();
   #renderer: BoardRenderer | null = null;
@@ -202,7 +200,6 @@ export class BoardViewerElement extends HTMLElement {
       return;
     }
     this.#unload();
-    this.#layerChoices.clear();
     const state = new ElementState(model.stateCount);
     const materials = new BoardMaterials(state);
     const overlays: Loaded['overlays'] = [];
@@ -253,7 +250,6 @@ export class BoardViewerElement extends HTMLElement {
       pickable: Promise.resolve(),
     };
     this.#loaded = loaded;
-    this.#applyLayerVisibility();
     this.#showLoaded();
     loaded.pickable = this.#prepareBvhs(loaded);
   }
@@ -319,16 +315,12 @@ export class BoardViewerElement extends HTMLElement {
     });
   }
 
-  /**
-   * Shows or hides a layer or drill layer. Layers never set follow their defaults
-   * (`BOARDUI_board.layers[].visible`; inner copper is hidden), except that x-ray shows inner
-   * copper.
-   */
+  /** Shows or hides a layer or drill layer. */
   setLayerVisible(id: string, visible: boolean): void {
     const layer = this.#model().layer(id);
     if (!layer) throw new RangeError(`Unknown layer: ${id}`);
-    this.#layerChoices.set(id, visible);
-    this.#applyLayerVisibility();
+    layer.group.visible = visible;
+    this.#visibility++;
     this.#requestRender();
   }
 
@@ -339,13 +331,13 @@ export class BoardViewerElement extends HTMLElement {
 
   /**
    * Turns x-ray mode on or off: every layer and component becomes translucent, copper less so
-   * than the rest, so that the copper of both sides shows. Inner copper layers that are hidden by
-   * default are shown while x-ray is on, unless they were hidden with {@link setLayerVisible}.
+   * than the rest, so that the copper of both sides shows. Layer visibility stays as it is: inner
+   * copper (hidden by default) shows only when switched on, since inner planes would cover the
+   * view of a multilayer board.
    */
   setXray(on: boolean): void {
     this.#xray = on;
     this.#loaded?.materials.setXray(on);
-    if (this.#loaded) this.#applyLayerVisibility();
     this.#requestRender();
   }
 
@@ -588,20 +580,6 @@ export class BoardViewerElement extends HTMLElement {
       }),
     );
     return Promise.all(builds).then(() => {});
-  }
-
-  /**
-   * Applies layer visibility: the choices made with {@link setLayerVisible}, else the defaults,
-   * with inner copper shown in x-ray mode.
-   */
-  #applyLayerVisibility(): void {
-    for (const layer of this.#model().layers) {
-      const info = layer.info as Partial<BoardLayerJson>;
-      const byDefault =
-        layer.kind === 'drill' || info.visible !== false || (this.#xray && info.role === 'COPPER');
-      layer.group.visible = this.#layerChoices.get(layer.id) ?? byDefault;
-    }
-    this.#visibility++;
   }
 
   #onResize(): void {
