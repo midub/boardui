@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import type { BoardLayerJson } from '../src/board-extension.js';
 import { BoardModel } from '../src/board-model.js';
 import { featureId } from '../src/ids.js';
 import { loadGltf } from '../src/load.js';
@@ -71,5 +72,60 @@ describe('fiducials', () => {
     expect(model.describe('feat/TOP/4')?.properties).toMatchObject({ fiducial: 'GOOD_PANEL' });
     const other = await load('hatch-fill');
     expect(other.describe('feat/TOP/0')?.properties).not.toHaveProperty('fiducial');
+  });
+});
+
+describe('optional layers', () => {
+  const load = async (name: string) => {
+    const bytes = readFileSync(path.join(samples, name, `${name}.glb`));
+    const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    return BoardModel.fromGltf(await loadGltf(glb));
+  };
+  const roles = (model: BoardModel) =>
+    Object.fromEntries(
+      model.layers
+        .filter((l) => 'role' in l.info)
+        .map((l) => [l.id, [(l.info as BoardLayerJson).role, l.group.visible]]),
+    );
+
+  it('starts paste and drawing layers hidden (spec §8.3)', async () => {
+    expect(roles(await load('paste-layer'))).toMatchObject({
+      'layer/TOP_PASTE': ['PASTE', false],
+      'layer/TOP_SILK': ['SILKSCREEN', true],
+      'layer/TOP': ['COPPER', true],
+      'layer/BOT_PASTE': ['PASTE', false],
+    });
+    expect(roles(await load('drawing-layers'))).toMatchObject({
+      'layer/NOTES': ['DOCUMENTATION', false],
+      'layer/CRT_TOP': ['COURTYARD', false],
+      'layer/FAB_TOP': ['ASSEMBLY', false],
+      'layer/FAB_BOT': ['ASSEMBLY', false],
+    });
+    const model = await load('assembly-drawing');
+    expect(roles(model)).toMatchObject({ 'layer/@assembly-top': ['ASSEMBLY', false] });
+    const assembly = model.layer('layer/@assembly-top');
+    expect(assembly?.color).toBe('#7db2c4');
+    // Toggling is the group's visibility, as for any layer.
+    if (assembly) assembly.group.visible = true;
+    expect(roles(model)['layer/@assembly-top']).toEqual(['ASSEMBLY', true]);
+  });
+
+  it('emphasizes a component with its drawings (spec §6.13)', async () => {
+    const model = await load('assembly-drawing');
+    const d1 = model.resolve('cmp/D1');
+    if (!d1) throw new Error('cmp/D1');
+    const emphasis = [...model.emphasis(d1)];
+    expect(emphasis).toContain(d1.texels[0]);
+    expect(emphasis.map((t) => model.idOfTexel(t)).sort()).toEqual([
+      'cmp/D1',
+      'feat/@assembly-top/0',
+      'feat/@assembly-top/1',
+      'feat/@assembly-top/2',
+    ]);
+    // Boards without drawing layers: the component alone.
+    const other = await load('minimal-2layer');
+    const r1 = other.resolve('cmp/R1');
+    if (!r1) throw new Error('cmp/R1');
+    expect([...other.emphasis(r1)]).toEqual([...r1.texels]);
   });
 });

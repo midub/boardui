@@ -1,0 +1,44 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step board, FABRICATION
+thickness: 1.6000 mm
+counts: 16 features, 680 vertices, 1340 triangles, 5 nets, 2 components, 4 pins (4 checked against pads)
+warnings: 0 from the reader, 0 from the converter
+layer layer/TOP_PASTE Paste Top z 0.8000..0.9000 mm Default hidden
+  3 features {"Pad": 3}, 112 vertices, 216 triangles, top area 2.5665 mm²
+    row 0: Pad net - area 0.8000 mm²
+    row 1: Pad net - area 0.8000 mm²
+    row 2: Pad net - area 0.9665 mm²
+layer layer/TOP_SILK Silkscreen Top z 0.8200..0.8300 mm Default
+  1 features {"Marking": 1}, 24 vertices, 44 triangles, top area 0.4664 mm²
+    row 0: Marking net - area 0.4664 mm²
+layer layer/TOP_MASK Soldermask Top z 0.7650..0.8200 mm Default
+  1 features {"Sheet": 1}, 82 vertices, 172 triangles, top area 135.8451 mm²
+    row 0: Sheet net - area 135.8451 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm File
+  3 features {"Pad": 3}, 116 vertices, 224 triangles, top area 3.5959 mm²
+    row 0: Pad net 0 area 1.0800 mm²
+    row 1: Pad net 1 area 1.0800 mm²
+    row 2: Pad net 2 area 1.4359 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 50 vertices, 100 triangles, top area 139.4410 mm²
+    row 0: Sheet net - area 139.4410 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm File
+  3 features {"Pad": 3}, 116 vertices, 224 triangles, top area 3.5959 mm²
+    row 0: Pad net 3 area 1.0800 mm²
+    row 1: Pad net 4 area 1.0800 mm²
+    row 2: Pad net 2 area 1.4359 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 82 vertices, 172 triangles, top area 135.8451 mm²
+    row 0: Sheet net - area 135.8451 mm²
+layer layer/BOT_PASTE Paste Bottom z -0.9500..-0.8000 mm File hidden
+  2 features {"Pad": 2}, 16 vertices, 24 triangles, top area 1.6000 mm²
+    row 0: Pad net - area 0.8000 mm²
+    row 1: Pad net - area 0.8000 mm²
+drill layer/DRILL layer/TOP..layer/BOTTOM
+  1 features {"Barrel": 1}, 82 vertices, 164 triangles, top area 0.0646 mm²
+    row 0: Barrel net 2 area 0.0646 mm²
+components: 2
+  R1 at (4.0000, 0.8000, -4.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0805
+  C1 at (10.0000, -0.8000, -4.0000) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder R0805

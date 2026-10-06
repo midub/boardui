@@ -3,9 +3,15 @@ source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev B, step rt-bbv, ASSEMBLY
 thickness: 2.4200 mm
-counts: 142 features, 9114 vertices, 18504 triangles, 1 nets, 2 components, 4 pins (4 checked against pads)
+counts: 166 features, 13388 vertices, 26716 triangles, 1 nets, 2 components, 4 pins (4 checked against pads)
 warnings: 14 from the reader, 1 from the converter
-  - layers outside the profile's scope were not converted: F.Paste (SOLDERPASTE), B.Paste (SOLDERPASTE), Edge.Cuts (BOARD_OUTLINE), B.Courtyard (COURTYARD), F.Courtyard (COURTYARD), B.Fab (ASSEMBLY), F.Fab (ASSEMBLY)
+  - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
+layer layer/F.Courtyard Courtyard Top z 1.3200..1.3300 mm Default hidden
+  4 features {"Marking": 4}, 144 vertices, 240 triangles, top area 0.5353 mm²
+layer layer/F.Fab Assembly Top z 1.3100..1.3200 mm Default hidden
+  6 features {"Marking": 6}, 1914 vertices, 3716 triangles, top area 6.2203 mm²
+layer layer/F.Paste Paste Top z 1.2100..1.3100 mm Default hidden
+  2 features {"Pad": 2}, 80 vertices, 152 triangles, top area 2.7827 mm²
 layer layer/F.Silkscreen Silkscreen Top z 1.2200..1.2300 mm Default
   3 features {"Marking": 3}, 386 vertices, 748 triangles, top area 1.6009 mm²
 layer layer/F.Mask Soldermask Top z 1.1400..1.2200 mm File
@@ -108,6 +114,12 @@ layer layer/B.Mask Soldermask Bottom z -1.2200..-1.1400 mm File
   1 features {"Sheet": 1}, 178 vertices, 372 triangles, top area 1322.6639 mm²
 layer layer/B.Silkscreen Silkscreen Bottom z -1.2300..-1.2200 mm Default
   3 features {"Marking": 3}, 386 vertices, 748 triangles, top area 1.6009 mm²
+layer layer/B.Paste Paste Bottom z -1.3100..-1.2100 mm Default hidden
+  2 features {"Pad": 2}, 80 vertices, 152 triangles, top area 2.7827 mm²
+layer layer/B.Fab Assembly Bottom z -1.3200..-1.3100 mm Default hidden
+  6 features {"Marking": 6}, 1912 vertices, 3712 triangles, top area 6.2202 mm²
+layer layer/B.Courtyard Courtyard Bottom z -1.3300..-1.3200 mm Default hidden
+  4 features {"Marking": 4}, 144 vertices, 240 triangles, top area 0.5353 mm²
 drill layer/F.Cu_B.Cu layer/F.Cu..layer/B.Cu
   1 features {"Barrel": 1}, 60 vertices, 120 triangles, top area 0.0324 mm²
 drill layer/F.Cu_In1.Cu layer/F.Cu..layer/In1.Cu

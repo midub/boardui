@@ -7,9 +7,13 @@
  * camera continuously (to measure the frame rate), `backend=webgl` forces WebGL2.
  * `globalThis.demo` exposes the viewer and the last load's timings for tests and the console.
  */
-import '@boardui/viewer';
 import type { ConvertResult, ModelsInput } from '@boardui/converter';
-import type { ElementInfo, LoadProgress } from '@boardui/viewer';
+import {
+  type ElementInfo,
+  type LayerState,
+  type LoadProgress,
+  OPTIONAL_ROLES,
+} from '@boardui/viewer';
 import { $, append, formatBytes, formatCount, formatSeconds, h } from './dom.js';
 import { classify, filesFromDrop, filesFromList, type InputFile } from './files.js';
 import { formatValue, isElementId, kindLabel, label, summary } from './names.js';
@@ -51,6 +55,10 @@ const ROLE_COLORS: Record<string, string> = {
   SOLDERMASK: '#2e8b46',
   SILKSCREEN: '#f2f2f2',
   DIELECTRIC: '#c7b98a',
+  PASTE: '#a4a7ab',
+  COURTYARD: '#c07aae',
+  ASSEMBLY: '#7db2c4',
+  DOCUMENTATION: '#9fbf73',
   drill: '#9aa3ad',
 };
 
@@ -437,8 +445,12 @@ function layersSection(): HTMLElement {
 function refreshLayers(): void {
   const list = document.querySelector('#layer-list');
   if (!list) return;
-  list.replaceChildren(
-    ...viewer.layers.map((layer) => {
+  // The board's layers first, then paste and drawings (hidden by default) as their own group.
+  const optional = (layer: LayerState) => !!layer.role && OPTIONAL_ROLES.has(layer.role);
+  const layers = viewer.layers;
+  const extra = layers.filter(optional);
+  const rows = (group: LayerState[]) =>
+    group.map((layer) => {
       const color =
         layer.color ?? ROLE_COLORS[layer.kind === 'drill' ? 'drill' : (layer.role ?? '')] ?? '#888';
       const checkbox = h('input', {
@@ -461,7 +473,12 @@ function refreshLayers(): void {
           h('span', { class: 'layer-role' }, role),
         ),
       );
-    }),
+    });
+  list.replaceChildren(
+    ...rows(layers.filter((layer) => !optional(layer))),
+    ...(extra.length
+      ? [h('li', { class: 'layer-group' }, 'Paste and drawings'), ...rows(extra)]
+      : []),
   );
 }
 

@@ -1,0 +1,37 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step board, FABRICATION
+thickness: 1.6000 mm
+counts: 9 features, 194 vertices, 368 triangles, 2 nets, 1 components, 2 pins (2 checked against pads)
+warnings: 0 from the reader, 1 from the converter
+  - layers outside the profile's scope were not converted: GLUE_TOP (GLUE)
+layer layer/NOTES Documentation Top z 0.8400..0.8500 mm Default hidden
+  1 features {"Marking": 1}, 34 vertices, 64 triangles, top area 0.4064 mm²
+    row 0: Marking net - area 0.4064 mm²
+layer layer/CRT_TOP Courtyard Top z 0.8300..0.8400 mm Default hidden
+  1 features {"Marking": 1}, 40 vertices, 80 triangles, top area 0.4393 mm²
+    row 0: Marking net - area 0.4393 mm²
+layer layer/FAB_TOP Assembly Top z 0.8200..0.8300 mm Default hidden
+  1 features {"Marking": 1}, 40 vertices, 80 triangles, top area 0.2993 mm²
+    row 0: Marking net - area 0.2993 mm²
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 24 vertices, 52 triangles, top area 57.8400 mm²
+    row 0: Sheet net - area 57.8400 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  2 features {"Pad": 2}, 16 vertices, 24 triangles, top area 2.1600 mm²
+    row 0: Pad net 0 area 1.0800 mm²
+    row 1: Pad net 1 area 1.0800 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 60.0000 mm²
+    row 0: Sheet net - area 60.0000 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 60.0000 mm²
+    row 0: Sheet net - area 60.0000 mm²
+layer layer/FAB_BOT Assembly Bottom z -0.8300..-0.8200 mm Default hidden
+  1 features {"Marking": 1}, 24 vertices, 44 triangles, top area 0.3071 mm²
+    row 0: Marking net - area 0.3071 mm²
+components: 1
+  R1 at (3.0000, 0.8000, -3.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0805

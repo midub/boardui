@@ -67,9 +67,9 @@ That keeps every dependency pure Rust, so the WASM build needs no C/C++ toolchai
 ### Pipeline
 
 1. **Parse.** Stream the XML into a typed model. Normalize units to metres and resolve dictionary references (standard primitives, line descriptors, colours).
-2. **Stack-up.** Build the layer list with Z ranges from `Stackup`, or from defaults. Synthesize missing soldermask and dielectric layers.
+2. **Stack-up.** Build the layer list with Z ranges from `Stackup`, or from defaults. Synthesize missing soldermask and dielectric layers. Add paste on the outer copper and stack the drawing layers (courtyard, assembly, documentation) outside the board, with synthesized silkscreen and assembly layers where package drawings need them (spec §6.11–§6.13).
 3. **2D per layer.**
-   - Turn each feature into a region: stroke lines, expand standard primitives, apply the `Xform`.
+   - Turn each feature into a region: stroke lines, expand standard primitives, apply the `Xform`. Package drawings are placed with their components and added to the assembly and silkscreen layers.
    - Apply negative polarity in document order.
    - Resolve overlaps by priority (spec §6.2). Features go in priority order; each one subtracts the already-claimed area near it (found via the R-tree) and then claims its own.
 4. **Holes.** Subtract the holes from every layer they cross, and build barrels.

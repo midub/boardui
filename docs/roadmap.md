@@ -33,4 +33,3 @@ Measured in M5 on a VM without a GPU: a 238k-feature board converts in 3.7 s nat
 - `boardui inspect` (summary of a GLB), `boardui diff` (two revisions of a board)
 - Multi-threaded WASM (requires cross-origin isolation)
 - Parametric bodies for common packages
-- Paste and documentation layers

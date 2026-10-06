@@ -149,6 +149,10 @@ samples! {
     line_styles => "line-styles",
     slots => "slots",
     bottom_placement => "bottom-placement",
+    paste_layer => "paste-layer",
+    drawing_layers => "drawing-layers",
+    assembly_drawing => "assembly-drawing",
+    package_silkscreen => "package-silkscreen",
     user_models => "user-models",
     colours => "colours",
     testcase1 => "testcase1-RevC-Assembly",
@@ -195,6 +199,118 @@ fn units_give_the_same_board() {
     }
 }
 
+/// Spec §6.13, §8.2: features from package drawings reference their component and are
+/// numbered on after the layer's own features.
+#[test]
+fn package_drawings_belong_to_their_components() {
+    /// Expected `(source, component refDes)` per row.
+    type Rows = &'static [(u32, &'static str)];
+    let cases: [(&str, &str, Rows); 3] = [
+        (
+            "package-silkscreen",
+            "SST",
+            &[(0, "R1"), (1, ""), (2, "R2")],
+        ),
+        ("package-silkscreen", "@silkscreen-bottom", &[(0, "R4")]),
+        (
+            "assembly-drawing",
+            "@assembly-top",
+            &[
+                (0, "D1"),
+                (1, "D1"),
+                (2, "D1"),
+                (3, "D2"),
+                (4, "D2"),
+                (5, "D2"),
+            ],
+        ),
+    ];
+    for (sample, layer, expected) in cases {
+        let (_, path) = samples()
+            .into_iter()
+            .find(|(n, _)| n == sample)
+            .expect(sample);
+        let conversion = run(&path);
+        let (root, bin) = glb::read(&conversion.glb).expect("GLB");
+        let board: Board =
+            serde_json::from_value(root.extensions.board.clone().expect("board")).expect("board");
+        let refs = strings(&root, bin, board.tables.components, "refDes");
+        let entry = board.layers.iter().find(|l| l.name == layer).expect(layer);
+        let sources = column(&root, bin, entry.feature_table, "source");
+        let components = column(&root, bin, entry.feature_table, "component");
+        let refs_of = |row: u32| match row {
+            NO_ROW => String::new(),
+            r => refs[r as usize].clone(),
+        };
+        let actual: Vec<(u32, String)> = sources
+            .iter()
+            .zip(&components)
+            .map(|(&s, &c)| (s, refs_of(c)))
+            .collect();
+        let expected: Vec<(u32, String)> =
+            expected.iter().map(|&(s, r)| (s, r.to_owned())).collect();
+        assert_eq!(actual, expected, "{sample} {layer}");
+    }
+}
+
+/// A `UINT32` or `ENUM` (`UINT8`) column of a property table. Missing columns read as
+/// `NO_ROW`.
+fn column(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<u32> {
+    let tables = &root
+        .extensions
+        .structural_metadata
+        .as_ref()
+        .expect("metadata")
+        .property_tables;
+    let Some(table) = table else {
+        return Vec::new();
+    };
+    let t = &tables[table as usize];
+    let Some(p) = t.properties.get(name) else {
+        return vec![NO_ROW; t.count as usize];
+    };
+    let bytes = view_bytes(root, bin, p.values).expect("column");
+    if name == "kind" || name == "fiducial" {
+        bytes[..t.count as usize]
+            .iter()
+            .map(|&b| u32::from(b))
+            .collect()
+    } else {
+        bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .take(t.count as usize)
+            .map(|&c| u32::from_le_bytes(c))
+            .collect()
+    }
+}
+
+/// A `STRING` column of a property table.
+fn strings(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<String> {
+    let tables = &root
+        .extensions
+        .structural_metadata
+        .as_ref()
+        .expect("metadata")
+        .property_tables;
+    let t = &tables[table.expect("table") as usize];
+    let p = &t.properties[name];
+    let bytes = view_bytes(root, bin, p.values).expect("values");
+    let offsets = view_bytes(root, bin, p.string_offsets.expect("offsets")).expect("offsets");
+    let offsets: Vec<usize> = offsets
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .take(t.count as usize + 1)
+        .map(|&c| u32::from_le_bytes(c) as usize)
+        .collect();
+    offsets
+        .windows(2)
+        .map(|w| String::from_utf8(bytes[w[0]..w[1]].to_vec()).expect("UTF-8"))
+        .collect()
+}
+
 /// A readable description of a converted board.
 fn summary(conversion: &Conversion, detailed: bool) -> String {
     let (root, bin) = glb::read(&conversion.glb).expect("GLB");
@@ -234,36 +350,7 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
     for w in converter_warnings.iter().take(12) {
         writeln!(out, "  - {w}").unwrap();
     }
-    let tables = &root
-        .extensions
-        .structural_metadata
-        .as_ref()
-        .expect("metadata")
-        .property_tables;
-    let column = |table: Option<u32>, name: &str| -> Vec<u32> {
-        let Some(table) = table else {
-            return Vec::new();
-        };
-        let t = &tables[table as usize];
-        let Some(p) = t.properties.get(name) else {
-            return vec![NO_ROW; t.count as usize];
-        };
-        let bytes = view_bytes(&root, bin, p.values).expect("column");
-        if name == "kind" || name == "fiducial" {
-            bytes[..t.count as usize]
-                .iter()
-                .map(|&b| u32::from(b))
-                .collect()
-        } else {
-            bytes
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .take(t.count as usize)
-                .map(|&c| u32::from_le_bytes(c))
-                .collect()
-        }
-    };
+    let column = |table: Option<u32>, name: &str| column(&root, bin, table, name);
     let entries = board
         .layers
         .iter()

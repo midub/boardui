@@ -1,10 +1,10 @@
 //! The conversion pipeline (`docs/architecture.md`, "Pipeline").
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use boardui_geom::{
-    self as geom, DVec2, HoleCutter, LayerMesh, LayerMeshBuilder, Polarity, Priority, Region,
-    Shape, Tolerance, par,
+    self as geom, Bounds, DVec2, HoleCutter, LayerMesh, LayerMeshBuilder, Polarity, Priority,
+    Region, Shape, Tolerance, par,
 };
 use boardui_gltf::{
     BoardAsset, DrillAsset, FeatureKind, FeatureRow, Fiducial, LayerAsset, PinRow, Role, Side,
@@ -16,7 +16,7 @@ use glam::DAffine2;
 use crate::colours;
 use crate::components::{self, PadRef};
 use crate::shapes::{ShapeConverter, erases, is_stroke, point};
-use crate::stackup::{self, LayerClass, Stack};
+use crate::stackup::{self, LayerClass, Stack, Synthesize};
 use crate::{Conversion, ConvertError, Options, Stats, Timings, Warning, Warnings};
 
 /// A layer's source features, ready for `boardui-geom`.
@@ -58,7 +58,9 @@ pub(crate) fn run(
     let mut warnings = Warnings::default();
     let features_step = timings.step("stack-up, features, components");
     let step = select_step(doc, options)?;
-    let stack = stackup::build(&doc.ecad, &mut warnings).map_err(ConvertError::Input)?;
+    let mut stack = stackup::build(&doc.ecad, &mut warnings).map_err(ConvertError::Input)?;
+    let synthesize = package_layers(&doc.ecad, step, &stack);
+    stackup::add_optional(&mut stack, &doc.ecad, step, synthesize, &mut warnings);
     let colours = colours::resolve(doc, &stack, &mut warnings);
     if doc
         .ecad
@@ -92,16 +94,22 @@ pub(crate) fn run(
         component_rows,
         pins: Vec::new(),
         pin_rows: HashMap::new(),
+        tolerance,
         warnings: &mut warnings,
     };
 
-    // Source features of every physical layer, in document order.
-    let mut layer_features: Vec<Features> = Vec::with_capacity(stack.layers.len());
-    for layer in &stack.layers {
+    // Source features of every layer, in document order. The optional layers come last, so
+    // that the pins table keeps the order of the physical layers' references.
+    let mut layer_features: Vec<Features> = Vec::new();
+    layer_features.resize_with(stack.layers.len(), Features::default);
+    let mut order: Vec<usize> = (0..stack.layers.len()).collect();
+    order.sort_by_key(|&i| stack.layers[i].role.is_optional());
+    for i in order {
+        let layer = &stack.layers[i];
         let source = (!layer.synthesized)
             .then(|| step.layer_features.get(&layer.name))
             .flatten();
-        layer_features.push(match (layer.role, source) {
+        layer_features[i] = match (layer.role, source) {
             (Role::Dielectric, Some(lf)) if lf.feature_count() > 0 => {
                 ctx.warnings.push(format!(
                     "features on dielectric layer `{}` were skipped",
@@ -111,16 +119,21 @@ pub(crate) fn run(
             }
             (role, Some(lf)) if role != Role::Dielectric => ctx.features(lf, role),
             _ => Features::default(),
-        });
+        };
     }
+    ctx.package_drawings(&stack, &mut layer_features);
     let mut skipped = Vec::new();
     for (name, lf) in step.layer_features.iter() {
-        let known = stack.index(name).is_some()
-            || doc
-                .ecad
-                .layers
-                .get(name)
-                .is_some_and(|l| stackup::classify(&l.function) == LayerClass::Drill);
+        // Optional layers that were left out have been reported already.
+        let known =
+            stack.index(name).is_some()
+                || doc.ecad.layers.get(name).is_some_and(|l| {
+                    match stackup::classify(&l.function) {
+                        LayerClass::Drill => true,
+                        LayerClass::Layer(role) => role.is_optional(),
+                        LayerClass::Ignored => false,
+                    }
+                });
         if !known && lf.feature_count() > 0 {
             let function = doc
                 .ecad
@@ -248,10 +261,14 @@ pub(crate) fn run(
             let holes = layer_cuts(i);
             let side = (layer.side == Side::Bottom) as usize;
             match layer.role {
-                Role::Copper => {
+                Role::Copper | Role::Paste => {
                     let cutter = HoleCutter::new(holes);
                     let cut: Vec<Region> = regions[i].iter().map(|r| cutter.cut(r)).collect();
                     (None, cut)
+                }
+                // Drawings are neither cut nor clipped (spec §6.12).
+                Role::Courtyard | Role::Assembly | Role::Documentation => {
+                    (None, regions[i].clone())
                 }
                 Role::Silkscreen => {
                     let mut clip = holes;
@@ -452,6 +469,98 @@ fn select_step<'a>(
     }
 }
 
+/// The synthesized layers that package drawings need (spec §6.13): per side, a silkscreen
+/// layer if the side has none and one of its components' packages has a silkscreen, and an
+/// assembly layer if the side has no assembly layer with features and one of its
+/// components' packages has an assembly drawing.
+fn package_layers(ecad: &ipc::Ecad, step: &ipc::Step, stack: &Stack) -> Synthesize {
+    let mut out = Synthesize::default();
+    let drawn = |d: &Option<ipc::PackageDrawing>| {
+        d.as_ref()
+            .is_some_and(|d| !d.outlines.is_empty() || !d.markings.is_empty())
+    };
+    for c in step.components.values() {
+        let Some(package) = step.packages.get(&c.package_ref) else {
+            continue;
+        };
+        let k = (components::component_side(c, stack) == Side::Bottom) as usize;
+        out.silkscreen[k] |= drawn(&package.silkscreen);
+        out.assembly[k] |= drawn(&package.assembly_drawing);
+    }
+    for (k, side) in [Side::Top, Side::Bottom].into_iter().enumerate() {
+        if stack
+            .layers
+            .iter()
+            .any(|l| l.role == Role::Silkscreen && l.side == side)
+        {
+            out.silkscreen[k] = false;
+        }
+    }
+    for layer in ecad.layers.values() {
+        if stackup::classify(&layer.function) == LayerClass::Layer(Role::Assembly)
+            && stackup::has_features(step, &layer.name)
+        {
+            out.assembly[(stackup::optional_side(layer) == Side::Bottom) as usize] = false;
+        }
+    }
+    out
+}
+
+/// A package silkscreen counts as present on the silkscreen layer when the layer's
+/// features cover at least this share of its area (spec §6.13).
+const SILKSCREEN_COVERED: f64 = 0.1;
+
+/// Adds package drawing shapes to a layer as `MARKING` features of `component`, numbered on
+/// from the layer's last feature.
+fn push_drawing(out: &mut Features, shapes: Vec<Option<Shape>>, component: u32) {
+    for shape in shapes {
+        let source = out.rows.last().map_or(0, |r| r.source + 1);
+        out.rows.push(FeatureRow {
+            kind: FeatureKind::Marking,
+            source,
+            net: None,
+            pin: None,
+            component: Some(component),
+            fiducial: None,
+        });
+        out.shapes.push(geom::Feature {
+            shape: shape.unwrap_or(Shape::Union(Vec::new())),
+            priority: Priority::Other,
+            polarity: Polarity::Positive,
+        });
+    }
+}
+
+/// The regions of a layer's positive features, with their bounds.
+fn regions_with_bounds(features: &Features, tolerance: Tolerance) -> Vec<(Region, Bounds)> {
+    features
+        .shapes
+        .iter()
+        .filter(|f| f.polarity == Polarity::Positive)
+        .filter_map(|f| f.shape.to_region(tolerance).ok())
+        .filter_map(|r| r.bounds().map(|b| (r, b)))
+        .collect()
+}
+
+/// Whether a layer's regions cover at least [`SILKSCREEN_COVERED`] of a drawing's area. A
+/// drawing without area counts as covered: it would draw nothing.
+fn covers(layer: &[(Region, Bounds)], shapes: &[Option<Shape>], tolerance: Tolerance) -> bool {
+    let parts: Vec<Region> = shapes
+        .iter()
+        .flatten()
+        .filter_map(|s| s.to_region(tolerance).ok())
+        .collect();
+    let drawing = Region::union_all(&parts);
+    let (Some(b), area) = (drawing.bounds(), drawing.area()) else {
+        return true;
+    };
+    let near = layer.iter().filter(|(_, r)| {
+        r.min.x <= b.max.x && r.max.x >= b.min.x && r.min.y <= b.max.y && r.max.y >= b.min.y
+    });
+    let near = Region::union_all(near.map(|(r, _)| r));
+    drawing.intersection(&near).area() >= SILKSCREEN_COVERED * area
+}
+
 fn sheet_row() -> FeatureRow {
     FeatureRow {
         kind: FeatureKind::Sheet,
@@ -542,11 +651,12 @@ struct Context<'a> {
     component_rows: HashMap<&'a str, u32>,
     pins: Vec<PinRow>,
     pin_rows: HashMap<(u32, String), u32>,
+    tolerance: Tolerance,
     warnings: &'a mut Warnings,
 }
 
 impl<'a> Context<'a> {
-    /// The features of a copper, silkscreen or soldermask layer.
+    /// The features of a copper, soldermask, silkscreen, paste or drawing layer.
     fn features(&mut self, lf: &ipc::LayerFeature, role: Role) -> Features {
         let mut out = Features::default();
         for (set, feature) in lf.features() {
@@ -598,7 +708,7 @@ impl<'a> Context<'a> {
                     (FeatureKind::Other, None, None)
                 }
             };
-            let kind = if role == Role::Silkscreen {
+            let kind = if role == Role::Silkscreen || role.is_drawing() {
                 FeatureKind::Marking
             } else {
                 kind
@@ -638,6 +748,77 @@ impl<'a> Context<'a> {
             });
         }
         out
+    }
+
+    /// Adds the features of package drawings (spec §6.13): assembly drawings to the
+    /// synthesized assembly layer of the component's side, and silkscreens to the side's
+    /// silkscreen layer where it has nothing for the component.
+    fn package_drawings(&mut self, stack: &Stack, layer_features: &mut [Features]) {
+        let layer_of = |role: Role, side: Side, synthesized: bool| {
+            stack
+                .layers
+                .iter()
+                .position(|l| l.role == role && l.side == side && (!synthesized || l.synthesized))
+        };
+        // A source silkscreen layer's own features: the components they reference, and
+        // their regions (computed when first needed).
+        let mut referenced: HashMap<usize, HashSet<u32>> = HashMap::new();
+        let mut silk_regions: HashMap<usize, Vec<(Region, Bounds)>> = HashMap::new();
+        for side in [Side::Top, Side::Bottom] {
+            if let Some(i) = layer_of(Role::Silkscreen, side, false) {
+                let rows = layer_features[i].rows.iter().filter_map(|r| r.component);
+                referenced.insert(i, rows.collect());
+            }
+        }
+        for c in self.step.components.values() {
+            let Some(package) = self.step.packages.get(&c.package_ref) else {
+                continue;
+            };
+            let Some(&row) = self.component_rows.get(c.ref_des.as_str()) else {
+                continue;
+            };
+            let side = components::component_side(c, stack);
+            let at = self.shapes.placement(c.location, &c.xform);
+            if let (Some(drawing), Some(i)) = (
+                &package.assembly_drawing,
+                layer_of(Role::Assembly, side, true),
+            ) {
+                let shapes = self.drawing_shapes(drawing, at);
+                push_drawing(&mut layer_features[i], shapes, row);
+            }
+            if let (Some(drawing), Some(i)) =
+                (&package.silkscreen, layer_of(Role::Silkscreen, side, false))
+            {
+                let shapes = self.drawing_shapes(drawing, at);
+                let draw = stack.layers[i].synthesized
+                    || !referenced.get(&i).is_some_and(|r| r.contains(&row)) && {
+                        let layer = silk_regions.entry(i).or_insert_with(|| {
+                            regions_with_bounds(&layer_features[i], self.tolerance)
+                        });
+                        !covers(layer, &shapes, self.tolerance)
+                    };
+                if draw {
+                    push_drawing(&mut layer_features[i], shapes, row);
+                }
+            }
+        }
+    }
+
+    /// The `Outline`s and then the `Marking`s of a package drawing, placed at `at`.
+    fn drawing_shapes(
+        &mut self,
+        drawing: &ipc::PackageDrawing,
+        at: DAffine2,
+    ) -> Vec<Option<Shape>> {
+        let mut shapes = Vec::new();
+        for outline in &drawing.outlines {
+            shapes.push(self.shapes.drawing_outline(outline, at));
+        }
+        for marking in &drawing.markings {
+            let inner = self.shapes.placement(marking.location, &marking.xform);
+            shapes.push(self.shapes.area(&marking.shape, at * inner));
+        }
+        shapes
     }
 
     /// A pad's shape: its own, or its padstack's regular pad on this layer.

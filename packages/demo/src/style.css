@@ -310,6 +310,12 @@ body:not([data-board]) board-viewer {
   font-size: 11px;
 }
 
+.layer-group {
+  margin: 8px 0 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
 #net-search {
   width: 100%;
   background: var(--bg);

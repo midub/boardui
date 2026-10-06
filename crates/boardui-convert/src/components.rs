@@ -211,7 +211,7 @@ fn check_pins(
     (checked, misplaced)
 }
 
-fn component_side(c: &ipc::Component, stack: &Stack) -> Side {
+pub(crate) fn component_side(c: &ipc::Component, stack: &Stack) -> Side {
     match stack.index(&c.layer_ref).map(|i| stack.layers[i].side) {
         Some(Side::Bottom) => Side::Bottom,
         Some(_) => Side::Top,
