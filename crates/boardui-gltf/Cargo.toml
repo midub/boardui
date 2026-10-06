@@ -1,0 +1,13 @@
+[package]
+name = "boardui-gltf"
+description = "Writer for the boardui glTF profile."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

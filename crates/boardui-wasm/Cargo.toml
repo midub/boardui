@@ -1,0 +1,18 @@
+[package]
+name = "boardui-wasm"
+description = "WebAssembly bindings for the boardui converter."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+boardui-convert.workspace = true
+wasm-bindgen.workspace = true
+
+[lints]
+workspace = true

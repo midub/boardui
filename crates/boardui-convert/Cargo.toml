@@ -1,0 +1,16 @@
+[package]
+name = "boardui-convert"
+description = "IPC-2581 to boardui glTF conversion pipeline and profile validation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+boardui-ipc2581.workspace = true
+boardui-geom.workspace = true
+boardui-gltf.workspace = true
+
+[lints]
+workspace = true

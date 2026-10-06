@@ -4,7 +4,16 @@
   "title": "BOARDUI_board",
   "description": "Root-level glTF extension describing a board exported by boardui. See spec/README.md §8.3.",
   "type": "object",
-  "required": ["profileVersion", "source", "tolerance", "platingThickness", "thickness", "layers", "drills", "tables"],
+  "required": [
+    "profileVersion",
+    "source",
+    "tolerance",
+    "platingThickness",
+    "thickness",
+    "layers",
+    "drills",
+    "tables"
+  ],
   "properties": {
     "profileVersion": {
       "type": "string",
@@ -66,7 +75,19 @@
     "layerId": { "type": "string", "pattern": "^layer/[^/]+$" },
     "layer": {
       "type": "object",
-      "required": ["id", "name", "role", "side", "zMin", "zMax", "thicknessSource", "synthesized", "visible", "node", "featureTable"],
+      "required": [
+        "id",
+        "name",
+        "role",
+        "side",
+        "zMin",
+        "zMax",
+        "thicknessSource",
+        "synthesized",
+        "visible",
+        "node",
+        "featureTable"
+      ],
       "properties": {
         "id": { "$ref": "#/$defs/layerId" },
         "name": { "type": "string" },

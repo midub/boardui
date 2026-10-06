@@ -14,8 +14,8 @@ Expected outputs are added together with the converter. Until then this file lis
 | `slots` | hand-written | plated and non-plated slots; §6.3 |
 | `bottom-placement` | hand-written + KiCad | rotated and mirrored bottom-side parts; §6.8 |
 | `units-*` | hand-written | the same board in `INCH`, `MILLIMETER`, `MICRON`; §3 |
-| `no-stackup` | IPC consortium test case 3 (already in the repo) | ASSEMBLY mode, no stack-up, no soldermask: default thicknesses and synthesized layers |
-| `testcase1`, `testcase10` | IPC consortium test cases (already in the repo) | large ASSEMBLY-mode boards; performance baseline |
+| `no-stackup` | IPC consortium test case 3 ([`ipc-testcases/`](ipc-testcases/)) | ASSEMBLY mode, no stack-up, no soldermask: default thicknesses and synthesized layers |
+| `testcase1`, `testcase10` | IPC consortium test cases 1 and 10 ([`ipc-testcases/`](ipc-testcases/)) | large ASSEMBLY-mode boards; performance baseline |
 | `kicad-*` | KiCad 8+ boards exported with `kicad-cli pcb export ipc2581` | FABRICATION-mode data with stack-up, soldermask and inner layers. `kicad-cli pcb export glb` of the same board is the visual reference |
 
 ## Rules
