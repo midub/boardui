@@ -5,8 +5,8 @@ use std::io::BufRead;
 use super::{Parser, missing_element};
 use crate::{
     Arc, ButterflyShape, Contour, Corners, DiagnosticKind, Error, ErrorKind, FillDesc, FillStyle,
-    Line, LineDesc, LineStyle, Outline, Path, Point, PolyStep, Position, Polygon, Polyline, PrimitiveKind,
-    RefKind, Shape, StandardPrimitive, Xform,
+    Line, LineDesc, LineStyle, Outline, Path, Point, PolyStep, Polygon, Polyline, Position,
+    PrimitiveKind, RefKind, Shape, StandardPrimitive, Xform,
 };
 
 /// Deepest `UserSpecial` nesting accepted.
@@ -47,10 +47,11 @@ fn required_line(
 }
 
 impl PathBuilder {
-    fn finish(self, element: &str, position: Position) -> Result<Path, Error> {
+    fn finish(mut self, element: &str, position: Position) -> Result<Path, Error> {
         let start = self
             .start
             .ok_or_else(|| missing_element(element, "`PolyBegin`", position))?;
+        self.steps.shrink_to_fit();
         Ok(Path {
             start,
             steps: self.steps,
@@ -68,11 +69,9 @@ impl<R: BufRead> Parser<R> {
                 "id",
                 RefKind::StandardPrimitive,
             )?),
-            "UserPrimitiveRef" => Shape::UserRef(self.read_ref(
-                "UserPrimitiveRef",
-                "id",
-                RefKind::UserPrimitive,
-            )?),
+            "UserPrimitiveRef" => {
+                Shape::UserRef(self.read_ref("UserPrimitiveRef", "id", RefKind::UserPrimitive)?)
+            }
             "Line" => Shape::Line(self.read_line()?),
             "Arc" => Shape::Arc(self.read_arc()?),
             "Polyline" => Shape::Polyline(self.read_polyline()?),
@@ -221,7 +220,7 @@ impl<R: BufRead> Parser<R> {
             }
             "Contour" => {
                 return Ok(StandardPrimitive {
-                    kind: PrimitiveKind::Contour(self.read_contour("Contour")?),
+                    kind: PrimitiveKind::Contour(Box::new(self.read_contour("Contour")?)),
                     line: None,
                     fill: None,
                 });
@@ -352,7 +351,7 @@ impl<R: BufRead> Parser<R> {
     ) -> Result<bool, Error> {
         match self.tag.name() {
             "FillDesc" | "FillDescRef" if slot.is_some() => self.duplicate(parent)?,
-            "FillDesc" => *slot = Some(FillStyle::Desc(self.read_fill_desc()?)),
+            "FillDesc" => *slot = Some(FillStyle::Desc(Box::new(self.read_fill_desc()?))),
             "FillDescRef" => {
                 *slot = Some(FillStyle::Ref(self.read_ref(
                     "FillDescRef",

@@ -1,0 +1,26 @@
+---
+source: crates/boardui-ipc2581/tests/samples.rs
+expression: summary(&doc)
+---
+units: Inch
+layers:
+  TOP CONDUCTOR Some(Top) Positive
+  BOTTOM CONDUCTOR Some(Bottom) Positive
+  DRILL_1-6 DRILL Some(All) Positive span TOP..BOTTOM
+step test-3_r2.-17_4: datum Some(Point { x: 0.0, y: 0.0 })
+  TOP: {"Features/Contour": 152, "Features/Polyline": 210, "Pad": 522}
+  BOTTOM: {"Features/Contour": 116, "Features/Polyline": 109, "Pad": 258}
+  DRILL_1-6: {"(with componentRef)": 63, "Hole": 174}
+  first component: Component { ref_des: "J1", package_ref: "ELECTROMECH", layer_ref: "TOP", part: Some("ELECTROMECH"), mount_type: Some(Thmt), standoff: Some(0.000254), height: Some(0.006731), location: Point { x: -0.00127, y: 0.07111999999999999 }, xform: Xform { offset: Point { x: 0.0, y: 0.0 }, rotation: 90.0, mirror: false, scale: 1.0 } }
+diagnostics:
+  line 3 (byte 204): ignored unknown attribute `roleRef` of `Content`
+  line 9 (byte 398): skipped unknown element `BomRef` in `Content`
+  line 91 (byte 3145): skipped unknown element `LogisticHeader` in `IPC-2581`
+  line 96 (byte 3342): skipped unknown element `HistoryRecord` in `IPC-2581`
+  line 103 (byte 3742): skipped unknown element `Bom` in `IPC-2581`
+  line 477 (byte 31193): ignored unknown attribute `pinOneOrientation` of `Package` (8 occurrences)
+  line 508 (byte 33424): skipped unknown element `PickupPoint` in `Package` (8 occurrences)
+  line 577 (byte 37388): ignored unknown attribute `type` of `Pin` (95 occurrences)
+  line 577 (byte 37388): ignored unknown attribute `electricalType` of `Pin` (95 occurrences)
+  line 1450 (byte 77399): skipped unknown element `NonstandardAttribute` in `Component` (17 occurrences)
+  line 1627 (byte 87854): skipped unknown element `NonstandardAttribute` in `Set` (1052 occurrences)

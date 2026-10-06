@@ -339,6 +339,8 @@ impl<R: BufRead> Parser<R> {
             *next_source += 1;
             Ok(())
         })?;
+        // Most sets hold a single feature; don't keep the growth reserve.
+        set.features.shrink_to_fit();
         Ok(set)
     }
 
@@ -359,6 +361,7 @@ impl<R: BufRead> Parser<R> {
                 p.shape_slot("Pad", &mut shape)
             }
         })?;
+        pin_refs.shrink_to_fit();
         Ok(Pad {
             padstack_def_ref,
             location: location.unwrap_or_default(),

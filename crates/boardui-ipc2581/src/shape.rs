@@ -185,7 +185,7 @@ pub enum PrimitiveKind {
         size: f64,
     },
     /// `Contour`: polygon with cutouts.
-    Contour(Contour),
+    Contour(Box<Contour>),
     /// A standard primitive the reader cannot describe, for example `Hexagon` or `Moire`. A
     /// [`UnsupportedShape`](crate::DiagnosticKind::UnsupportedShape) warning was recorded.
     Unsupported {
@@ -337,7 +337,7 @@ pub enum LineStyle {
 #[derive(Debug, Clone, PartialEq)]
 pub enum FillStyle {
     /// Inline `FillDesc`.
-    Desc(FillDesc),
+    Desc(Box<FillDesc>),
     /// `FillDescRef`: id of an entry in [`Content::fill_descs`](crate::Content::fill_descs).
     Ref(String),
 }

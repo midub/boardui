@@ -313,7 +313,8 @@ impl<R: BufRead> Parser<R> {
 
     /// A required string attribute.
     pub(super) fn req_str(&mut self, attribute: &str) -> Result<String, Error> {
-        self.opt_str(attribute).ok_or_else(|| self.missing(attribute))
+        self.opt_str(attribute)
+            .ok_or_else(|| self.missing(attribute))
     }
 
     /// An optional reference attribute: present means non-empty.
@@ -360,12 +361,16 @@ impl<R: BufRead> Parser<R> {
 
     /// An optional non-negative integer.
     pub(super) fn opt_u32(&mut self, attribute: &str) -> Result<Option<u32>, Error> {
-        self.opt_with(attribute, "a non-negative integer", |s| s.trim().parse().ok())
+        self.opt_with(attribute, "a non-negative integer", |s| {
+            s.trim().parse().ok()
+        })
     }
 
     /// A required 8-bit colour channel.
     pub(super) fn req_u8(&mut self, attribute: &str) -> Result<u8, Error> {
-        self.req_with(attribute, "an integer from 0 to 255", |s| s.trim().parse().ok())
+        self.req_with(attribute, "an integer from 0 to 255", |s| {
+            s.trim().parse().ok()
+        })
     }
 
     /// An optional enumerated attribute.

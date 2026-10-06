@@ -87,9 +87,14 @@ impl<R: BufRead> Parser<R> {
     }
 
     /// Checks deferred references again and reports those that still do not resolve.
+    ///
+    /// Padstack references of a step without any `PadStackDef` are not reported: exports in
+    /// `ASSEMBLY` mode name padstacks without defining them.
     pub(super) fn resolve_deferred(&mut self, deferred: Vec<Deferred>) {
         for d in deferred {
-            if self.resolves(d.kind, d.owner.as_deref(), &d.key) {
+            let undefined_padstacks =
+                d.kind == RefKind::PadstackDef && self.step.padstack_defs.is_empty();
+            if undefined_padstacks || self.resolves(d.kind, d.owner.as_deref(), &d.key) {
                 continue;
             }
             let key = match d.owner {

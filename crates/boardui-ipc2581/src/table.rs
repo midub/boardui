@@ -75,7 +75,10 @@ mod tests {
         assert_eq!(t.get("a"), Some(&2));
         assert_eq!(t.get("c"), None);
         assert_eq!(t.values().copied().collect::<Vec<_>>(), [1, 2, 3]);
-        assert_eq!(t.iter().map(|(k, _)| k).collect::<Vec<_>>(), ["b", "a", "b"]);
+        assert_eq!(
+            t.iter().map(|(k, _)| k).collect::<Vec<_>>(),
+            ["b", "a", "b"]
+        );
         *t.get_mut("a").unwrap() = 5;
         assert_eq!(t.get("a"), Some(&5));
     }

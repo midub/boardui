@@ -58,8 +58,8 @@ pub use model::{
 };
 pub use shape::{
     Arc, ButterflyShape, Color, Contour, Corners, FillDesc, FillProperty, FillStyle, Line,
-    LineDesc, LineEnd, LineStyle, Outline, Path, Point, PolyStep, Polygon, Polyline,
-    PrimitiveKind, RingShape, Shape, StandardPrimitive, Xform,
+    LineDesc, LineEnd, LineStyle, Outline, Path, Point, PolyStep, Polygon, Polyline, PrimitiveKind,
+    RingShape, Shape, StandardPrimitive, Xform,
 };
 pub use table::Table;
 

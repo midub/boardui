@@ -2,7 +2,7 @@
 
 use super::xml::AttrEnum;
 use crate::{
-    ButterflyShape, FillProperty, LineEnd, MountType, PadUse, PadUsage, PlatingStatus, Polarity,
+    ButterflyShape, FillProperty, LineEnd, MountType, PadUsage, PadUse, PlatingStatus, Polarity,
     RingShape, Side, Units, WhereMeasured,
 };
 
@@ -113,7 +113,10 @@ mod tests {
         assert_eq!(Units::from_attr("MICRON"), Some(Units::Micron));
         assert_eq!(Units::from_attr("inch"), None);
         assert_eq!(Side::from_attr("INTERNAL"), Some(Side::Internal));
-        assert_eq!(PlatingStatus::from_attr("NONPLATED"), Some(PlatingStatus::NonPlated));
+        assert_eq!(
+            PlatingStatus::from_attr("NONPLATED"),
+            Some(PlatingStatus::NonPlated)
+        );
         assert_eq!(Units::EXPECTED, "one of INCH MILLIMETER MICRON");
     }
 

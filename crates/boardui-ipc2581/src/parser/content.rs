@@ -26,7 +26,11 @@ impl<R: BufRead> Parser<R> {
                 Ok(())
             }
             "DictionaryStandard" => p.read_dictionary(
-                ("DictionaryStandard", "EntryStandard", "a standard primitive"),
+                (
+                    "DictionaryStandard",
+                    "EntryStandard",
+                    "a standard primitive",
+                ),
                 RefKind::StandardPrimitive,
                 |c| &mut c.standard_primitives,
                 |p| p.read_standard_primitive().map(Some),

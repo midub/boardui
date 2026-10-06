@@ -56,7 +56,7 @@ impl Content {
     /// [`fill_descs`](Self::fill_descs).
     pub fn fill_desc<'a>(&'a self, style: &'a FillStyle) -> Option<&'a FillDesc> {
         match style {
-            FillStyle::Desc(desc) => Some(desc),
+            FillStyle::Desc(desc) => Some(&**desc),
             FillStyle::Ref(id) => self.fill_descs.get(id),
         }
     }

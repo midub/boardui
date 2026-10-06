@@ -72,14 +72,15 @@ impl<R: BufRead> Parser<R> {
     }
 
     pub(crate) fn parse(mut self) -> Result<Document, Error> {
-        let root = loop {
-            match self.next("document")? {
-                Next::Start => break self.tag.name().to_owned(),
-                Next::End | Next::Eof => break String::new(),
-            }
+        let root = match self.next("document")? {
+            Next::Start => self.tag.name().to_owned(),
+            Next::End | Next::Eof => String::new(),
         };
         if root != "IPC-2581" {
-            return Err(Error::new(ErrorKind::NotIpc2581 { root }, self.tag.position));
+            return Err(Error::new(
+                ErrorKind::NotIpc2581 { root },
+                self.tag.position,
+            ));
         }
         let position = self.tag.position;
         let revision = self.req_str("revision")?;
