@@ -8,7 +8,7 @@ warnings: 17 from the reader, 1 from the converter
   - layers outside the profile's scope were not converted: F.Paste (SOLDERPASTE), B.Paste (SOLDERPASTE), User.Comments (DOCUMENT), Edge.Cuts (BOARD_OUTLINE), B.Courtyard (COURTYARD), F.Courtyard (COURTYARD), B.Fab (ASSEMBLY), F.Fab (ASSEMBLY)
 layer layer/F.Silkscreen Silkscreen Top z 0.8000..0.8100 mm Default
   223 features {"Marking": 223}, 20964 vertices, 40692 triangles, top area 53.5433 mm²
-layer layer/F.Mask Soldermask Top z 0.7550..0.8000 mm File
+layer layer/F.Mask Soldermask Top z 0.7550..0.8000 mm File material boardui/soldermask/1f4e9c
   1 features {"Sheet": 1}, 10780 vertices, 23040 triangles, top area 1070.0433 mm²
 layer layer/F.Cu Copper Top z 0.7550..0.7900 mm File
   665 features {"Fill": 55, "Pad": 367, "Trace": 59, "Via": 184}, 46686 vertices, 91072 triangles, top area 878.7013 mm²
@@ -40,7 +40,7 @@ layer layer/DIELECTRIC_7 Dielectric Internal z -0.7550..-0.6550 mm File
   1 features {"Sheet": 1}, 6610 vertices, 14212 triangles, top area 1266.5260 mm²
 layer layer/B.Cu Copper Bottom z -0.7900..-0.7550 mm File
   344 features {"Fill": 23, "Pad": 108, "Trace": 28, "Via": 185}, 31092 vertices, 61796 triangles, top area 964.5025 mm²
-layer layer/B.Mask Soldermask Bottom z -0.8000..-0.7550 mm File
+layer layer/B.Mask Soldermask Bottom z -0.8000..-0.7550 mm File material boardui/soldermask/1f4e9c
   1 features {"Sheet": 1}, 6070 vertices, 13004 triangles, top area 1155.3303 mm²
 layer layer/B.Silkscreen Silkscreen Bottom z -0.8100..-0.8000 mm Default
   56 features {"Marking": 56}, 11864 vertices, 23416 triangles, top area 42.4870 mm²

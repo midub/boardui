@@ -16,6 +16,7 @@
 //!
 //! [`validate`] checks a GLB against the profile rules of spec §10.
 
+mod colours;
 mod components;
 mod models;
 mod pipeline;
