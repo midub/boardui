@@ -470,6 +470,225 @@ def bottom_placement():
     return d
 
 
+def placed(x, y, rot, mirror, px, py):
+    """A package point placed like KiCad does: mirror about Y, then rotate."""
+    if mirror:
+        px = -px
+    a = math.radians(rot)
+    return (
+        round(x + px * math.cos(a) - py * math.sin(a), 6),
+        round(y + px * math.sin(a) + py * math.cos(a), 6),
+    )
+
+
+def two_pin_package(d, name, drawings=""):
+    """A 2-pin package with pins at x = ±0.75 mm and the given drawing elements."""
+    d.step.append(
+        f'<Package name="{name}" type="OTHER" pinOne="1" height="{d.u(0.6)}">'
+        f'<Outline><Polygon>{d.rect(-1.0, -0.5, 1.0, 0.5)}</Polygon><LineDescRef id="OUTLINE"/></Outline>'
+        f'<Pin number="1"><Location {d.xy(-0.75, 0)}/><StandardPrimitiveRef id="PAD"/></Pin>'
+        f'<Pin number="2"><Location {d.xy(0.75, 0)}/><StandardPrimitiveRef id="PAD"/></Pin>'
+        f"{drawings}</Package>"
+    )
+
+
+def place_two_pin(d, parts, package, features):
+    """Places 2-pin parts `(ref, side, x, y, rotation, mirror)` with their pads."""
+    for ref, side, x, y, rot, mirror in parts:
+        mirror_attr = ' mirror="true"' if mirror else ""
+        xform = f'<Xform rotation="{rot:g}"{mirror_attr}/>' if rot or mirror else ""
+        d.step.append(
+            f'<Component refDes="{ref}" packageRef="{package}" layerRef="{side}" part="P" '
+            f'mountType="SMT" standoff="0" height="{d.u(0.6)}">{xform}<Location {d.xy(x, y)}/></Component>'
+        )
+        for n, px in (("1", -0.75), ("2", 0.75)):
+            qx, qy = placed(x, y, rot, mirror, px, 0)
+            features[side].append(
+                f'<Set net="{ref}_{n}" padUsage="TERMINATION">{pad(d, qx, qy, "PAD", (ref, n))}</Set>'
+            )
+
+
+def paste_layer():
+    """Paste on the copper surface, through mask and silkscreen; cut by holes (spec §6.11)."""
+    d = Doc()
+    d.line_desc("OUTLINE", 0.1)
+    d.line_desc("SILK", 0.15)
+    d.primitive("PAD", f'<RectCenter width="{d.u(0.9)}" height="{d.u(1.2)}"/>')
+    d.primitive("APERTURE", f'<RectCenter width="{d.u(0.8)}" height="{d.u(1.0)}"/>')
+    d.primitive("LAND", f'<Circle diameter="{d.u(1.6)}"/>')
+    d.primitive("LAND_PASTE", f'<Circle diameter="{d.u(1.4)}"/>')
+    d.layer("TOP_SILK", "SILKSCREEN", "TOP")
+    d.layer("TOP_PASTE", "SOLDERPASTE", "TOP")
+    d.layer("TOP_MASK", "SOLDERMASK", "TOP")
+    two_layers(d)
+    d.layer("BOT_PASTE", "PASTEMASK", "BOTTOM")
+    d.layers.append(
+        '<Stackup name="S"><StackupGroup name="G">'
+        '<StackupLayer layerOrGroupRef="TOP_PASTE" thickness="0" sequence="1"/>'
+        f'<StackupLayer layerOrGroupRef="TOP" thickness="{d.u(0.035)}" sequence="3"/>'
+        f'<StackupLayer layerOrGroupRef="BOTTOM" thickness="{d.u(0.035)}" sequence="5"/>'
+        f'<StackupLayer layerOrGroupRef="BOT_PASTE" thickness="{d.u(0.15)}" sequence="6"/>'
+        "</StackupGroup></Stackup>"
+    )
+    profile(d, 14, 10)
+    two_pin_package(d, "R0805")
+    features = {"TOP": [], "BOTTOM": []}
+    parts = [("R1", "TOP", 4, 4, 0, False), ("C1", "BOTTOM", 10, 4, 0, True)]
+    place_two_pin(d, parts, "R0805", features)
+    for layer in ("TOP", "BOTTOM"):
+        land = f'<Set net="J1" padUsage="TERMINATION">{pad(d, 7, 7.5, "LAND")}</Set>'
+        d.step.append(f'<LayerFeature layerRef="{layer}">{"".join(features[layer])}{land}</LayerFeature>')
+    d.step.append(
+        '<LayerFeature layerRef="TOP_MASK">'
+        f'<Set>{pad(d, 3.25, 4, "PAD")}{pad(d, 4.75, 4, "PAD")}{pad(d, 7, 7.5, "LAND")}</Set>'
+        "</LayerFeature>"
+    )
+    d.step.append(
+        '<LayerFeature layerRef="TOP_SILK">'
+        f'<Set componentRef="R1">{trace(d, [(2.5, 5.0), (5.5, 5.0)], "SILK")}</Set>'
+        "</LayerFeature>"
+    )
+    d.step.append(
+        '<LayerFeature layerRef="TOP_PASTE">'
+        f'<Set>{pad(d, 3.25, 4, "APERTURE", ("R1", "1"))}{pad(d, 4.75, 4, "APERTURE", ("R1", "2"))}</Set>'
+        f'<Set>{pad(d, 7, 7.5, "LAND_PASTE")}</Set>'
+        "</LayerFeature>"
+    )
+    d.step.append(
+        '<LayerFeature layerRef="BOT_PASTE">'
+        f'<Set>{pad(d, 10.75, 4, "APERTURE", ("C1", "1"))}{pad(d, 9.25, 4, "APERTURE", ("C1", "2"))}</Set>'
+        "</LayerFeature>"
+    )
+    d.step.append(
+        '<LayerFeature layerRef="DRILL"><Set net="J1">'
+        f'<Hole name="H1" diameter="{d.u(0.8)}" platingStatus="PLATED" plusTol="0" minusTol="0" {d.xy(7, 7.5)}/>'
+        "</Set></LayerFeature>"
+    )
+    return d
+
+
+def drawing_layers():
+    """Courtyard, assembly and documentation layers as stacked drawings (spec §6.12).
+
+    The file's assembly layer has content, so the package's assembly drawing is not drawn
+    again (spec §6.13). Empty optional layers and glue layers are left out.
+    """
+    d = Doc()
+    d.line_desc("OUTLINE", 0.1)
+    d.line_desc("THIN", 0.05)
+    d.primitive("PAD", f'<RectCenter width="{d.u(0.9)}" height="{d.u(1.2)}"/>')
+    two_layers(d, drill=False)
+    d.layer("CRT_TOP", "COURTYARD", "TOP")
+    d.layer("FAB_TOP", "ASSEMBLY", "TOP")
+    d.layer("FAB_BOT", "ASSEMBLY", "BOTTOM")
+    d.layer("NOTES", "DOCUMENT", "NONE")
+    d.layer("ECO", "DOCUMENT", "NONE")
+    d.layer("GLUE_TOP", "GLUE", "TOP")
+    profile(d, 10, 6)
+    drawing = (
+        f'<AssemblyDrawing><Outline><Polygon>{d.rect(-1.0, -0.5, 1.0, 0.5)}</Polygon>'
+        f'<LineDescRef id="THIN"/></Outline></AssemblyDrawing>'
+    )
+    two_pin_package(d, "R0805", drawing)
+    features = {"TOP": [], "BOTTOM": []}
+    place_two_pin(d, [("R1", "TOP", 3, 3, 0, False)], "R0805", features)
+    d.step.append(f'<LayerFeature layerRef="TOP">{"".join(features["TOP"])}</LayerFeature>')
+    outline = (
+        f'<Features><Location x="0" y="0"/><Polygon>{d.rect(2.0, 2.5, 4.0, 3.5)}'
+        f'<FillDesc fillProperty="HOLLOW"/><LineDescRef id="THIN"/></Polygon></Features>'
+    )
+    d.step.append(f'<LayerFeature layerRef="FAB_TOP"><Set componentRef="R1">{outline}</Set></LayerFeature>')
+    courtyard = (
+        f'<Features><Location x="0" y="0"/><Polygon>{d.rect(1.6, 2.2, 4.4, 3.8)}'
+        f'<FillDesc fillProperty="HOLLOW"/><LineDescRef id="THIN"/></Polygon></Features>'
+    )
+    d.step.append(f'<LayerFeature layerRef="CRT_TOP"><Set componentRef="R1">{courtyard}</Set></LayerFeature>')
+    d.step.append(
+        '<LayerFeature layerRef="FAB_BOT">'
+        f'<Set>{trace(d, [(6, 1), (9, 1)], "OUTLINE")}</Set></LayerFeature>'
+    )
+    d.step.append(
+        '<LayerFeature layerRef="NOTES">'
+        f'<Set>{trace(d, [(6, 5), (9, 5), (9, 4)], "OUTLINE")}</Set></LayerFeature>'
+    )
+    d.step.append(
+        '<LayerFeature layerRef="GLUE_TOP">'
+        f'<Set>{fill(d, 2.8, 2.9, 3.2, 3.1)}</Set></LayerFeature>'
+    )
+    return d
+
+
+def assembly_drawing():
+    """Synthesized assembly layers from package assembly drawings (spec §6.13)."""
+    d = Doc()
+    d.line_desc("OUTLINE", 0.1)
+    d.line_desc("ZERO", 0)
+    d.primitive("PAD", f'<RectCenter width="{d.u(0.9)}" height="{d.u(1.2)}"/>')
+    d.primitive("DOT", f'<Circle diameter="{d.u(0.3)}"/>')
+    two_layers(d, drill=False)
+    profile(d, 14, 8)
+    # An outline without FillDesc (drawn as its line, a hairline for zero width), a pin-1
+    # dot placed by its Marking's Location, and an arrow.
+    drawing = (
+        f'<AssemblyDrawing><Outline><Polygon>{d.rect(-1.0, -0.6, 1.0, 0.6)}</Polygon>'
+        f'<LineDescRef id="ZERO"/></Outline>'
+        f'<Marking markingUsage="NONE"><Location {d.xy(-0.6, 0.3)}/><StandardPrimitiveRef id="DOT"/></Marking>'
+        f'<Marking markingUsage="NONE"><Polyline>{d.polygon([(0.2, 0.3), (0.6, 0.0), (0.2, -0.3)], close=False)}'
+        f'<LineDescRef id="OUTLINE"/></Polyline></Marking></AssemblyDrawing>'
+    )
+    two_pin_package(d, "D0805", drawing)
+    features = {"TOP": [], "BOTTOM": []}
+    parts = [
+        ("D1", "TOP", 3, 4, 0, False),
+        ("D2", "TOP", 7, 4, 90, False),
+        ("D3", "BOTTOM", 11, 4, 30, True),
+    ]
+    place_two_pin(d, parts, "D0805", features)
+    for side, sets in features.items():
+        d.step.append(f'<LayerFeature layerRef="{side}">{"".join(sets)}</LayerFeature>')
+    return d
+
+
+def package_silkscreen():
+    """Package silkscreens where the silkscreen layer has nothing for the part (spec §6.13).
+
+    R1's silkscreen is on the layer and references it; R3's is on the layer without a
+    reference (the layer covers it); R2 has nothing on the layer, so its package silkscreen
+    is drawn; R4 is on the bottom, which has no silkscreen layer.
+    """
+    d = Doc()
+    d.line_desc("OUTLINE", 0.1)
+    d.line_desc("SILK", 0.15)
+    d.primitive("PAD", f'<RectCenter width="{d.u(0.9)}" height="{d.u(1.2)}"/>')
+    d.layer("SST", "SILKSCREEN", "TOP")
+    two_layers(d, drill=False)
+    profile(d, 16, 6)
+    bracket = [(-1.3, 0.6), (-1.3, 0.9), (1.3, 0.9), (1.3, 0.6)]
+    silk = (
+        f'<SilkScreen><Marking markingUsage="NONE"><Polyline>{d.polygon(bracket, close=False)}'
+        f'<LineDescRef id="SILK"/></Polyline></Marking></SilkScreen>'
+    )
+    two_pin_package(d, "R0805", silk)
+    features = {"TOP": [], "BOTTOM": []}
+    parts = [
+        ("R1", "TOP", 3, 3, 0, False),
+        ("R2", "TOP", 7, 3, 0, False),
+        ("R3", "TOP", 11, 3, 0, False),
+        ("R4", "BOTTOM", 14, 3, 0, True),
+    ]
+    place_two_pin(d, parts, "R0805", features)
+    for side, sets in features.items():
+        d.step.append(f'<LayerFeature layerRef="{side}">{"".join(sets)}</LayerFeature>')
+    at = lambda x: [(x + px, 3 + py) for px, py in bracket]
+    d.step.append(
+        '<LayerFeature layerRef="SST">'
+        f'<Set componentRef="R1">{trace(d, at(3), "SILK")}</Set>'
+        f'<Set>{trace(d, at(11), "SILK")}</Set>'
+        "</LayerFeature>"
+    )
+    return d
+
+
 def box_model():
     """A 1.6 × 0.8 × 0.5 mm box as a .gltf with an embedded buffer, in metres."""
     (x, z, h) = (0.8e-3, 0.4e-3, 0.5e-3)
@@ -575,6 +794,10 @@ def main():
         "line-styles": line_styles(),
         "slots": slots(),
         "bottom-placement": bottom_placement(),
+        "paste-layer": paste_layer(),
+        "drawing-layers": drawing_layers(),
+        "assembly-drawing": assembly_drawing(),
+        "package-silkscreen": package_silkscreen(),
         "user-models": minimal("MILLIMETER"),
         "colours": colours(),
     }
