@@ -208,6 +208,9 @@ fn summary(doc: &Document) -> String {
                     FeatureElement::Features(features) => {
                         format!("Features/{}", shape_name(&features.shape))
                     }
+                    FeatureElement::Fiducial(fiducial) => {
+                        format!("Fiducial/{}", shape_name(&fiducial.shape))
+                    }
                     FeatureElement::Hole(_) => "Hole".to_owned(),
                     FeatureElement::SlotCavity(_) => "SlotCavity".to_owned(),
                 };

@@ -5,7 +5,7 @@ use std::io::BufRead;
 use super::{Parser, missing_element};
 use crate::{
     Arc, ButterflyShape, Contour, Corners, DiagnosticKind, Error, ErrorKind, FillDesc, FillStyle,
-    Line, LineDesc, LineStyle, Outline, Path, Point, PolyStep, Polygon, Polyline, Position,
+    Line, LineDesc, LineStyle, Moire, Outline, Path, Point, PolyStep, Polygon, Polyline, Position,
     PrimitiveKind, RefKind, Shape, StandardPrimitive, Xform,
 };
 
@@ -13,13 +13,15 @@ use crate::{
 const MAX_NESTING: usize = 32;
 
 /// Elements read as standard primitives.
-const PRIMITIVES: [&str; 14] = [
+const PRIMITIVES: [&str; 16] = [
     "Butterfly",
     "Circle",
     "Contour",
     "Diamond",
     "Donut",
     "Ellipse",
+    "Hexagon",
+    "Moire",
     "Octagon",
     "Oval",
     "RectCenter",
@@ -183,6 +185,24 @@ impl<R: BufRead> Parser<R> {
                 PrimitiveKind::Octagon {
                     length: self.req_len("length")?,
                 },
+            ),
+            "Hexagon" => (
+                "Hexagon",
+                PrimitiveKind::Hexagon {
+                    length: self.req_len("length")?,
+                },
+            ),
+            "Moire" => (
+                "Moire",
+                PrimitiveKind::Moire(Moire {
+                    diameter: self.req_len("diameter")?,
+                    ring_width: self.req_len("ringWidth")?,
+                    ring_gap: self.req_len("ringGap")?,
+                    ring_number: self.req_u32("ringNumber")?,
+                    line_width: self.opt_len("lineWidth")?.unwrap_or(0.0),
+                    line_length: self.opt_len("lineLength")?,
+                    line_angle: self.opt_f64("lineAngle")?.unwrap_or(0.0),
+                }),
             ),
             "Triangle" => (
                 "Triangle",
@@ -368,6 +388,7 @@ impl<R: BufRead> Parser<R> {
         let desc = LineDesc {
             width: self.req_len("lineWidth")?,
             end: self.req_enum("lineEnd")?,
+            property: self.opt_enum("lineProperty")?.unwrap_or_default(),
         };
         self.leaf("LineDesc")?;
         Ok(desc)

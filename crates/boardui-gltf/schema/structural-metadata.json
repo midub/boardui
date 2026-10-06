@@ -2,7 +2,7 @@
   "id": "boardui",
   "name": "boardui PCB metadata",
   "description": "EXT_structural_metadata schema embedded in every boardui asset. See spec/README.md §8.2. References between tables are UINT32 row indices; 4294967295 means none.",
-  "version": "0.2",
+  "version": "0.3",
   "enums": {
     "FeatureKind": {
       "valueType": "UINT8",
@@ -14,6 +14,7 @@
         { "name": "BARREL", "value": 4 },
         { "name": "MARKING", "value": 5 },
         { "name": "SHEET", "value": 6 },
+        { "name": "FIDUCIAL", "value": 7 },
         { "name": "OTHER", "value": 255 }
       ]
     },
@@ -31,6 +32,16 @@
         { "name": "SMT", "value": 0 },
         { "name": "THMT", "value": 1 },
         { "name": "OTHER", "value": 255 }
+      ]
+    },
+    "Fiducial": {
+      "valueType": "UINT8",
+      "values": [
+        { "name": "GLOBAL", "value": 0 },
+        { "name": "LOCAL", "value": 1 },
+        { "name": "BAD_BOARD", "value": 2 },
+        { "name": "GOOD_PANEL", "value": 3 },
+        { "name": "NONE", "value": 255 }
       ]
     }
   },
@@ -72,7 +83,13 @@
         },
         "net": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 },
         "pin": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 },
-        "component": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 }
+        "component": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 },
+        "fiducial": {
+          "description": "The IPC-2581 fiducial element of a FIDUCIAL feature. Omitted from tables without fiducials.",
+          "type": "ENUM",
+          "enumType": "Fiducial",
+          "noData": "NONE"
+        }
       }
     }
   }

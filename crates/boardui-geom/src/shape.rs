@@ -68,6 +68,14 @@ pub enum Shape {
         /// The shapes removed from it.
         cut: Vec<Shape>,
     },
+    /// The area of `base` that any of `clip` covers too, for example the hatch lines of an
+    /// IPC-2581 `HATCH` fill.
+    Intersection {
+        /// The shape to clip.
+        base: Box<Shape>,
+        /// The shapes it is clipped to.
+        clip: Vec<Shape>,
+    },
 }
 
 impl Shape {
@@ -103,6 +111,14 @@ impl Shape {
                     .map(|shape| shape.to_region(tolerance))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(base.subtract(&cuts))
+            }
+            Self::Intersection { base, clip } => {
+                let base = base.to_region(tolerance)?;
+                if base.is_empty() {
+                    return Ok(base);
+                }
+                let clip = Self::Union(clip.clone()).to_region(tolerance)?;
+                Ok(base.intersection(&clip))
             }
         }
     }
@@ -244,6 +260,14 @@ mod tests {
             cut: vec![square(0.5e-3, 0.0, 1e-3, 1e-3)],
         };
         assert_close(cut.to_region(T).unwrap().area(), 2.5e-6, 1e-15);
+        let clipped = Shape::Intersection {
+            base: Box::new(square(0.0, 0.0, 2e-3, 2e-3)),
+            clip: vec![
+                square(1e-3, 0.0, 3e-3, 1e-3),
+                square(1.5e-3, 0.0, 3e-3, 3e-3),
+            ],
+        };
+        assert_close(clipped.to_region(T).unwrap().area(), 1.5e-6, 1e-15);
     }
 
     #[test]

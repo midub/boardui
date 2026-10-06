@@ -354,7 +354,7 @@ export function writeBoard(board: FixtureBoard): Uint8Array<ArrayBuffer> {
 
   json.extensions.EXT_structural_metadata = { schema: metadataSchema, propertyTables: tables };
   json.extensions.BOARDUI_board = {
-    profileVersion: '0.1',
+    profileVersion: '0.2',
     source: {
       format: 'IPC-2581',
       revision: 'C',

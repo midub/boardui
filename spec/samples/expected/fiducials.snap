@@ -1,0 +1,26 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step board, FABRICATION
+thickness: 1.6000 mm
+counts: 8 features, 408 vertices, 804 triangles, 0 nets, 0 components, 0 pins (0 checked against pads)
+warnings: 0 from the reader, 0 from the converter
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 200 vertices, 416 triangles, top area 91.4193 mm²
+    row 0: Sheet net - area 91.4193 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  5 features {"Fiducial": 5}, 192 vertices, 364 triangles, top area 4.5807 mm²
+    row 0: Fiducial(Global) net - area 0.7757 mm²
+    row 1: Fiducial(Global) net - area 0.7757 mm²
+    row 2: Fiducial(Local) net - area 0.2770 mm²
+    row 3: Fiducial(BadBoard) net - area 1.7524 mm²
+    row 4: Fiducial(GoodPanel) net - area 1.0000 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 96.0000 mm²
+    row 0: Sheet net - area 96.0000 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 96.0000 mm²
+    row 0: Sheet net - area 96.0000 mm²
+components: 0

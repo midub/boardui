@@ -53,3 +53,23 @@ describe('converter samples', () => {
     });
   });
 });
+
+describe('fiducials', () => {
+  const load = async (name: string) => {
+    const bytes = readFileSync(path.join(samples, name, `${name}.glb`));
+    const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    return BoardModel.fromGltf(await loadGltf(glb));
+  };
+
+  it('describes fiducials with their type (spec §8.2)', async () => {
+    const model = await load('fiducials');
+    expect(model.describe('feat/TOP/0')?.properties).toMatchObject({
+      kind: 'FIDUCIAL',
+      fiducial: 'GLOBAL',
+    });
+    expect(model.describe('feat/TOP/3')?.properties).toMatchObject({ fiducial: 'BAD_BOARD' });
+    expect(model.describe('feat/TOP/4')?.properties).toMatchObject({ fiducial: 'GOOD_PANEL' });
+    const other = await load('hatch-fill');
+    expect(other.describe('feat/TOP/0')?.properties).not.toHaveProperty('fiducial');
+  });
+});
