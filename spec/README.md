@@ -71,7 +71,7 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 
 - Each `<…>` segment is percent-encoded. `%`, `/`, `#`, `@`, whitespace and control characters MUST be written as `%XX`.
 - Layers that the converter synthesizes (§6.4, §6.5) get names starting with an unencoded `@`, for example `layer/@soldermask-top`. Because `@` in source names is always encoded, the two never collide.
-- `<n>` is the 0-based index of the feature among the layer's source features in document order. The step's `LayerFeature` for that layer is walked, counting every `Pad`, `Features`, `Hole` and `SlotCavity` element. Sheet features of synthesized or dielectric layers use `n = 0`.
+- `<n>` is the 0-based index of the feature among the layer's source features in document order. The step's `LayerFeature` elements for that layer are walked in document order (a step may split one layer over several of them), counting every `Pad`, `Features`, `Hole` and `SlotCavity` element of their `Set`s. Sheet features of synthesized or dielectric layers use `n = 0`.
 - Feature IDs are stable only for identical input. Viewers and widgets SHOULD bind to components, pins and nets where possible.
 
 ## 6. Geometry
@@ -218,7 +218,7 @@ Feature IDs are row indices into the layer's feature table:
 
 - **References.** References between tables are row indices (`UINT32`); `4294967295` means none. For example, `feature.net` is a row in `nets`, and `pin.component` is a row in `components`.
 - **Feature ID strings** are not stored. They derive from the layer name and `feature.source` (§5).
-- **Linking features to pins and components.** A feature gets `pin` and `component` from the `PinRef` of its `Pad` or `Set`, and `net` from its `Set@net`.
+- **Linking features to pins and components.** A feature gets `pin` from the `PinRef` of its `Pad`, `component` from that `PinRef@componentRef` or else from its `Set@componentRef`, and `net` from its `Set@net`.
 
 ### 8.3 `BOARDUI_board`
 
