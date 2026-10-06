@@ -62,6 +62,7 @@ impl<R: BufRead> Parser<R> {
             RefKind::LineDesc => content.line_descs.get(key).is_some(),
             RefKind::FillDesc => content.fill_descs.get(key).is_some(),
             RefKind::Color => content.colors.get(key).is_some(),
+            RefKind::Font => content.fonts.get(key).is_some(),
             RefKind::Layer => self.layers.get(key).is_some(),
             RefKind::LayerOrGroup => {
                 self.layers.get(key).is_some()

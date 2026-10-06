@@ -68,6 +68,12 @@ impl<R: BufRead> Parser<R> {
                     _ => p.unknown("EntryColor").map(|()| None),
                 },
             ),
+            "DictionaryFont" => p.read_dictionary(
+                ("DictionaryFont", "EntryFont", "a font definition"),
+                RefKind::Font,
+                |c| &mut c.fonts,
+                Self::read_font,
+            ),
             _ => p.unknown("Content"),
         })
     }

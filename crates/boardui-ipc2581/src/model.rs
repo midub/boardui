@@ -3,8 +3,8 @@
 use std::collections::HashSet;
 
 use crate::{
-    Color, Contour, Diagnostic, FillDesc, FillStyle, LineDesc, LineStyle, Outline, Point, Shape,
-    StandardPrimitive, Table, Xform,
+    Color, Contour, Diagnostic, FillDesc, FillStyle, Font, LineDesc, LineStyle, Outline, Point,
+    Shape, StandardPrimitive, Table, Xform,
 };
 
 /// A parsed IPC-2581 document.
@@ -40,6 +40,8 @@ pub struct Content {
     pub fill_descs: Table<FillDesc>,
     /// `DictionaryColor`, by entry id.
     pub colors: Table<Color>,
+    /// `DictionaryFont`, by entry id.
+    pub fonts: Table<Font>,
 }
 
 impl Content {
@@ -249,7 +251,7 @@ pub struct SpecProperty {
     pub unit: Option<String>,
 }
 
-/// The colour of a [`SpecGeneral`].
+/// A colour (`ColorGroup`) of a [`SpecGeneral`] or a [`Text`](crate::Text).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SpecColor {
     /// An inline `Color`.
