@@ -656,7 +656,7 @@ struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    /// The features of a copper, silkscreen or soldermask layer.
+    /// The features of a copper, soldermask, silkscreen, paste or drawing layer.
     fn features(&mut self, lf: &ipc::LayerFeature, role: Role) -> Features {
         let mut out = Features::default();
         for (set, feature) in lf.features() {
