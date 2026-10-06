@@ -71,6 +71,9 @@ async function pickability(page: Page): Promise<Record<string, number>> {
       pickableMs: pickable - shown,
       longTasks: during.length,
       maxLongTaskMs: Math.max(0, ...during.map((t) => t.ms)),
+      // All long tasks of the page so far (loading included), to show the observer works.
+      longTasksBefore: g.longTasks.length - during.length,
+      maxLongTaskBeforeMs: Math.max(0, ...g.longTasks.filter((t) => t.start < shown).map((t) => t.ms)),
     };
   });
 }
