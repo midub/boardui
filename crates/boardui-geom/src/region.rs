@@ -1,6 +1,6 @@
 //! 2D regions and boolean operations on them.
 
-use crate::grid::{GridPoint, metres, metres_point, units};
+use crate::grid::{GridPoint, grid_point, metres, metres_point, units};
 use crate::{GeomError, Tolerance};
 use glam::DVec2;
 use i_overlay::core::fill_rule::FillRule;
@@ -85,6 +85,65 @@ impl Region {
     /// The area covered by any of `regions`.
     pub fn union_all<'a>(regions: impl IntoIterator<Item = &'a Region>) -> Self {
         overlay(regions, [], OverlayRule::Subject)
+    }
+
+    /// Builds a region from closed contours in metres, filled with the non-zero rule: a point
+    /// is inside when the contours wind around it a non-zero number of times.
+    ///
+    /// Unlike [`Shape::Polygon`](crate::Shape::Polygon), orientations are kept, so
+    /// counter-clockwise outlines with clockwise holes describe polygons with holes, and
+    /// overlapping outlines add up to their union. Contours with fewer than three points
+    /// are ignored.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for coordinates that are not finite or out of range.
+    pub fn from_contours_nonzero<'a>(
+        contours: impl IntoIterator<Item = &'a [DVec2]>,
+    ) -> Result<Self, GeomError> {
+        let contours = contours
+            .into_iter()
+            .map(|c| c.iter().map(|&p| grid_point(p)).collect::<Result<Vec<_>, _>>())
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut overlay = Overlay::new(contours.iter().map(Vec::len).sum());
+        for contour in contours.iter().filter(|c| c.len() >= 3) {
+            overlay.add_contour(contour, ShapeType::Subject);
+        }
+        Ok(Self {
+            shapes: overlay.overlay(OverlayRule::Subject, FillRule::NonZero),
+        })
+    }
+
+    /// The region's polygons in metres: each is an outer contour (counter-clockwise)
+    /// followed by its holes (clockwise).
+    pub fn polygons(&self) -> Vec<Vec<Vec<DVec2>>> {
+        self.shapes
+            .iter()
+            .map(|shape| {
+                shape
+                    .iter()
+                    .map(|contour| contour.iter().map(|&p| metres_point(p)).collect())
+                    .collect()
+            })
+            .collect()
+    }
+
+    /// Total length of all contours, in metres.
+    pub fn perimeter(&self) -> f64 {
+        self.contours()
+            .map(|contour| {
+                let n = contour.len();
+                (0..n)
+                    .map(|i| {
+                        let (a, b) = (contour[i], contour[(i + 1) % n]);
+                        let dx = f64::from(b.x) - f64::from(a.x);
+                        let dy = f64::from(b.y) - f64::from(a.y);
+                        dx.hypot(dy)
+                    })
+                    .sum::<f64>()
+            })
+            .sum::<f64>()
+            * metres(1)
     }
 
     /// Grows the region by `distance` metres, or shrinks it for a negative `distance`.
@@ -324,6 +383,29 @@ mod tests {
             square.offset(3.0, Tolerance::DEFAULT),
             Err(GeomError::OutOfRange { value: 3.0 })
         );
+    }
+
+    #[test]
+    fn non_zero_contours_keep_orientation() {
+        let square = |x0: f64, y0: f64, x1: f64, y1: f64| {
+            vec![
+                DVec2::new(x0, y0),
+                DVec2::new(x1, y0),
+                DVec2::new(x1, y1),
+                DVec2::new(x0, y1),
+            ]
+        };
+        let outer = square(0.0, 0.0, 3e-3, 3e-3);
+        let mut hole = square(1e-3, 1e-3, 2e-3, 2e-3);
+        hole.reverse();
+        let other = square(2e-3, 0.0, 4e-3, 1e-3);
+        let r = Region::from_contours_nonzero([&outer[..], &hole[..], &other[..]]).unwrap();
+        assert_close(r.area(), 9e-6 - 1e-6 + 1e-6, 1e-15);
+        assert_eq!(r.polygons().len(), 1);
+        assert_eq!(r.polygons()[0].len(), 2, "the hole stays");
+        assert_close(r.perimeter(), 4.0 * 1e-3 + 2.0 * (4e-3 + 3e-3), 1e-12);
+        let nan = [DVec2::new(f64::NAN, 0.0); 3];
+        assert!(Region::from_contours_nonzero([&nan[..]]).is_err());
     }
 
     #[test]
