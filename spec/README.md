@@ -338,6 +338,5 @@ It runs the Khronos validator too, when the `gltf_validator` binary is on `PATH`
 
 ## 12. Open questions
 
-- Register the `BOARDUI` vendor prefix with Khronos.
 - Geometry compression: `EXT_meshopt_compression` and `KHR_mesh_quantization` for stored files (native CLI only; see [architecture](../docs/architecture.md)).
 - Whether pins need their own geometry anchor when a pad is split across layers (THT pads).

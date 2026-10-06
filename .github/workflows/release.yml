@@ -1,0 +1,161 @@
+name: Release
+
+# On a version tag (v1.2.3, matching the workspace version in Cargo.toml): builds the `boardui`
+# CLI for Linux, macOS and Windows, smoke-tests each binary, and publishes a GitHub release with
+# the archives, SHA256SUMS and notes (scripts/release-notes.sh). Pull requests that change the
+# release build, and manual runs, build and package everything without publishing.
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - scripts/release-notes.sh
+      - rust-toolchain.toml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: version
+        name: Read the workspace version
+        run: |
+          version=$(awk -F '"' '/^\[workspace.package\]/ { p = 1 } p && /^version = / { print $2; exit }' Cargo.toml)
+          if [[ -z "$version" ]]; then
+            echo "::error::no version in [workspace.package] of Cargo.toml"
+            exit 1
+          fi
+          if [[ "$GITHUB_REF_TYPE" == tag && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME doesn't match the workspace version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: ${{ matrix.target }}
+    needs: version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: x86_64-unknown-linux-musl, os: ubuntu-latest }
+          - { target: aarch64-unknown-linux-musl, os: ubuntu-24.04-arm }
+          - { target: x86_64-apple-darwin, os: macos-15-intel }
+          - { target: aarch64-apple-darwin, os: macos-latest }
+          - { target: x86_64-pc-windows-msvc, os: windows-latest }
+    env:
+      TARGET: ${{ matrix.target }}
+      VERSION: ${{ needs.version.outputs.version }}
+      CARGO_PROFILE_RELEASE_STRIP: symbols
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      # The toolchain pinned in rust-toolchain.toml, plus the target. Every target builds on a
+      # runner of its own OS and architecture, so each binary can be smoke-tested.
+      - run: |
+          rustup toolchain install
+          rustup target add "$TARGET"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      # Without the VC++ runtime DLL dependency.
+      - if: runner.os == 'Windows'
+        run: echo "RUSTFLAGS=-C target-feature=+crt-static" >> "$GITHUB_ENV"
+      - run: cargo build -p boardui --release --locked --target "$TARGET"
+      - name: Smoke test
+        run: |
+          bin=target/$TARGET/release/boardui
+          [[ "$RUNNER_OS" == Windows ]] && bin=$bin.exe
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            file "$bin"
+            file "$bin" | grep -Eq 'statically linked|static-pie linked'
+          fi
+          "$bin" --version
+          [[ "$("$bin" --version | tr -d '\r')" == "boardui $VERSION" ]]
+          "$bin" convert spec/samples/hand-written/minimal-2layer/minimal-2layer.xml -o "$RUNNER_TEMP/minimal-2layer.glb"
+          "$bin" validate --no-khronos "$RUNNER_TEMP/minimal-2layer.glb"
+      - name: Package
+        run: |
+          name=boardui-$VERSION-$TARGET
+          mkdir "$name"
+          cp LICENSE README.md "$name/"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            cp "target/$TARGET/release/boardui.exe" "$name/"
+            7z a -tzip "$name.zip" "$name" > /dev/null
+          else
+            cp "target/$TARGET/release/boardui" "$name/"
+            tar -czf "$name.tar.gz" "$name"
+          fi
+          ls -l boardui-*.*
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            boardui-*.tar.gz
+            boardui-*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  assemble:
+    name: Checksums and notes
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: release
+          merge-multiple: true
+      - name: SHA256SUMS
+        working-directory: release
+        run: |
+          sha256sum boardui-* > SHA256SUMS
+          cat SHA256SUMS
+          ls -l
+      - run: scripts/release-notes.sh "$VERSION" > notes.md
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release
+          path: |
+            release/
+            notes.md
+          retention-days: 7
+
+  publish:
+    name: Publish the release
+    if: github.ref_type == 'tag'
+    needs: [version, assemble]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release
+      - name: Create the GitHub release
+        run: |
+          prerelease=()
+          [[ "$VERSION" == *-* ]] && prerelease=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --repo "$GITHUB_REPOSITORY" --verify-tag "${prerelease[@]}" \
+            --title "boardui $VERSION" --notes-file notes.md --generate-notes

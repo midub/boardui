@@ -2,6 +2,7 @@
 // PERF_XML=<file> also converts that file (e.g. the ~200k-feature synthetic board) and
 // records its timings. Results go to <dir>/*.png and <dir>/perf-*.json.
 import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { expect, type Page, test } from '@playwright/test';
 import { openBoard, screenPoint, settle, viewerCall } from './helpers.js';
 
@@ -114,7 +115,14 @@ test('landing page', async ({ page }) => {
 test('testcase1: progress, views, timings', async ({ page }) => {
   await recordLongTasks(page);
   await page.goto('./?stats');
-  await page.locator('.sample-card[data-sample="testcase1"]').click();
+  // Test case 1 isn't part of the demo (it links to it): open the file from spec/samples.
+  await page
+    .locator('#file-input')
+    .setInputFiles(
+      fileURLToPath(
+        new URL('../../../spec/samples/ipc-testcases/testcase1-RevC-Assembly.xml', import.meta.url),
+      ),
+    );
   await expect(page.locator('#progress-title')).toContainText('Converting', { timeout: 60_000 });
   await expect(page.locator('#progress-step')).toContainText(/overlaps|sheets|extruding/, {
     timeout: 60_000,
@@ -182,6 +190,34 @@ test('KiCad board: views, selection with tags, nets, x-ray, hover', async ({ pag
   await page.mouse.move(pad.x, pad.y);
   await expect(page.locator('#tooltip')).toBeVisible();
   await shot(page, '11-hover-pad');
+});
+
+// The README's images (docs/images/), smaller than the review images; compressed afterwards with
+// `pngquant --quality 60-85`.
+test.describe('README images', () => {
+  test.use({ viewport: { width: 1100, height: 680 } });
+
+  test('KiCad board with tags and a net', async ({ page }) => {
+    await openBoard(page, 'sample=royalblue54l-feather');
+    await viewerCall(page, 'setView', 'top');
+    await viewerCall(page, 'whenPickable');
+    for (const id of ['cmp/U2', 'cmp/J3_1']) {
+      const p = await screenPoint(page, id);
+      await page.mouse.click(p.x, p.y);
+      await page.getByRole('button', { name: 'Pin tag' }).click();
+    }
+    await page.keyboard.press('Escape');
+    await page.locator('#net-search').fill('GND');
+    await page.locator('.net-result').first().click();
+    await page.locator('#net-search').fill('');
+    await page.locator('#net-search').blur();
+    await page.locator('#sidebar').evaluate((e) => e.scrollTo(0, 0));
+    await page.mouse.move(5, 400);
+    await viewerCall(page, 'setView', 'iso');
+    await shot(page, 'readme-viewer');
+    await page.keyboard.press('x');
+    await shot(page, 'readme-xray');
+  });
 });
 
 test('bottom-placement: bottom view lighting', async ({ page }) => {

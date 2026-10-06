@@ -23,6 +23,11 @@ export function collectErrors(page: Page): string[] {
 /** Opens the demo with a query and waits until the board is shown. */
 export async function openBoard(page: Page, query: string, timeout = 180_000): Promise<void> {
   await page.goto(`./?${query}`);
+  await waitForBoard(page, timeout);
+}
+
+/** Waits until the board that is opening is shown, and throws the error if it fails. */
+export async function waitForBoard(page: Page, timeout = 180_000): Promise<void> {
   await expect(page.locator('body')).toHaveAttribute('data-state', /ready|error/, { timeout });
   const error = page.locator('#error');
   if (await error.isVisible()) throw new Error(await error.innerText());

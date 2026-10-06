@@ -17,7 +17,9 @@ const { glb, warnings, stats, timings } = await convertIpc2581(file, {
 const report = await validateGlb(glb.slice(0)); // { valid, errors, issues }
 ```
 
-`<board-viewer>` wraps this as `viewer.loadIpc2581(file, options)` (see `packages/viewer`).
+`<board-viewer>` wraps this as `viewer.loadIpc2581(file, options)` (see `packages/viewer`). The
+package is not published to npm in v1; the root README ("Embedding the viewer") shows how to
+install it from a source build.
 
 ## API
 
