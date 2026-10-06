@@ -102,7 +102,7 @@ export interface WidgetHost {
 
 interface Widget {
   readonly id: string;
-  readonly element: ElementCSSInlineStyle;
+  readonly element: { readonly style: CSSStyleDeclaration };
   readonly options: Required<WidgetOptions>;
   occluded: boolean;
   nextCheck: number;
@@ -129,7 +129,11 @@ export class WidgetLayer {
    *
    * @returns A function that stops positioning it and clears the styles set here.
    */
-  attach(id: string, element: ElementCSSInlineStyle, options: WidgetOptions = {}): () => void {
+  attach(
+    id: string,
+    element: { readonly style: CSSStyleDeclaration },
+    options: WidgetOptions = {},
+  ): () => void {
     const widget: Widget = {
       id,
       element,

@@ -51,6 +51,8 @@ export class BoardRenderer {
   readonly #content: Object3D[] = [];
   #frame = 0;
   #flight: Flight | null = null;
+  /** Radius of the board's bounding sphere. */
+  #radius = 1;
 
   /**
    * @param beforeRender Called before every frame; return `true` to request another frame.
@@ -112,14 +114,23 @@ export class BoardRenderer {
     this.requestRender();
   }
 
+  /** Adapts zoom limits and clipping planes to a board of this size. */
+  setBounds(board: Box3): void {
+    this.#radius = Math.max(board.getBoundingSphere(new Sphere()).radius, 1e-4);
+    this.controls.minDistance = this.#radius / 200;
+    this.controls.maxDistance = this.#radius * 20;
+  }
+
   /**
    * Moves the camera so that `box` fills the view, looking along `direction` (from the box
    * towards the camera), or along the current view direction.
+   *
+   * @param margin Room around the box, as a factor of its size.
    */
-  frame(box: Box3, direction?: Vector3, animate = true): void {
+  frame(box: Box3, direction?: Vector3, animate = true, margin = 1.05): void {
     const sphere = box.getBoundingSphere(new Sphere());
     const radius = Math.max(sphere.radius, 1e-4);
-    const distance = fitDistance(radius, this.camera.fov, this.camera.aspect);
+    const distance = fitDistance(radius, this.camera.fov, this.camera.aspect, margin);
     const dir = (direction ?? this.camera.position.clone().sub(this.controls.target)).normalize();
     const toPosition = sphere.center.clone().addScaledVector(dir, distance);
     const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -136,11 +147,6 @@ export class BoardRenderer {
       this.controls.target.copy(sphere.center);
       this.camera.position.copy(toPosition);
     }
-    this.camera.near = distance / 200;
-    this.camera.far = distance * 50;
-    this.camera.updateProjectionMatrix();
-    this.controls.minDistance = radius / 50;
-    this.controls.maxDistance = distance * 10;
     this.controls.update();
     this.requestRender();
   }
@@ -190,6 +196,12 @@ export class BoardRenderer {
       again = true;
     }
     again = this.controls.update() || again;
+    // Near and far follow the orbit distance: enough depth precision for 10 µm silkscreen on
+    // the soldermask, whether the whole board or a single pad fills the view.
+    const distance = this.camera.position.distanceTo(this.controls.target);
+    this.camera.near = distance / 100;
+    this.camera.far = distance + 4 * this.#radius;
+    this.camera.updateProjectionMatrix();
     again = this.#beforeRender(now) || again;
     this.renderer.info.reset();
     this.renderer.render(this.scene, this.camera);

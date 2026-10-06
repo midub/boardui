@@ -33,6 +33,8 @@ export interface BoardViewerEventMap extends HTMLElementEventMap {
 
 /** Pointer travel (CSS px) below which a press and release count as a click. */
 const CLICK_SLOP = 4;
+/** `focus(id)` leaves room around the element, as a factor of its size. */
+const FOCUS_MARGIN = 4;
 
 const STYLE = `
 :host { display: block; position: relative; height: 400px; overflow: hidden; background: #1d2026; }
@@ -46,8 +48,8 @@ interface Loaded {
   state: ElementState;
   materials: BoardMaterials;
   picker: Picker;
-  /** Layers the pointer can pick: all but the translucent soldermask (spec §6.5). */
-  pointerLayers: LayerModel[];
+  /** Layers that the pointer picks and that hide widgets: all but the translucent soldermask. */
+  pickLayers: LayerModel[];
   /** Tint overlays of the copper and drill layers, with their state texel ranges. */
   overlays: { mesh: Mesh; start: number; end: number }[];
 }
@@ -60,7 +62,7 @@ interface Loaded {
  * `backend="webgl"` (use the WebGL2 backend even where WebGPU is available; read when the
  * element connects).
  *
- * The pointer picks through the soldermask, which is translucent; widgets count it as cover.
+ * The soldermask is translucent (spec §6.5): the pointer picks, and widgets see, through it.
  *
  * Element IDs follow spec §5. Methods that take one ID throw a `RangeError` for an unknown ID;
  * methods that take several skip unknown ones. All need a loaded board.
@@ -180,11 +182,13 @@ export class BoardViewerElement extends HTMLElement {
       mesh.material = materials.components(mesh.material as Material, rows, model.componentOffset);
     }
     materials.setXray(this.#xray);
-    const pointerLayers = model.layers.filter(
+    const pickLayers = model.layers.filter(
       (layer) => !('role' in layer.info) || layer.info.role !== 'SOLDERMASK',
     );
-    this.#loaded = { model, state, materials, picker: new Picker(model), pointerLayers, overlays };
+    const picker = new Picker(model);
+    this.#loaded = { model, state, materials, picker, pickLayers, overlays };
     this.#showLoaded();
+    this.#prepareBvhs(this.#loaded);
   }
 
   /** The layers and drill layers of the loaded board, top to bottom. */
@@ -280,7 +284,7 @@ export class BoardViewerElement extends HTMLElement {
       return;
     }
     const box = this.#resolve(this.#model(), target).box;
-    if (box) this.#renderer?.frame(box);
+    if (box) this.#renderer?.frame(box, undefined, true, FOCUS_MARGIN);
   }
 
   /** Points the camera from above, from below or obliquely, framing the whole board. */
@@ -395,7 +399,22 @@ export class BoardViewerElement extends HTMLElement {
     const loaded = this.#loaded;
     if (!renderer || !loaded) return;
     renderer.setContent([loaded.model.root]);
+    renderer.setBounds(loaded.model.bounds);
     renderer.frame(loaded.model.bounds, viewDirection('iso'), false);
+  }
+
+  /** Builds the BVHs of the pickable layers in idle time, so the first hover doesn't stall. */
+  #prepareBvhs(loaded: Loaded): void {
+    const meshes = loaded.pickLayers.flatMap((layer) => layer.meshes);
+    const idle = globalThis.requestIdleCallback ?? ((callback) => setTimeout(callback, 50));
+    const next = () => {
+      const mesh = meshes.shift();
+      if (mesh && this.#loaded === loaded) {
+        loaded.picker.bvh(mesh);
+        idle(next);
+      }
+    };
+    idle(next);
   }
 
   #onResize(): void {
@@ -429,9 +448,9 @@ export class BoardViewerElement extends HTMLElement {
     const renderer = this.#renderer;
     const loaded = this.#loaded;
     if (!renderer || !loaded) return null;
-    const { picker, state, model, pointerLayers } = loaded;
+    const { picker, state, model, pickLayers } = loaded;
     const ray = renderer.rayAt(clientX, clientY, this.#ray);
-    const hit = picker.pick(ray, (t) => state.isHidden(t), pointerLayers);
+    const hit = picker.pick(ray, (t) => state.isHidden(t), pickLayers);
     return hit ? model.idOfTexel(hit.texel) : null;
   }
 
@@ -454,7 +473,7 @@ export class BoardViewerElement extends HTMLElement {
     const direction = new Vector3().subVectors(to, from);
     const distance = direction.length();
     this.#ray.set(from, direction.normalize());
-    const hit = loaded.picker.pick(this.#ray, (t) => loaded.state.isHidden(t));
+    const hit = loaded.picker.pick(this.#ray, (t) => loaded.state.isHidden(t), loaded.pickLayers);
     return (
       !!hit && hit.distance < distance * (1 - 1e-3) && !loaded.model.contains(element, hit.texel)
     );
