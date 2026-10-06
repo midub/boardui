@@ -15,7 +15,7 @@ export const HIDDEN_ALPHA = 255;
 /** Tint used for the element under the pointer. */
 export const HOVER_TINT = { color: [0.05, 0.45, 1] as Rgb, strength: 0.55 };
 /** Tint used for the selected element. */
-export const SELECTION_TINT = { color: [1, 0.35, 0.02] as Rgb, strength: 0.75 };
+export const SELECTION_TINT = { color: [1, 0.02, 0.7] as Rgb, strength: 0.8 };
 /** Tint strength of {@link ElementState.highlight}. */
 export const HIGHLIGHT_STRENGTH = 0.85;
 
@@ -128,6 +128,19 @@ export class ElementState {
     };
   }
 
+  /** Whether any element in `[start, end)` is hovered, selected or highlighted. */
+  tintedIn(start: number, end: number): boolean {
+    const lists = [
+      this.#hover,
+      this.#selection,
+      ...[...this.#highlights.values()].map((h) => h.indices),
+    ];
+    return lists.some((sorted) => {
+      const i = lowerBound(sorted, start);
+      return i < sorted.length && (sorted[i] as number) < end;
+    });
+  }
+
   /** Whether an element is hidden. */
   isHidden(index: number): boolean {
     return (this.#hidden[index] ?? 0) > 0;
@@ -207,14 +220,17 @@ function sortedUnique(indices: ArrayLike<number>): Uint32Array {
 }
 
 function contains(sorted: Uint32Array, value: number): boolean {
+  return sorted[lowerBound(sorted, value)] === value;
+}
+
+/** Index of the first element not less than `value`. */
+function lowerBound(sorted: Uint32Array, value: number): number {
   let lo = 0;
-  let hi = sorted.length - 1;
-  while (lo <= hi) {
+  let hi = sorted.length;
+  while (lo < hi) {
     const mid = (lo + hi) >>> 1;
-    const v = sorted[mid] as number;
-    if (v === value) return true;
-    if (v < value) lo = mid + 1;
-    else hi = mid - 1;
+    if ((sorted[mid] as number) < value) lo = mid + 1;
+    else hi = mid;
   }
-  return false;
+  return lo;
 }

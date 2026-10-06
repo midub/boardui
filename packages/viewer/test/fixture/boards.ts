@@ -29,7 +29,7 @@ const SILKSCREEN = 10e-6;
 const PLATING = 25e-6;
 
 /** Generates the small fixture GLB. */
-export function smallBoardGlb(): Uint8Array {
+export function smallBoardGlb(): Uint8Array<ArrayBuffer> {
   return writeBoard(smallBoard());
 }
 
@@ -37,7 +37,7 @@ export function smallBoardGlb(): Uint8Array {
  * Generates the dense fixture GLB: a `grid × grid` array of cells with ten features each. The
  * default grid gives 110,253 features, and its top copper table needs FLOAT feature IDs.
  */
-export function denseBoardGlb(grid = 105): Uint8Array {
+export function denseBoardGlb(grid = 105): Uint8Array<ArrayBuffer> {
   return writeBoard(denseBoard(grid));
 }
 

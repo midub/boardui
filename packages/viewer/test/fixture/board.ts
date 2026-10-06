@@ -120,7 +120,7 @@ const PLATING = 25e-6;
 type Column = { strings: string[] } | { u32: number[] } | { u8: number[] };
 
 /** Writes the board as a GLB. */
-export function writeBoard(board: FixtureBoard): Uint8Array {
+export function writeBoard(board: FixtureBoard): Uint8Array<ArrayBuffer> {
   const w = new GltfWriter();
   const json = w.json;
   json.extensionsUsed = ['BOARDUI_board', 'EXT_mesh_features', 'EXT_structural_metadata'];

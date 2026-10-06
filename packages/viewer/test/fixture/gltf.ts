@@ -130,7 +130,7 @@ export class GltfWriter {
   }
 
   /** Packs the GLB. */
-  glb(): Uint8Array {
+  glb(): Uint8Array<ArrayBuffer> {
     const bin = new Uint8Array(align4(this.#byteLength));
     let offset = 0;
     for (const chunk of this.#chunks) {
