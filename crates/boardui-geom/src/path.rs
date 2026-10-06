@@ -645,7 +645,7 @@ mod tests {
     fn degenerate_patterns_keep_the_path() {
         let path = Path::new(DVec2::ZERO).line_to(DVec2::new(1e-3, 0.0));
         for pattern in [&[][..], &[0.0, 0.0], &[1e-3, -1.0], &[f64::NAN]] {
-            assert_eq!(path.dashes(pattern), [path.clone()]);
+            assert_eq!(path.dashes(pattern), std::slice::from_ref(&path));
         }
     }
 }
