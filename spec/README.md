@@ -93,6 +93,11 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 - `LineDesc@lineProperty` patterns strokes (lines, arcs, polylines and outlines) with the lengths of IPC-2581C §3.5.5.1, in line widths `w`: `DOTTED` dots `w` and gaps `2w`, `DASHED` dashes and gaps `3w`, `CENTER` a dash `6w`, gap `2w`, dot `w`, gap `2w`, and `PHANTOM` the same with two dots. These are visible lengths, ends included: a round or square end reaches `w/2` past a dash's centre line, so a round dot is a disc of diameter `w`. The pattern starts with a dash at the start of the path, runs on around corners and arcs, and the last dash may be cut short. A stroke that would have more than 100,000 dashes is drawn solid with a warning.
 - An `ERASE` line is solid and erases instead of drawing. A `Features` element drawn only with `ERASE` lines (strokes, or hollow shapes) has negative polarity (§6.2). Inside a `UserSpecial`, an `ERASE` stroke cuts the parts before it, and the `ERASE` line of a filled shape cuts its own fill.
 - A `Hexagon` is regular, with a corner pointing up (+Y); its `length` is the distance across the corners (IPC-2581C §3.5.9.7). A `Moire` is `ringNumber` rings of width `ringWidth`, centred on diameters `diameter`, `diameter − 2·ringGap`, …, as long as they fit, and a crosshair of two lines (`lineWidth` wide, flat ends, `lineLength` long or else spanning the outer ring, turned by `lineAngle`) when `lineWidth` is above 0.
+- `Text` is drawn as strokes, like a group of lines:
+  - Glyphs come from the `FontDefEmbedded` of its `FontRef`: the `Glyph` whose `charCode` (`xsd:hexBinary`, read as a big-endian Unicode code point, so `41` and `0041` are both `A`) matches the character. Their strokes use their own `LineDesc`, scaled with the text.
+  - Characters the embedded font lacks, and all text with a `FontDefExternal`, an undefined `FontRef` or none, use the converter's bundled single-stroke font (KiCad's Newstroke, ASCII and Latin-1). Its strokes use the `Text`'s `LineDesc` (an extension: rev C has none), else the embedded font's `LineDesc` scaled with the text, else they are round and 15 % of the cap height wide. Characters no font has are drawn as a box the size of a capital, with one warning listing them.
+  - The font's cell, from the lowest `lowerLeftY` to the highest `upperRightY` of its glyphs (for the bundled font, from the descenders to the top of the capitals), is scaled to the height of the `BoundingBox`. The string starts at the box's left edge, and each glyph advances by the width of its cell. Text that would be wider than the box is scaled down to its width, centred vertically, with a warning.
+  - The `Text`'s `Xform` places the box in the coordinates of the shape. `fontSize` and colours are not used.
 - Shapes are placed with their `Location` and `Xform`: scaled, rotated and mirrored (in the file's mirror order, §6.8), then offset by `xOffset`/`yOffset` and moved to the location.
 - Normals SHOULD be omitted. glTF clients then compute flat normals, which suit prisms and save roughly 45 % of vertex data.
 
@@ -161,7 +166,7 @@ A feature whose region becomes empty keeps its metadata row (§8.2) and has no v
 
 ### 6.6 Silkscreen
 
-- Strokes become polygons, using the line width and end style of their `LineDesc`.
+- Strokes become polygons, using the line width and end style of their `LineDesc`, and `Text` is drawn as strokes (§6.1).
 - Silkscreen sits on top of the soldermask. It SHOULD be clipped by mask openings, as manufacturers do.
 - Silkscreen features SHOULD reference their component when the source links them.
 - Package silkscreens add features where the silkscreen layer has nothing for a component, and a side without a silkscreen layer may get a synthesized one (§6.13).
@@ -315,6 +320,7 @@ Feature IDs are row indices into the layer's feature table:
 - **Linking features to pins and components.** A feature gets `pin` from the `PinRef` of its `Pad`, `component` from that `PinRef@componentRef` or else from its `Set@componentRef`, and `net` from its `Set@net`. A feature from a package drawing gets the component it was placed for (§6.13).
 - **Pins.** A pin's `name` is the package `Pin@name`, else the `PinRef@title`. Its `net` is the net of the first feature that references it.
 - **Fiducials.** A `FIDUCIAL` feature's `fiducial` is its IPC-2581 element: `GLOBAL`, `LOCAL`, `BAD_BOARD` or `GOOD_PANEL`. Other features have `NONE`, and a table without fiducials omits the property.
+- **Text.** A feature's `text` is the `textString` of the `Text` elements its shape draws (directly, inside a `UserSpecial` or through a `UserPrimitiveRef`), in document order, joined by line feeds (U+000A). Other features have the empty string, and a table without text omits the property.
 
 ### 8.3 `BOARDUI_board`
 

@@ -1,0 +1,39 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step board, FABRICATION
+thickness: 1.6000 mm
+counts: 13 features, 7164 vertices, 14160 triangles, 1 nets, 0 components, 0 pins (0 checked against pads)
+warnings: 0 from the reader, 4 from the converter
+  - embedded font `plotter` lacks some characters; they are drawn with the bundled font
+  - external font `Arial` is not available; its text is drawn with the bundled font
+  - text characters without a glyph are drawn as boxes: U+03A9
+  - a text wider than its bounding box was scaled down to fit
+layer layer/SILK Silkscreen Top z 0.8200..0.8300 mm Default
+  6 features {"Marking": 6}, 6442 vertices, 12724 triangles, top area 92.2948 mm²
+    row 0: Marking net - area 26.2756 mm² text "BOARD Ø2"
+    row 1: Marking net - area 22.4747 mm² text "External font: Arial"
+    row 2: Marking net - area 26.9017 mm² text "Ærøskøbing µ±0.1° Ω"
+    row 3: Marking net - area 7.1719 mm² text "Too wide for its box"
+    row 4: Marking net - area 5.0898 mm² text "Mirror"
+    row 5: Marking net - area 4.3811 mm² text "R90"
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 44 vertices, 88 triangles, top area 1699.7231 mm²
+    row 0: Sheet net - area 1699.7231 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  3 features {"Fill": 1, "Trace": 2}, 590 vertices, 1172 triangles, top area 111.7653 mm²
+    row 0: Trace net 0 area 8.4770 mm² text "GND"
+    row 1: Fill net 0 area 103.2883 mm²
+    row 2: Trace net - area 0.0000 mm² text "CUT"
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 44 vertices, 88 triangles, top area 1699.7231 mm²
+    row 0: Sheet net - area 1699.7231 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 44 vertices, 88 triangles, top area 1699.7231 mm²
+    row 0: Sheet net - area 1699.7231 mm²
+drill layer/DRILL layer/TOP..layer/BOTTOM
+  1 features {"Other": 1}, 0 vertices, 0 triangles, top area -0.0000 mm²
+    row 0: Other net - area 0.0000 mm²
+components: 0

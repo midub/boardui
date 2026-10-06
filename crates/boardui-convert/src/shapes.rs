@@ -177,7 +177,8 @@ impl<'a> ShapeConverter<'a> {
         }
     }
 
-    /// Takes the warnings, including the ones that summarize all `Text`s.
+    /// Takes the warnings, including the ones that summarize all `Text`s. A text too wide for
+    /// its box gives one warning each, to be merged into one with a count.
     pub fn take_warnings(&mut self) -> Vec<String> {
         if !self.missing_glyphs.is_empty() {
             let mut listed: Vec<_> = self
@@ -186,21 +187,23 @@ impl<'a> ShapeConverter<'a> {
                 .take(MAX_LISTED_CHARACTERS)
                 .map(|&c| format!("U+{:04X}", u32::from(c)))
                 .collect();
-            if self.missing_glyphs.len() > MAX_LISTED_CHARACTERS {
-                listed.push("…".to_owned());
+            let more = self
+                .missing_glyphs
+                .len()
+                .saturating_sub(MAX_LISTED_CHARACTERS);
+            if more > 0 {
+                listed.push(format!("and {more} more"));
             }
             self.warnings.push(format!(
-                "{} text characters have no glyph and are drawn as boxes: {}",
-                self.missing_glyphs.len(),
+                "text characters without a glyph are drawn as boxes: {}",
                 listed.join(", ")
             ));
         }
-        if self.text_overflows > 0 {
-            self.warnings.push(format!(
-                "{} texts are wider than their bounding box and were scaled down to fit",
-                self.text_overflows
-            ));
-        }
+        let overflow = "a text wider than its bounding box was scaled down to fit";
+        self.warnings.extend(std::iter::repeat_n(
+            overflow.to_owned(),
+            self.text_overflows,
+        ));
         self.missing_glyphs.clear();
         self.text_overflows = 0;
         std::mem::take(&mut self.warnings)
@@ -1851,7 +1854,7 @@ mod tests {
         );
         assert_eq!(
             conv.take_warnings(),
-            ["1 texts are wider than their bounding box and were scaled down to fit"]
+            ["a text wider than its bounding box was scaled down to fit"]
         );
         assert!(conv.take_warnings().is_empty());
         // An empty box draws nothing.
@@ -1899,7 +1902,7 @@ mod tests {
             conv.take_warnings(),
             [
                 "embedded font `plotter` lacks some characters; they are drawn with the bundled font",
-                "2 text characters have no glyph and are drawn as boxes: U+03A9, U+2603",
+                "text characters without a glyph are drawn as boxes: U+03A9, U+2603",
             ]
         );
         // External and undefined fonts fall back to the bundled font.

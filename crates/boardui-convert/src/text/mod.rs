@@ -85,7 +85,7 @@ fn decode(glyph: &str) -> Option<StrokeGlyph> {
     let (bounds, pairs) = bytes.split_first_chunk::<2>()?;
     let left = value(bounds[0]);
     let mut strokes: Vec<Vec<DVec2>> = vec![Vec::new()];
-    for pair in pairs.chunks_exact(2) {
+    for pair in pairs.as_chunks::<2>().0 {
         if pair == b" R" {
             strokes.push(Vec::new());
         } else if let Some(stroke) = strokes.last_mut() {

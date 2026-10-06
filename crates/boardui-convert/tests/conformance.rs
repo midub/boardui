@@ -155,6 +155,7 @@ samples! {
     package_silkscreen => "package-silkscreen",
     user_models => "user-models",
     colours => "colours",
+    text => "text",
     testcase1 => "testcase1-RevC-Assembly",
     testcase3 => "testcase3-RevC-Assembly",
     testcase10 => "testcase10-RevC-Assembly",
@@ -286,7 +287,7 @@ fn column(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<u32> {
     }
 }
 
-/// A `STRING` column of a property table.
+/// A `STRING` column of a property table. A missing column reads as empty strings.
 fn strings(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<String> {
     let tables = &root
         .extensions
@@ -294,8 +295,17 @@ fn strings(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<Strin
         .as_ref()
         .expect("metadata")
         .property_tables;
-    let t = &tables[table.expect("table") as usize];
-    let p = &t.properties[name];
+    let Some(table) = table else {
+        return Vec::new();
+    };
+    let t = &tables[table as usize];
+    let Some(p) = t.properties.get(name) else {
+        return vec![String::new(); t.count as usize];
+    };
+    assert_eq!(
+        p.string_offset_type.as_deref().unwrap_or("UINT32"),
+        "UINT32"
+    );
     let bytes = view_bytes(root, bin, p.values).expect("values");
     let offsets = view_bytes(root, bin, p.string_offsets.expect("offsets")).expect("offsets");
     let offsets: Vec<usize> = offsets
@@ -351,6 +361,7 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         writeln!(out, "  - {w}").unwrap();
     }
     let column = |table: Option<u32>, name: &str| column(&root, bin, table, name);
+    let strings = |table: Option<u32>, name: &str| strings(&root, bin, table, name);
     let entries = board
         .layers
         .iter()
@@ -383,6 +394,7 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         let kinds = column(table, "kind");
         let nets = column(table, "net");
         let fiducials = column(table, "fiducial");
+        let texts = strings(table, "text");
         let mut histogram: BTreeMap<String, usize> = BTreeMap::new();
         for &k in &kinds {
             *histogram
@@ -413,9 +425,13 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
                     Some(f) => format!("Fiducial({f:?})"),
                     None => format!("{:?}", FeatureKind::from_value(*kind as u8).expect("kind")),
                 };
+                let text = match texts[row].as_str() {
+                    "" => String::new(),
+                    text => format!(" text {text:?}"),
+                };
                 writeln!(
                     out,
-                    "    row {row}: {kind} net {net} area {:.4} mm²",
+                    "    row {row}: {kind} net {net} area {:.4} mm²{text}",
                     areas.get(&(row as u32)).copied().unwrap_or(0.0) * 1e6
                 )
                 .unwrap();

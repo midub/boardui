@@ -14,6 +14,7 @@ import json
 import math
 import struct
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 HERE = Path(__file__).resolve().parent
 UNITS = {"MILLIMETER": 1.0, "INCH": 1 / 25.4, "MICRON": 1000.0}
@@ -31,6 +32,7 @@ class Doc:
         self.step = []
         self.colors = {}
         self.specs = []
+        self.fonts = {}
 
     def u(self, mm):
         """A length in mm, formatted in the document's units."""
@@ -46,6 +48,9 @@ class Doc:
 
     def primitive(self, name, xml):
         self.standard[name] = xml
+
+    def font(self, name, xml):
+        self.fonts[name] = xml
 
     def color(self, name, r, g, b):
         self.colors[name] = f'<Color r="{r}" g="{g}" b="{b}"/>'
@@ -80,6 +85,11 @@ class Doc:
         )
         colors = "".join(f'<EntryColor id="{k}">{v}</EntryColor>' for k, v in self.colors.items())
         colors = f"\n    <DictionaryColor>{colors}</DictionaryColor>" if colors else ""
+        fonts = "".join(
+            f'\n      <EntryFont id="{k}">{v}</EntryFont>' for k, v in self.fonts.items()
+        )
+        if fonts:
+            fonts = f"\n    <DictionaryFont {dict_units}>{fonts}\n    </DictionaryFont>"
         header = f'<CadHeader units="{self.units}"/>'
         if self.specs:
             specs = "".join(f"\n      {s}" for s in self.specs)
@@ -90,7 +100,7 @@ class Doc:
   <Content>
     <FunctionMode mode="{self.mode}"/>
     <StepRef name="{step_name}"/>
-    <DictionaryLineDesc {dict_units}>{lines}</DictionaryLineDesc>
+    <DictionaryLineDesc {dict_units}>{lines}</DictionaryLineDesc>{fonts}
     <DictionaryStandard {dict_units}>{standard}</DictionaryStandard>{colors}
   </Content>
   <Ecad name="{name}">
@@ -689,6 +699,141 @@ def package_silkscreen():
     return d
 
 
+def text_element(d, string, box, font=None, xform="", color=""):
+    """A `Text` in `box` (x0, y0, x1, y1); non-ASCII characters as character references."""
+    x0, y0, x1, y1 = box
+    string = escape(string, {'"': "&quot;"}).encode("ascii", "xmlcharrefreplace").decode()
+    font_ref = f'<FontRef id="{font}"/>' if font else ""
+    return (
+        f'<Text textString="{string}" fontSize="{max(1, round(y1 - y0))}">{xform}'
+        f'<BoundingBox lowerLeftX="{d.u(x0)}" lowerLeftY="{d.u(y0)}" '
+        f'upperRightX="{d.u(x1)}" upperRightY="{d.u(y1)}"/>{font_ref}{color}</Text>'
+    )
+
+
+def text():
+    """`Text` in an embedded font, in the bundled font for an external font and without one,
+    rotated, mirrored, too wide for its box, with Latin-1 and unknown characters, and on
+    copper: cut by a hole, and knocked out of a plane (spec §6.6, §8.2)."""
+    d = Doc()
+    d.line_desc("UNDERLINE", 0.3)
+    d.layer("TOP", "CONDUCTOR", "TOP")
+    d.layer("BOTTOM", "CONDUCTOR", "BOTTOM")
+    d.layer("DRILL", "DRILL", "ALL", span=("TOP", "BOTTOM"))
+    d.layer("SILK", "SILKSCREEN", "TOP")
+    profile(d, 50, 34)
+
+    # A plotter font in a 1 mm design: capitals 1 high on the baseline, descenders to -0.2.
+    stroke = f'<LineDesc lineWidth="{d.u(0.12)}" lineEnd="ROUND"/>'
+
+    def path(points):
+        """A path from points and (x, y, centerX, centerY) clockwise arcs."""
+        (x0, y0), rest = points[0], points[1:]
+        steps = "".join(
+            f"<PolyStepSegment {d.xy(*p)}/>"
+            if len(p) == 2
+            else f'<PolyStepCurve {d.xy(*p[:2])} centerX="{d.u(p[2])}" '
+            f'centerY="{d.u(p[3])}" clockwise="true"/>'
+            for p in rest
+        )
+        return f"<Polyline><PolyBegin {d.xy(x0, y0)}/>{steps}{stroke}</Polyline>"
+
+    def line(x0, y0, x1, y1):
+        return (
+            f'<Line startX="{d.u(x0)}" startY="{d.u(y0)}" endX="{d.u(x1)}" endY="{d.u(y1)}">'
+            f"{stroke}</Line>"
+        )
+
+    def glyph(code, width, *shapes):
+        return (
+            f'<Glyph charCode="{code}" lowerLeftX="0" lowerLeftY="{d.u(-0.2)}" '
+            f'upperRightX="{d.u(width)}" upperRightY="{d.u(1)}">{"".join(shapes)}</Glyph>'
+        )
+
+    o = path([(0.15, 0.3), (0.15, 0.7), (0.65, 0.7, 0.4, 0.7), (0.65, 0.3), (0.15, 0.3, 0.4, 0.3)])
+    glyphs = [
+        glyph("20", 0.5),
+        glyph(
+            "41",
+            0.8,
+            path([(0.05, 0), (0.4, 1), (0.75, 0)]),
+            line(0.17, 0.35, 0.63, 0.35),
+        ),
+        glyph(
+            "42",
+            0.8,
+            path([(0.1, 0), (0.1, 1), (0.42, 1), (0.42, 0.5, 0.42, 0.75), (0.1, 0.5)]),
+            path([(0.1, 0.5), (0.47, 0.5), (0.47, 0, 0.47, 0.25), (0.1, 0)]),
+        ),
+        glyph("44", 0.8, path([(0.1, 0), (0.1, 1), (0.25, 1), (0.25, 0, 0.25, 0.5), (0.1, 0)])),
+        glyph("4F", 0.8, o),
+        glyph(
+            "52",
+            0.8,
+            path([(0.1, 0), (0.1, 1), (0.42, 1), (0.42, 0.5, 0.42, 0.75), (0.1, 0.5)]),
+            line(0.35, 0.5, 0.65, 0),
+        ),
+        # Ø, with a four-digit charCode.
+        glyph("00D8", 0.8, o, line(0.1, -0.05, 0.7, 1.05)),
+    ]
+    d.font(
+        "PLOTTER",
+        f'<FontDefEmbedded name="plotter">{stroke}{"".join(glyphs)}</FontDefEmbedded>',
+    )
+    d.font("ARIAL", '<FontDefExternal name="Arial" urn="urn:example:font:arial"/>')
+
+    def features(inner, x=0, y=0):
+        return f"<Features><Location {d.xy(x, y)}/>{inner}</Features>"
+
+    silk = [
+        # Embedded glyphs; `2` is not in the font and comes from the bundled one.
+        text_element(d, "BOARD Ø2", (2, 28.5, 32, 32.5), font="PLOTTER"),
+        # An external font is drawn with the bundled font.
+        text_element(
+            d, "External font: Arial", (2, 24, 40, 27), font="ARIAL",
+            color='<ColorTerm name="WHITE"/>',
+        ),
+        # Latin-1 in the bundled font; Ω has no glyph and is drawn as a box.
+        text_element(d, "Ærøskøbing µ±0.1° Ω", (2, 19, 42, 22)),
+        # Wider than its box: scaled down to fit.
+        text_element(d, "Too wide for its box", (18, 14.5, 38, 17)),
+    ]
+    mirrored = text_element(d, "Mirror", (0, 0, 12, 2.5), xform='<Xform mirror="true"/>')
+    rotated = text_element(
+        d, "R90", (0, 0, 14, 2.5),
+        xform=f'<Xform xOffset="{d.u(47)}" yOffset="{d.u(14)}" rotation="90"/>',
+    )
+    d.step.append(
+        '<LayerFeature layerRef="SILK">'
+        + "".join(f"<Set>{features(t)}</Set>" for t in silk)
+        + f"<Set>{features(mirrored, 14, 14.5)}</Set>"
+        + f"<Set>{features(rotated)}</Set>"
+        + "</LayerFeature>"
+    )
+    # Copper text with an underline in one feature, cut by a hole through the stem of the N,
+    # and text knocked out of a plane.
+    underline = (
+        f'<Line startX="{d.u(2)}" startY="{d.u(3.3)}" endX="{d.u(9.5)}" endY="{d.u(3.3)}">'
+        '<LineDescRef id="UNDERLINE"/></Line>'
+    )
+    gnd = text_element(d, "GND", (2, 3, 14, 6))
+    knockout = text_element(d, "CUT", (22, 3.5, 36, 6.5))
+    d.step.append(
+        '<LayerFeature layerRef="TOP">'
+        f'<Set net="GND">{features(f"<UserSpecial>{gnd}{underline}</UserSpecial>")}</Set>'
+        f'<Set net="GND">{fill(d, 20, 2, 38, 8)}</Set>'
+        f'<Set polarity="NEGATIVE">{features(knockout)}</Set>'
+        "</LayerFeature>"
+    )
+    d.step.append(
+        '<LayerFeature layerRef="DRILL"><Set>'
+        f'<Hole name="H1" diameter="{d.u(0.6)}" platingStatus="NONPLATED" plusTol="0" '
+        f'minusTol="0" {d.xy(4.79, 4.9)}/>'
+        "</Set></LayerFeature>"
+    )
+    return d
+
+
 def box_model():
     """A 1.6 × 0.8 × 0.5 mm box as a .gltf with an embedded buffer, in metres."""
     (x, z, h) = (0.8e-3, 0.4e-3, 0.5e-3)
@@ -800,6 +945,7 @@ def main():
         "package-silkscreen": package_silkscreen(),
         "user-models": minimal("MILLIMETER"),
         "colours": colours(),
+        "text": text(),
     }
     for name, d in samples.items():
         d.write(HERE / name / f"{name}.xml", name)
