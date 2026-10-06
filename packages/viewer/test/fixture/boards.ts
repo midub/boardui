@@ -33,12 +33,22 @@ export function smallBoardGlb(): Uint8Array<ArrayBuffer> {
   return writeBoard(smallBoard());
 }
 
+/** Options of the dense fixture. */
+export interface DenseOptions {
+  /**
+   * Shapes as a converter writes them at a 5 µm tolerance (spec §6.1): round-cornered pads and
+   * fills, round-ended and curved traces, and a bottom silkscreen ring per cell. About 47
+   * vertices per copper feature instead of about 20, and eleven features per cell instead of ten.
+   */
+  realistic?: boolean;
+}
+
 /**
  * Generates the dense fixture GLB: a `grid × grid` array of cells with ten features each. The
  * default grid gives 110,253 features, and its top copper table needs FLOAT feature IDs.
  */
-export function denseBoardGlb(grid = 105): Uint8Array<ArrayBuffer> {
-  return writeBoard(denseBoard(grid));
+export function denseBoardGlb(grid = 105, options: DenseOptions = {}): Uint8Array<ArrayBuffer> {
+  return writeBoard(denseBoard(grid, options));
 }
 
 type Pad = { number: string; shape: Ring; drill?: number };
@@ -137,6 +147,80 @@ function trace(x0: number, y0: number, x1: number, y1: number, width: number): R
       ? rect((x0 + x1) / 2, y0, Math.abs(x1 - x0), width)
       : rect(x0, (y0 + y1) / 2, width, Math.abs(y1 - y0));
   return { outer, holes: [] };
+}
+
+/**
+ * Points of an arc around `c` from angle `a0` to `a1` (radians, either direction), including
+ * both ends, with a chord deviation of at most `tolerance` and at least 8 segments per turn.
+ */
+function arc(c: Vec2, radius: number, a0: number, a1: number, tolerance: number): Vec2[] {
+  const step = Math.min(Math.PI / 4, 2 * Math.acos(1 - Math.min(1, tolerance / radius)));
+  const n = Math.max(1, Math.ceil(Math.abs(a1 - a0) / step));
+  return Array.from({ length: n + 1 }, (_, i): Vec2 => {
+    const a = a0 + ((a1 - a0) * i) / n;
+    return [c[0] + radius * Math.cos(a), c[1] + radius * Math.sin(a)];
+  });
+}
+
+/** Rectangle with round corners of `radius`. */
+function roundRect(
+  cx: number,
+  cy: number,
+  width: number,
+  height: number,
+  radius: number,
+  tolerance: number,
+): Ring {
+  const x = width / 2 - radius;
+  const y = height / 2 - radius;
+  const h = Math.PI / 2;
+  return [
+    ...arc([cx + x, cy - y], radius, -h, 0, tolerance),
+    ...arc([cx + x, cy + y], radius, 0, h, tolerance),
+    ...arc([cx - x, cy + y], radius, h, 2 * h, tolerance),
+    ...arc([cx - x, cy - y], radius, 2 * h, 3 * h, tolerance),
+  ];
+}
+
+/** A straight trace from `a` to `b` with round ends (spec §6.1, `lineEnd="ROUND"`). */
+function roundTrace(a: Vec2, b: Vec2, width: number, tolerance: number): Region {
+  const angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
+  const h = Math.PI / 2;
+  return {
+    outer: [
+      ...arc(b, width / 2, angle - h, angle + h, tolerance),
+      ...arc(a, width / 2, angle + h, angle + 3 * h, tolerance),
+    ],
+    holes: [],
+  };
+}
+
+/**
+ * A round-ended trace that runs `run` in +x from `start`, turns left along a quarter arc of
+ * `radius`, then runs `rise` in +y.
+ */
+function bentTrace(
+  start: Vec2,
+  run: number,
+  radius: number,
+  rise: number,
+  width: number,
+  tolerance: number,
+): Region {
+  const hw = width / 2;
+  const h = Math.PI / 2;
+  const [x, y] = start;
+  const c: Vec2 = [x + run, y + radius];
+  const end: Vec2 = [x + run + radius, y + radius + rise];
+  return {
+    outer: [
+      ...arc(c, radius + hw, -h, 0, tolerance),
+      ...arc(end, hw, 0, 2 * h, tolerance),
+      ...arc(c, radius - hw, 0, -h, tolerance),
+      ...arc(start, hw, h, 3 * h, tolerance),
+    ],
+    holes: [],
+  };
 }
 
 function annulus(c: Vec2, outer: number, inner: number, tolerance: number): Region {
@@ -447,10 +531,10 @@ export function smallBoard(): FixtureBoard {
 
 /**
  * The dense board: per cell one R0402 on the top side, a via, three traces, a fill, a silkscreen
- * outline and a barrel.
+ * outline and a barrel (and a bottom silkscreen ring in realistic mode).
  */
-export function denseBoard(grid: number): FixtureBoard {
-  const tolerance = 25e-6;
+export function denseBoard(grid: number, { realistic = false }: DenseOptions = {}): FixtureBoard {
+  const tolerance = realistic ? 5e-6 : 25e-6;
   const pitch = mm(2.5);
   const stack = stackup(
     [
@@ -459,10 +543,18 @@ export function denseBoard(grid: number): FixtureBoard {
     ],
     ['@core'],
   );
-  stack.layers = stack.layers.filter((l) => l.name !== 'B.SilkS');
+  if (!realistic) stack.layers = stack.layers.filter((l) => l.name !== 'B.SilkS');
   const fcu = byName(stack, 'F.Cu');
   const bcu = byName(stack, 'B.Cu');
   const silk = byName(stack, 'F.SilkS');
+  const bottomSilk = realistic ? byName(stack, 'B.SilkS') : null;
+  const padShape = (ring: Ring): Ring => {
+    if (!realistic) return ring;
+    const xs = ring.map((p) => p[0]);
+    const ys = ring.map((p) => p[1]);
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    return roundRect((x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0, mm(0.2), tolerance);
+  };
   const size = grid * pitch;
   const nets = ['GND'];
   const components: FixtureComponent[] = [];
@@ -497,7 +589,7 @@ export function denseBoard(grid: number): FixtureBoard {
         ],
       };
       components.push(component);
-      const pads = R0402.pads.map((pad) => toBoard(component, pad.shape));
+      const pads = R0402.pads.map((pad) => padShape(toBoard(component, pad.shape)));
       const viaAt: Vec2 = [cx + mm(0.1), cy - mm(0.6)];
       const viaHole = circle(viaAt[0], viaAt[1], hole, tolerance);
       pads.forEach((outer, i) => {
@@ -511,26 +603,40 @@ export function denseBoard(grid: number): FixtureBoard {
       add(
         fcu,
         { kind: 'TRACE', net: netName },
-        trace(cx + mm(0.1), cy - mm(0.325), cx + mm(0.1), cy + mm(0.225), w),
+        realistic
+          ? roundTrace([cx + mm(0.1), cy - mm(0.225)], [cx + mm(0.1), cy + mm(0.125)], w, tolerance)
+          : trace(cx + mm(0.1), cy - mm(0.325), cx + mm(0.1), cy + mm(0.225), w),
       );
       add(
         fcu,
         { kind: 'TRACE', net: 'GND' },
-        trace(cx - mm(1.24), cy + mm(0.5), cx - mm(1), cy + mm(0.5), mm(0.1)),
+        realistic
+          ? roundTrace([cx - mm(1.19), cy + mm(0.5)], [cx - mm(1.05), cy + mm(0.5)], mm(0.1), tolerance)
+          : trace(cx - mm(1.24), cy + mm(0.5), cx - mm(1), cy + mm(0.5), mm(0.1)),
       );
       add(fcu, { kind: 'VIA', net: netName }, annulus(viaAt, mm(0.275), hole, tolerance));
       add(
         fcu,
         { kind: 'FILL', net: 'GND' },
-        { outer: rect(cx - mm(0.85), cy - mm(0.8), mm(0.7), mm(0.8)), holes: [] },
+        realistic
+          ? {
+              outer: roundRect(cx - mm(0.85), cy - mm(0.8), mm(0.7), mm(0.8), mm(0.2), tolerance),
+              holes: [circle(cx - mm(0.85), cy - mm(0.8), mm(0.15), tolerance)],
+            }
+          : { outer: rect(cx - mm(0.85), cy - mm(0.8), mm(0.7), mm(0.8)), holes: [] },
       );
       add(bcu, { kind: 'VIA', net: netName }, annulus(viaAt, mm(0.275), hole, tolerance));
       add(
         bcu,
         { kind: 'TRACE', net: netName },
-        trace(cx + mm(0.375), cy - mm(0.6), cx + mm(1.1), cy - mm(0.6), w),
+        realistic
+          ? bentTrace([cx + mm(0.475), cy - mm(0.6)], mm(0.3), mm(0.3), mm(0.6), w, tolerance)
+          : trace(cx + mm(0.375), cy - mm(0.6), cx + mm(1.1), cy - mm(0.6), w),
       );
       add(silk, { kind: 'MARKING', component: component.refDes }, silkRing(component, R0402));
+      if (bottomSilk) {
+        add(bottomSilk, { kind: 'MARKING' }, annulus(viaAt, mm(0.45), mm(0.4), tolerance));
+      }
       barrels.push({
         kind: 'BARREL',
         net: netName,

@@ -57,6 +57,7 @@ function glbJson(glb: Uint8Array): Json {
 describe.each([
   ['small', smallBoardGlb],
   ['dense (4 × 4)', () => denseBoardGlb(4)],
+  ['realistic dense (4 × 4)', () => denseBoardGlb(4, { realistic: true })],
 ])('%s fixture', (_, generate) => {
   const glb = generate();
   const json = glbJson(glb);
