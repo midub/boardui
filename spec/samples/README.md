@@ -33,6 +33,8 @@ BOARDUI_CONFORMANCE_OUT=target/conformance cargo test -p boardui-convert --test 
 node scripts/khronos-validate.mjs <dir with gltf-validator installed> target/conformance/*.glb
 ```
 
+The Khronos step fails on any error or warning except `UNRESERVED_EXTENSION_PREFIX`: the `BOARDUI` prefix is not registered with Khronos.
+
 ## Rules
 
 - Only add boards whose licence allows redistribution, and record the source and licence next to each sample.
