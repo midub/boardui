@@ -240,7 +240,7 @@ Notes:
 
 - Layers with `layerFunction` `SOLDERPASTE` or `PASTEMASK` are paste layers (role `PASTE`). A paste layer with `side="BOTTOM"` is on the bottom side, any other on the top side. A side has at most one paste layer, the first in document order; the converter skips any other with a warning.
 - Paste is material on the pads. Its features are prisms that stand on the outer copper surface of their side: from the top of the top copper up, or from the bottom of the bottom copper down. Their height is the layer's thickness in the stack-up if given (and not 0), else 100 µm, a common stencil thickness. Paste lies in the mask openings, so its Z range overlaps those of its side's soldermask and silkscreen (§6.4) without any geometry overlapping.
-- Features are classified and linked like copper features (§6.2, §8.2); KiCad's paste pads, for one, reference their pins. Holes are cut from paste like from the soldermask (§6.3). Paste is not clipped by mask openings.
+- Features are classified and linked like copper features (§6.2, §8.2); KiCad's paste pads, for one, reference their pins, including paste-only aperture pads, which it writes as package pins `PAD0`, `PAD1`, …. Holes are cut from paste like from the soldermask (§6.3). Paste is not clipped by mask openings.
 - Paste layers are hidden by default (§8.3).
 
 ### 6.12 Drawings
