@@ -1,7 +1,8 @@
 /**
  * Dev page: loads a generated fixture into <board-viewer> and exposes the API through controls.
  * Query parameters: `board=small|dense`, `grid=<n>`, `realistic` and `tolerance=<µm>` (dense
- * fixture options, see `test/fixture/boards.ts`), `backend=webgl`. `globalThis.viewer` and `globalThis.timings` are
+ * fixture options, see `test/fixture/boards.ts`), `glb=<url>` (load a converted asset instead of
+ * a fixture), `backend=webgl`. `globalThis.viewer` and `globalThis.timings` are
  * there for the console and for `dev/review.mjs`.
  */
 import '../src/index.js';
@@ -12,6 +13,7 @@ const boardName = params.get('board') === 'dense' ? 'dense' : 'small';
 const grid = Number(params.get('grid')) || undefined;
 const realistic = params.has('realistic');
 const toleranceUm = Number(params.get('tolerance')) || undefined;
+const glbUrl = params.get('glb');
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector(selector) as T;
 
 // The backend attribute is read on connect, so set it before the element enters the page.
@@ -28,22 +30,27 @@ const boardSelect = $<HTMLSelectElement>('#board');
 const webgl = $<HTMLInputElement>('#webgl');
 boardSelect.value = boardName;
 webgl.checked = params.get('backend') === 'webgl';
-const reload = () => {
+const reload = (keepGlb: boolean) => {
   const next = new URLSearchParams({ board: boardSelect.value });
+  if (keepGlb && glbUrl) next.set('glb', glbUrl);
   if (boardSelect.value === 'dense' && grid) next.set('grid', String(grid));
   if (boardSelect.value === 'dense' && realistic) next.set('realistic', '');
   if (boardSelect.value === 'dense' && toleranceUm) next.set('tolerance', String(toleranceUm));
   if (webgl.checked) next.set('backend', 'webgl');
   location.search = next.toString();
 };
-boardSelect.addEventListener('change', reload);
-webgl.addEventListener('change', reload);
+boardSelect.addEventListener('change', () => reload(false));
+webgl.addEventListener('change', () => reload(true));
 
-status.textContent = `Generating ${boardName} fixture…`;
+status.textContent = glbUrl ? `Fetching ${glbUrl}…` : `Generating ${boardName} fixture…`;
 await new Promise((resolve) => setTimeout(resolve, 0));
 let start = performance.now();
 const dense = { realistic, ...(toleranceUm ? { tolerance: toleranceUm * 1e-6 } : {}) };
-const glb = boardName === 'dense' ? denseBoardGlb(grid, dense) : smallBoardGlb();
+const glb = glbUrl
+  ? await (await fetch(glbUrl)).arrayBuffer()
+  : boardName === 'dense'
+    ? denseBoardGlb(grid, dense)
+    : smallBoardGlb();
 const generated = performance.now() - start;
 start = performance.now();
 await viewer.load(glb);
@@ -56,7 +63,7 @@ const sizeMb = (glb.byteLength / 1e6).toFixed(1);
 const showStats = () => {
   const stats = viewer.stats();
   status.textContent = [
-    `${boardName}: ${sizeMb} MB GLB, generated in ${generated.toFixed(0)} ms, loaded in ${loaded.toFixed(0)} ms`,
+    `${glbUrl ?? boardName}: ${sizeMb} MB GLB, ${glbUrl ? 'fetched' : 'generated'} in ${generated.toFixed(0)} ms, loaded in ${loaded.toFixed(0)} ms`,
     stats
       ? `${stats.backend}: ${stats.drawCalls} draw calls, ${stats.triangles} triangles`
       : 'not rendered yet',
@@ -129,7 +136,7 @@ $('#widget').addEventListener('click', () => {
 });
 const first = viewer.ids('component')[0];
 if (first) widget(first, viewer.info(first)?.properties.refDes as string);
-if (boardName === 'small') {
+if (boardName === 'small' && !glbUrl) {
   widget('cmp/C1', 'C1 (bottom)');
   widget('net/%2FSDA', 'SDA', 'tag net');
 }

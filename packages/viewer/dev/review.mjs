@@ -15,6 +15,8 @@
  *   each dev page query (e.g. `board=dense&grid=60&realistic`), at 1920 × 1080 or
  *   `REVIEW_SIZE=<w>x<h>`, with 10 or `REVIEW_HOVERS` hover samples; results go to
  *   `<out>/perf.json`.
+ * - `views <dist> <out> <query>…`: top, bottom, iso and x-ray PNGs of each dev page query,
+ *   for example `glb=testcase1.glb` with the converted GLB copied into `<dist>`.
  * - `probe <dist> <out>`: which backends the browser offers.
  */
 
@@ -55,6 +57,7 @@ const browser = await chromium.launch({ args: ARGS });
 try {
   if (mode === 'shots') await shots();
   else if (mode === 'perf') await perf();
+  else if (mode === 'views') await views();
   else if (mode === 'probe') await probe();
   else throw new Error(`Unknown mode ${mode}`);
 } finally {
@@ -112,6 +115,29 @@ function screenPosition(page, id) {
       }),
     id,
   );
+}
+
+async function views() {
+  for (const query of queries) {
+    const page = await open(query, 1200, 900);
+    const viewer = page.locator('board-viewer');
+    const name = query.replace(/[^a-z0-9]+/gi, '-');
+    const call = async (fn, arg) => {
+      await page.evaluate(fn, arg);
+      await frames(page);
+    };
+    for (const view of ['top', 'bottom', 'iso']) {
+      await call((view) => globalThis.viewer.setView(view), view);
+      await viewer.screenshot({ path: join(out, `${name}-${view}.png`) });
+    }
+    await call(() => globalThis.viewer.setXray(true));
+    await viewer.screenshot({ path: join(out, `${name}-xray.png`) });
+    console.log(
+      query,
+      await page.evaluate(() => ({ ...globalThis.timings, ...globalThis.viewer.stats() })),
+    );
+    await page.close();
+  }
 }
 
 async function shots() {
