@@ -2,7 +2,7 @@
 
 use super::xml::AttrEnum;
 use crate::{
-    ButterflyShape, FillProperty, LineEnd, MountType, PadUsage, PadUse, PlatingStatus, Polarity,
+    ButterflyShape, FillProperty, LineEnd, LineProperty, MountType, PadUsage, PadUse, PlatingStatus, Polarity,
     RingShape, Side, Units, WhereMeasured,
 };
 
@@ -71,6 +71,15 @@ attr_enum!(LineEnd {
     "ROUND" => LineEnd::Round,
     "SQUARE" => LineEnd::Square,
     "NONE" => LineEnd::None,
+});
+
+attr_enum!(LineProperty {
+    "SOLID" => LineProperty::Solid,
+    "DOTTED" => LineProperty::Dotted,
+    "DASHED" => LineProperty::Dashed,
+    "CENTER" => LineProperty::Center,
+    "PHANTOM" => LineProperty::Phantom,
+    "ERASE" => LineProperty::Erase,
 });
 
 attr_enum!(FillProperty {

@@ -5,7 +5,8 @@ use std::mem::take;
 
 use super::{Parser, insert, missing_element};
 use crate::{
-    Component, DiagnosticKind, Error, Feature, FeatureElement, Features, Hole, LayerFeature,
+    Component, DiagnosticKind, Error, Feature, FeatureElement, Features, Fiducial, FiducialKind,
+    Hole, LayerFeature,
     Marking, Package, PackageDrawing, Pad, PadUsage, PadstackDef, PadstackPad, Pin, PinRef,
     RefKind, Set, SlotCavity, Step, Table,
 };
@@ -323,6 +324,12 @@ impl<R: BufRead> Parser<R> {
             let element = match p.tag.name() {
                 "Pad" => FeatureElement::Pad(p.read_pad()?),
                 "Features" => FeatureElement::Features(p.read_features()?),
+                "GlobalFiducial" => FeatureElement::Fiducial(p.read_fiducial(FiducialKind::Global)?),
+                "LocalFiducial" => FeatureElement::Fiducial(p.read_fiducial(FiducialKind::Local)?),
+                "BadBoardMark" => FeatureElement::Fiducial(p.read_fiducial(FiducialKind::BadBoard)?),
+                "GoodPanelMark" => {
+                    FeatureElement::Fiducial(p.read_fiducial(FiducialKind::GoodPanel)?)
+                }
                 "Hole" => FeatureElement::Hole(p.read_hole("Hole")?),
                 "SlotCavity" => FeatureElement::SlotCavity(p.read_slot_cavity()?),
                 "ColorRef" if set.color_ref.is_some() => return p.duplicate("Set"),
@@ -399,6 +406,31 @@ impl<R: BufRead> Parser<R> {
             location: location.unwrap_or_default(),
             xform: xform.unwrap_or_default(),
             shape: shape.ok_or_else(|| missing_element("Features", "a shape", position))?,
+        })
+    }
+
+    /// Reads a `GlobalFiducial`, `LocalFiducial`, `BadBoardMark` or `GoodPanelMark`.
+    fn read_fiducial(&mut self, kind: FiducialKind) -> Result<Fiducial, Error> {
+        let position = self.tag.position;
+        let element = match kind {
+            FiducialKind::Global => "GlobalFiducial",
+            FiducialKind::Local => "LocalFiducial",
+            FiducialKind::BadBoard => "BadBoardMark",
+            FiducialKind::GoodPanel => "GoodPanelMark",
+        };
+        let (mut location, mut xform, mut shape) = (None, None, None);
+        self.children(element, |p| {
+            if p.placement(element, &mut location, &mut xform)? {
+                Ok(())
+            } else {
+                p.shape_slot(element, &mut shape)
+            }
+        })?;
+        Ok(Fiducial {
+            kind,
+            location: location.unwrap_or_default(),
+            xform: xform.unwrap_or_default(),
+            shape: shape.ok_or_else(|| missing_element(element, "a shape", position))?,
         })
     }
 

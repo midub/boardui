@@ -377,6 +377,11 @@ impl<R: BufRead> Parser<R> {
         })
     }
 
+    /// A required non-negative integer.
+    pub(super) fn req_u32(&mut self, attribute: &str) -> Result<u32, Error> {
+        self.req_with(attribute, "a non-negative integer", |s| s.trim().parse().ok())
+    }
+
     /// A required 8-bit colour channel.
     pub(super) fn req_u8(&mut self, attribute: &str) -> Result<u8, Error> {
         self.req_with(attribute, "an integer from 0 to 255", |s| {

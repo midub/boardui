@@ -51,7 +51,8 @@ use std::io::BufRead;
 pub use diagnostic::{Diagnostic, DiagnosticKind, RefKind};
 pub use error::{Error, ErrorKind, Position};
 pub use model::{
-    Component, Content, Document, Ecad, Feature, FeatureElement, Features, Hole, Layer,
+    Component, Content, Document, Ecad, Feature, FeatureElement, Features, Fiducial, FiducialKind,
+    Hole, Layer,
     LayerFeature, Marking, MountType, Package, PackageDrawing, Pad, PadUsage, PadUse, PadstackDef,
     PadstackPad, Pin, PinRef, PlatingStatus, Polarity, Set, Side, SlotCavity, Span, Spec,
     SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup, StackupLayer, Step, Units,
@@ -59,8 +60,8 @@ pub use model::{
 };
 pub use shape::{
     Arc, ButterflyShape, Color, Contour, Corners, FillDesc, FillProperty, FillStyle, Line,
-    LineDesc, LineEnd, LineStyle, Outline, Path, Point, PolyStep, Polygon, Polyline, PrimitiveKind,
-    RingShape, Shape, StandardPrimitive, Xform,
+    LineDesc, LineEnd, LineProperty, LineStyle, Moire, Outline, Path, Point, PolyStep, Polygon,
+    Polyline, PrimitiveKind, RingShape, Shape, StandardPrimitive, Xform,
 };
 pub use table::Table;
 
