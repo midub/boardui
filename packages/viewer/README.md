@@ -26,7 +26,7 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 | `load(urlOrBytes)` | Loads a GLB (URL, `ArrayBuffer` or `Uint8Array`). Rejects non-boardui assets. |
 | `layers` | Layers and drill layers, top to bottom, with their current visibility. |
 | `setLayerVisible(id, visible)` | Defaults come from `BOARDUI_board.layers[].visible`; drill layers start visible. |
-| `setXray(on)`, `xray` | Makes the board translucent; tinted elements stay opaque. |
+| `setXray(on)`, `xray` | Makes the board translucent (copper less than the rest); tinted elements stay opaque. |
 | `highlight({ ids } \| { net }, { color })` | Tints elements with a CSS colour. Returns a function that removes the highlight. |
 | `hide({ ids } \| { net })` | Hides elements. Returns a function that shows them again. |
 | `select(id \| null)`, `selection` | Selects any element; a net selects all its copper. |
@@ -72,16 +72,22 @@ Widgets are ordinary elements from any framework. They are moved into `<board-vi
   instanced attribute carries each instance's component row into the same state-texture lookup.
 - **Picking.** `three-mesh-bvh` BVHs per layer mesh (built in idle time after loading), three's
   instanced ray cast for components. Picking and widget occlusion look through the translucent
-  soldermask.
+  soldermask. Dielectric sheets can't be hovered or selected (over bare board the pointer finds
+  nothing), but they block the pointer and hide widgets whose element is on the far side.
 
 ## Development
 
 ```sh
-pnpm --filter @boardui/viewer dev    # dev page with generated fixtures: ?board=small|dense, ?backend=webgl
+pnpm --filter @boardui/viewer dev    # dev page with generated fixtures (query parameters below)
 pnpm --filter @boardui/viewer test   # Vitest, no GPU needed
 pnpm --filter @boardui/viewer build  # tsc → dist/, type-check of tests and dev page, vite build of the dev page
 ```
 
 `test/fixture/` generates conformant boardui GLBs from code: a small four-layer board that
-exercises the profile, and a dense board with about 110k features. They are dev/test only and not
-published.
+exercises the profile, and a dense board, by default 105 × 105 cells with about 110k features.
+They are dev/test only and not published. Dev page query parameters: `board=small|dense`,
+`grid=<cells per side>`, `realistic` (shapes as a converter writes them at the 5 µm default
+tolerance, about 47 vertices per copper feature) and `backend=webgl`.
+
+`dev/review.mjs` takes review screenshots and performance numbers of the built dev page in headless
+Chromium with software rendering; its header says how to run it in the Playwright Docker image.

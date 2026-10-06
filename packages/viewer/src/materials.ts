@@ -29,6 +29,8 @@ import { type ElementState, HIDDEN_ALPHA } from './state.js';
 
 /** Opacity of board materials in x-ray mode. Tinted elements stay more opaque. */
 export const XRAY_OPACITY = 0.15;
+/** Opacity of copper in x-ray mode: x-ray is for seeing the copper of both sides. */
+export const XRAY_COPPER_OPACITY = 0.6;
 /** Share of the tint colour added as emission, so tints show on metal and in shadow. */
 const TINT_GLOW = 0.35;
 
@@ -56,9 +58,14 @@ export class BoardMaterials {
     this.texture.generateMipmaps = false;
   }
 
-  /** Material for a merged layer mesh whose feature rows start at state texel `offset`. */
-  layer(source: Material, offset: number): NodeMaterial {
-    return this.#create(source, attribute<'float'>('_feature_id_0', 'float').add(offset));
+  /**
+   * Material for a merged layer mesh whose feature rows start at state texel `offset`.
+   *
+   * @param xrayOpacity Opacity of untinted elements in x-ray mode.
+   */
+  layer(source: Material, offset: number, xrayOpacity = XRAY_OPACITY): NodeMaterial {
+    const index = attribute<'float'>('_feature_id_0', 'float').add(offset);
+    return this.#create(source, index, false, xrayOpacity);
   }
 
   /**
@@ -98,7 +105,12 @@ export class BoardMaterials {
     this.texture.dispose();
   }
 
-  #create(source: Material, stateIndex: Node<'float'>, overlay = false): NodeMaterial {
+  #create(
+    source: Material,
+    stateIndex: Node<'float'>,
+    overlay = false,
+    xrayOpacity = XRAY_OPACITY,
+  ): NodeMaterial {
     const material = this.#library.fromMaterial(source.clone()) as NodeMaterial;
     const index = int(stateIndex);
     const width = int(this.#state.width);
@@ -120,7 +132,7 @@ export class BoardMaterials {
       material.opacityNode = strength;
       material.maskNode = visible.and(strength.greaterThan(0));
     } else {
-      material.opacityNode = mix(materialOpacity, mix(XRAY_OPACITY, 1, strength), this.#xray);
+      material.opacityNode = mix(materialOpacity, mix(xrayOpacity, 1, strength), this.#xray);
       material.maskNode = visible;
     }
     this.#entries.push({

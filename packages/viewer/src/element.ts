@@ -3,7 +3,7 @@ import type { LayerRole, Side } from './board-extension.js';
 import { BoardModel, type ElementInfo, type LayerModel, type ListableKind } from './board-model.js';
 import { type ViewPreset, viewDirection } from './camera.js';
 import { type BoardSource, loadGltf } from './load.js';
-import { BoardMaterials } from './materials.js';
+import { BoardMaterials, XRAY_COPPER_OPACITY, XRAY_OPACITY } from './materials.js';
 import { Picker } from './picking.js';
 import { BoardRenderer, type RenderStats } from './renderer.js';
 import { ElementState } from './state.js';
@@ -171,7 +171,8 @@ export class BoardViewerElement extends HTMLElement {
       const copper = !('role' in layer.info) || layer.info.role === 'COPPER';
       for (const mesh of layer.meshes) {
         const source = mesh.material as Material;
-        mesh.material = materials.layer(source, layer.stateOffset);
+        const xray = copper ? XRAY_COPPER_OPACITY : XRAY_OPACITY;
+        mesh.material = materials.layer(source, layer.stateOffset, xray);
         if (copper) {
           const overlay = new Mesh(mesh.geometry, materials.overlay(source, layer.stateOffset));
           overlay.renderOrder = 1; // after the soldermask
@@ -228,7 +229,10 @@ export class BoardViewerElement extends HTMLElement {
     return this.#xray;
   }
 
-  /** Turns x-ray mode on or off: every layer and component becomes translucent. */
+  /**
+   * Turns x-ray mode on or off: every layer and component becomes translucent, copper less so
+   * than the rest, so that the copper of both sides shows.
+   */
   setXray(on: boolean): void {
     this.#xray = on;
     this.#loaded?.materials.setXray(on);
