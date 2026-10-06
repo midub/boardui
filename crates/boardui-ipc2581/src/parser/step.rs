@@ -6,9 +6,8 @@ use std::mem::take;
 use super::{Parser, insert, missing_element};
 use crate::{
     Component, DiagnosticKind, Error, Feature, FeatureElement, Features, Fiducial, FiducialKind,
-    Hole, LayerFeature,
-    Marking, Package, PackageDrawing, Pad, PadUsage, PadstackDef, PadstackPad, Pin, PinRef,
-    RefKind, Set, SlotCavity, Step, Table,
+    Hole, LayerFeature, Marking, Package, PackageDrawing, Pad, PadUsage, PadstackDef, PadstackPad,
+    Pin, PinRef, RefKind, Set, SlotCavity, Step, Table,
 };
 
 impl<R: BufRead> Parser<R> {
@@ -324,9 +323,13 @@ impl<R: BufRead> Parser<R> {
             let element = match p.tag.name() {
                 "Pad" => FeatureElement::Pad(p.read_pad()?),
                 "Features" => FeatureElement::Features(p.read_features()?),
-                "GlobalFiducial" => FeatureElement::Fiducial(p.read_fiducial(FiducialKind::Global)?),
+                "GlobalFiducial" => {
+                    FeatureElement::Fiducial(p.read_fiducial(FiducialKind::Global)?)
+                }
                 "LocalFiducial" => FeatureElement::Fiducial(p.read_fiducial(FiducialKind::Local)?),
-                "BadBoardMark" => FeatureElement::Fiducial(p.read_fiducial(FiducialKind::BadBoard)?),
+                "BadBoardMark" => {
+                    FeatureElement::Fiducial(p.read_fiducial(FiducialKind::BadBoard)?)
+                }
                 "GoodPanelMark" => {
                     FeatureElement::Fiducial(p.read_fiducial(FiducialKind::GoodPanel)?)
                 }

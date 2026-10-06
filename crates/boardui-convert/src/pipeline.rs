@@ -7,7 +7,8 @@ use boardui_geom::{
     Shape, Tolerance, par,
 };
 use boardui_gltf::{
-    BoardAsset, DrillAsset, FeatureKind, FeatureRow, Fiducial, LayerAsset, PinRow, Role, Side, Source,
+    BoardAsset, DrillAsset, FeatureKind, FeatureRow, Fiducial, LayerAsset, PinRow, Role, Side,
+    Source,
 };
 use boardui_ipc2581 as ipc;
 use glam::DAffine2;
@@ -225,7 +226,8 @@ pub(crate) fn run(
                     .iter()
                     .zip(&regions[c])
                     .filter(|(row, r)| {
-                        matches!(row.kind, FeatureKind::Pad | FeatureKind::Fiducial) && !r.is_empty()
+                        matches!(row.kind, FeatureKind::Pad | FeatureKind::Fiducial)
+                            && !r.is_empty()
                     })
                     .map(|(_, r)| r.clone())
                     .collect(),

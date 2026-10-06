@@ -2,8 +2,8 @@
 
 use super::xml::AttrEnum;
 use crate::{
-    ButterflyShape, FillProperty, LineEnd, LineProperty, MountType, PadUsage, PadUse, PlatingStatus, Polarity,
-    RingShape, Side, Units, WhereMeasured,
+    ButterflyShape, FillProperty, LineEnd, LineProperty, MountType, PadUsage, PadUse,
+    PlatingStatus, Polarity, RingShape, Side, Units, WhereMeasured,
 };
 
 macro_rules! attr_enum {

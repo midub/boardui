@@ -40,8 +40,9 @@ class Doc:
     def xy(self, x, y, prefix=""):
         return f'{prefix}x="{self.u(x)}" {prefix}y="{self.u(y)}"'
 
-    def line_desc(self, name, width, end="ROUND"):
-        self.lines[name] = f'<LineDesc lineWidth="{self.u(width)}" lineEnd="{end}"/>'
+    def line_desc(self, name, width, end="ROUND", prop=None):
+        prop = f' lineProperty="{prop}"' if prop else ""
+        self.lines[name] = f'<LineDesc lineWidth="{self.u(width)}" lineEnd="{end}"{prop}/>'
 
     def primitive(self, name, xml):
         self.standard[name] = xml
@@ -247,6 +248,151 @@ def zero_width_lines():
     return d
 
 
+def fiducials():
+    """The four fiducial elements are copper features of kind FIDUCIAL (spec §6.2, §8.2)."""
+    d = Doc()
+    d.primitive("FID", f'<Circle diameter="{d.u(1.0)}"/>')
+    two_layers(d, drill=False)
+    profile(d, 12, 8)
+
+    def fiducial(element, x, y, shape, rotation=None):
+        xform = f'<Xform rotation="{rotation:g}"/>' if rotation else ""
+        return f"<{element}>{xform}<Location {d.xy(x, y)}/>{shape}</{element}>"
+
+    d.step.append(
+        '<LayerFeature layerRef="TOP"><Set>'
+        + fiducial("GlobalFiducial", 1.5, 1.5, '<StandardPrimitiveRef id="FID"/>')
+        + fiducial("GlobalFiducial", 10.5, 6.5, '<StandardPrimitiveRef id="FID"/>')
+        + fiducial("LocalFiducial", 4, 4, f'<Circle diameter="{d.u(0.6)}"/>')
+        + fiducial("BadBoardMark", 8, 4, f'<Circle diameter="{d.u(1.5)}"/>')
+        + fiducial(
+            "GoodPanelMark",
+            10.5,
+            1.5,
+            f'<RectCenter width="{d.u(1.0)}" height="{d.u(1.0)}"/>',
+            rotation=45,
+        )
+        + "</Set></LayerFeature>"
+    )
+    return d
+
+
+def hexagon_moire():
+    """Hexagon (corner up, `length` across corners) and Moire primitives (spec §6.1)."""
+    d = Doc()
+    d.line_desc("THIN", 0.15)
+    d.primitive("HEX", f'<Hexagon length="{d.u(2.0)}"/>')
+    d.primitive(
+        "HEX_HOLLOW",
+        f'<Hexagon length="{d.u(2.0)}"><LineDescRef id="THIN"/>'
+        '<FillDesc fillProperty="HOLLOW"/></Hexagon>',
+    )
+    d.primitive(
+        "MOIRE",
+        f'<Moire diameter="{d.u(4.0)}" ringWidth="{d.u(0.2)}" ringGap="{d.u(0.6)}" '
+        f'ringNumber="3" lineWidth="{d.u(0.15)}" lineLength="{d.u(5.0)}" lineAngle="0"/>',
+    )
+    d.layer("TOP", "CONDUCTOR", "TOP")
+    profile(d, 14, 6)
+
+    def feature(x, y, shape, rotation=None):
+        xform = f'<Xform rotation="{rotation:g}"/>' if rotation else ""
+        return (
+            f"<Set><Features>{xform}<Location {d.xy(x, y)}/>"
+            f'<StandardPrimitiveRef id="{shape}"/></Features></Set>'
+        )
+
+    d.step.append(
+        '<LayerFeature layerRef="TOP">'
+        + feature(2, 3, "HEX")
+        + feature(5, 3, "HEX", rotation=30)
+        + feature(8, 3, "HEX_HOLLOW")
+        + feature(11.5, 3, "MOIRE")
+        + "</LayerFeature>"
+    )
+    return d
+
+
+def hatch_fill():
+    """HATCH and MESH fills are lines clipped to the area, plus the outline (spec §6.1)."""
+    d = Doc()
+    d.line_desc("EDGE", 0.3)
+    d.primitive(
+        "MESHED",
+        f'<Circle diameter="{d.u(5.0)}"><FillDesc fillProperty="MESH" lineWidth="{d.u(0.2)}" '
+        f'pitch1="{d.u(0.8)}" angle1="0" pitch2="{d.u(0.8)}" angle2="90"/></Circle>',
+    )
+    d.layer("TOP", "CONDUCTOR", "TOP")
+    profile(d, 16, 7)
+    hatched = (
+        f"<Polygon>{d.polygon([(1, 1), (8, 1), (8, 6), (4, 6), (1, 3)])}"
+        '<LineDescRef id="EDGE"/>'
+        f'<FillDesc fillProperty="HATCH" lineWidth="{d.u(0.2)}" pitch1="{d.u(0.7)}" angle1="45"/>'
+        "</Polygon>"
+    )
+    d.step.append(
+        '<LayerFeature layerRef="TOP">'
+        f'<Set net="GND"><Features><Location x="0" y="0"/>{hatched}</Features></Set>'
+        f'<Set net="GND"><Features><Location {d.xy(12, 3.5)}/>'
+        '<StandardPrimitiveRef id="MESHED"/></Features></Set>'
+        "</LayerFeature>"
+    )
+    return d
+
+
+def line_styles():
+    """lineProperty patterns along lines, arcs and outlines, and an ERASE line (spec §6.1)."""
+    d = Doc()
+    for prop in ["SOLID", "DOTTED", "DASHED", "CENTER", "PHANTOM"]:
+        d.line_desc(prop, 0.2, prop=prop)
+    d.line_desc("ERASE", 0.4, end="NONE", prop="ERASE")
+    d.layer("TOP", "CONDUCTOR", "TOP")
+    d.layer("SILK", "SILKSCREEN", "TOP")
+    profile(d, 24, 16)
+
+    def line(y, desc):
+        return (
+            f'<Set><Features><Location x="0" y="0"/><Line startX="{d.u(1)}" startY="{d.u(y)}" '
+            f'endX="{d.u(13)}" endY="{d.u(y)}"><LineDescRef id="{desc}"/></Line></Features></Set>'
+        )
+
+    arc = (
+        f'<Arc startX="{d.u(16)}" startY="{d.u(14)}" endX="{d.u(22)}" endY="{d.u(14)}" '
+        f'centerX="{d.u(19)}" centerY="{d.u(14)}" clockwise="true"><LineDescRef id="DASHED"/></Arc>'
+    )
+    outline = (
+        f"<Polygon>{d.rect(16, 2, 22, 8)}"
+        '<LineDescRef id="DOTTED"/><FillDesc fillProperty="HOLLOW"/></Polygon>'
+    )
+    d.step.append(
+        '<LayerFeature layerRef="SILK">'
+        + "".join(
+            line(y, prop)
+            for y, prop in [
+                (15, "SOLID"),
+                (13, "DOTTED"),
+                (11, "DASHED"),
+                (9, "CENTER"),
+                (7, "PHANTOM"),
+            ]
+        )
+        + f'<Set><Features><Location x="0" y="0"/>{arc}</Features></Set>'
+        + f'<Set><Features><Location x="0" y="0"/>{outline}</Features></Set>'
+        + "</LayerFeature>"
+    )
+    erase = (
+        f'<Line startX="{d.u(0.5)}" startY="{d.u(3)}" endX="{d.u(13.5)}" endY="{d.u(3)}">'
+        '<LineDescRef id="ERASE"/></Line>'
+    )
+    d.step.append(
+        '<LayerFeature layerRef="TOP">'
+        f'<Set net="GND">{fill(d, 1, 1, 13, 5)}</Set>'
+        f'<Set><Features><Location x="0" y="0"/>{erase}</Features></Set>'
+        "</LayerFeature>"
+    )
+    return d
+
+
 def slots():
     """A plated slot with pads and a non-plated slot (spec §6.3)."""
     d = Doc()
@@ -423,6 +569,10 @@ def main():
         "overlap-priority": overlap_priority(),
         "negative-polarity": negative_polarity(),
         "zero-width-lines": zero_width_lines(),
+        "fiducials": fiducials(),
+        "hexagon-moire": hexagon_moire(),
+        "hatch-fill": hatch_fill(),
+        "line-styles": line_styles(),
         "slots": slots(),
         "bottom-placement": bottom_placement(),
         "user-models": minimal("MILLIMETER"),

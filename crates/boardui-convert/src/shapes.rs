@@ -90,15 +90,16 @@ fn erases_at(shape: &ipc::Shape, content: &ipc::Content, depth: usize) -> bool {
             .and_then(|f| content.fill_desc(f))
             .is_some_and(|f| f.property == FillProperty::Hollow)
     };
-    let primitive = |p: &ipc::StandardPrimitive| {
-        hollow(p.fill.as_ref()) && p.line.as_ref().is_some_and(erase)
-    };
+    let primitive =
+        |p: &ipc::StandardPrimitive| hollow(p.fill.as_ref()) && p.line.as_ref().is_some_and(erase);
     match shape {
         _ if depth > MAX_DEPTH => false,
         ipc::Shape::Line(ipc::Line { line, .. })
         | ipc::Shape::Arc(ipc::Arc { line, .. })
         | ipc::Shape::Polyline(ipc::Polyline { line, .. }) => erase(line),
-        ipc::Shape::Polygon(poly) => hollow(poly.fill.as_ref()) && poly.line.as_ref().is_some_and(erase),
+        ipc::Shape::Polygon(poly) => {
+            hollow(poly.fill.as_ref()) && poly.line.as_ref().is_some_and(erase)
+        }
         ipc::Shape::Standard(p) => primitive(p),
         ipc::Shape::StandardRef(id) => content.standard_primitives.get(id).is_some_and(primitive),
         ipc::Shape::UserRef(id) => content
@@ -361,10 +362,12 @@ impl<'a> ShapeConverter<'a> {
             }
             let across = along.perp();
             let range = |axis: DVec2| {
-                corners.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), c| {
-                    let d = (*c - origin).dot(axis);
-                    (lo.min(d), hi.max(d))
-                })
+                corners
+                    .iter()
+                    .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), c| {
+                        let d = (*c - origin).dot(axis);
+                        (lo.min(d), hi.max(d))
+                    })
             };
             let (lo, hi) = range(across);
             let (first, last) = (
@@ -542,7 +545,9 @@ impl<'a> ShapeConverter<'a> {
             rings = rings.min(1);
         }
         if rings > MAX_MOIRE_RINGS {
-            self.warn(format!("moires are drawn with at most {MAX_MOIRE_RINGS} rings"));
+            self.warn(format!(
+                "moires are drawn with at most {MAX_MOIRE_RINGS} rings"
+            ));
             rings = MAX_MOIRE_RINGS;
         }
         let mut parts = Vec::new();
@@ -1435,12 +1440,24 @@ mod tests {
         let s = conv.area(&flat, DAffine2::IDENTITY).unwrap();
         close_to(area(&s), (8.0 * 0.6e-3 + 0.5e-3) * 0.2e-3, 1e-12);
         // Dots of 0.2 mm every 0.6 mm: five on 2.9 mm.
-        let dotted = line(0.0, 2.9e-3, desc(0.2e-3, LineEnd::Round, LineProperty::Dotted));
+        let dotted = line(
+            0.0,
+            2.9e-3,
+            desc(0.2e-3, LineEnd::Round, LineProperty::Dotted),
+        );
         let s = conv.area(&dotted, DAffine2::IDENTITY).unwrap();
         close_to(area(&s), 5.0 * PI * 0.01e-6, 5.0 * 6e-4 * T.metres());
         // Centre lines alternate long dashes and dots, phantom lines add a second dot.
-        let center = line(0.0, 10e-3, desc(0.1e-3, LineEnd::None, LineProperty::Center));
-        let phantom = line(0.0, 10e-3, desc(0.1e-3, LineEnd::None, LineProperty::Phantom));
+        let center = line(
+            0.0,
+            10e-3,
+            desc(0.1e-3, LineEnd::None, LineProperty::Center),
+        );
+        let phantom = line(
+            0.0,
+            10e-3,
+            desc(0.1e-3, LineEnd::None, LineProperty::Phantom),
+        );
         let (center, phantom) = (
             area(&conv.area(&center, DAffine2::IDENTITY).unwrap()),
             area(&conv.area(&phantom, DAffine2::IDENTITY).unwrap()),
@@ -1466,9 +1483,17 @@ mod tests {
         close_to(area(&s), 4e-6 - 2e-3 * 0.1e-3, 1e-12);
         // An erasing line drawn first erases nothing of the group.
         let first = ipc::Shape::UserSpecial(vec![cut.clone(), square(2e-3, None, None)]);
-        close_to(area(&conv.area(&first, DAffine2::IDENTITY).unwrap()), 4e-6, 1e-12);
+        close_to(
+            area(&conv.area(&first, DAffine2::IDENTITY).unwrap()),
+            4e-6,
+            1e-12,
+        );
         // Alone, it is the area the caller erases.
-        close_to(area(&conv.area(&cut, DAffine2::IDENTITY).unwrap()), 0.8e-6, 1e-12);
+        close_to(
+            area(&conv.area(&cut, DAffine2::IDENTITY).unwrap()),
+            0.8e-6,
+            1e-12,
+        );
         // An erasing outline cuts its own fill.
         let outlined = square(2e-3, Some(erase), None);
         let s = conv.area(&outlined, DAffine2::IDENTITY).unwrap();
