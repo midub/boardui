@@ -1,0 +1,56 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step RoyalBlue54L-Feather, ASSEMBLY
+thickness: 1.5800 mm
+counts: 3256 features, 353676 vertices, 715500 triangles, 95 nets, 71 components, 322 pins (313 checked against pads)
+warnings: 17 from the reader, 1 from the converter
+  - layers outside the profile's scope were not converted: F.Paste (SOLDERPASTE), B.Paste (SOLDERPASTE), User.Comments (DOCUMENT), Edge.Cuts (BOARD_OUTLINE), B.Courtyard (COURTYARD), F.Courtyard (COURTYARD), B.Fab (ASSEMBLY), F.Fab (ASSEMBLY)
+layer layer/F.Silkscreen Silkscreen Top z 0.8000..0.8100 mm Default
+  223 features {"Marking": 223}, 20964 vertices, 40692 triangles, top area 53.5433 mm²
+layer layer/F.Mask Soldermask Top z 0.7550..0.8000 mm File
+  1 features {"Sheet": 1}, 10780 vertices, 23040 triangles, top area 1070.0433 mm²
+layer layer/F.Cu Copper Top z 0.7550..0.7900 mm File
+  665 features {"Fill": 55, "Pad": 367, "Trace": 59, "Via": 184}, 46686 vertices, 91072 triangles, top area 878.7013 mm²
+layer layer/DIELECTRIC_1 Dielectric Internal z 0.6550..0.7550 mm File hidden
+  1 features {"Sheet": 1}, 6610 vertices, 14212 triangles, top area 1266.5260 mm²
+layer layer/In1.Cu Copper Internal z 0.6200..0.6550 mm File hidden
+  270 features {"Pad": 86, "Via": 184}, 24804 vertices, 50496 triangles, top area 1097.1125 mm²
+layer layer/DIELECTRIC_2 Dielectric Internal z 0.3200..0.6200 mm File hidden
+  1 features {"Sheet": 1}, 6610 vertices, 14212 triangles, top area 1266.5260 mm²
+layer layer/In2.Cu Copper Internal z 0.2850..0.3200 mm File hidden
+  283 features {"Fill": 6, "Pad": 86, "Trace": 6, "Via": 185}, 34108 vertices, 68580 triangles, top area 1014.8800 mm²
+layer layer/DIELECTRIC_3 Dielectric Internal z 0.1850..0.2850 mm File hidden
+  1 features {"Sheet": 1}, 6610 vertices, 14212 triangles, top area 1266.5260 mm²
+layer layer/In3.Cu Copper Internal z 0.1500..0.1850 mm File hidden
+  270 features {"Pad": 86, "Via": 184}, 24804 vertices, 50496 triangles, top area 1097.1125 mm²
+layer layer/DIELECTRIC_4 Dielectric Internal z -0.1500..0.1500 mm File hidden
+  1 features {"Sheet": 1}, 6610 vertices, 14212 triangles, top area 1266.5260 mm²
+layer layer/In4.Cu Copper Internal z -0.1850..-0.1500 mm File hidden
+  299 features {"Fill": 13, "Pad": 86, "Trace": 16, "Via": 184}, 34658 vertices, 69400 triangles, top area 988.0248 mm²
+layer layer/DIELECTRIC_5 Dielectric Internal z -0.2850..-0.1850 mm File hidden
+  1 features {"Sheet": 1}, 6610 vertices, 14212 triangles, top area 1266.5260 mm²
+layer layer/In5.Cu Copper Internal z -0.3200..-0.2850 mm File hidden
+  289 features {"Fill": 9, "Pad": 86, "Trace": 10, "Via": 184}, 26680 vertices, 53996 triangles, top area 1024.6027 mm²
+layer layer/DIELECTRIC_6 Dielectric Internal z -0.6200..-0.3200 mm File hidden
+  1 features {"Sheet": 1}, 6610 vertices, 14212 triangles, top area 1266.5260 mm²
+layer layer/In6.Cu Copper Internal z -0.6550..-0.6200 mm File hidden
+  270 features {"Pad": 86, "Via": 184}, 24804 vertices, 50496 triangles, top area 1097.1125 mm²
+layer layer/DIELECTRIC_7 Dielectric Internal z -0.7550..-0.6550 mm File hidden
+  1 features {"Sheet": 1}, 6610 vertices, 14212 triangles, top area 1266.5260 mm²
+layer layer/B.Cu Copper Bottom z -0.7900..-0.7550 mm File
+  344 features {"Fill": 23, "Pad": 108, "Trace": 28, "Via": 185}, 31092 vertices, 61796 triangles, top area 964.5025 mm²
+layer layer/B.Mask Soldermask Bottom z -0.8000..-0.7550 mm File
+  1 features {"Sheet": 1}, 6070 vertices, 13004 triangles, top area 1155.3303 mm²
+layer layer/B.Silkscreen Silkscreen Bottom z -0.8100..-0.8000 mm Default
+  56 features {"Marking": 56}, 11864 vertices, 23416 triangles, top area 42.4870 mm²
+drill layer/F.Cu_B.Cu layer/F.Cu..layer/B.Cu
+  274 features {"Barrel": 265, "Other": 9}, 9420 vertices, 18188 triangles, top area 5.2927 mm²
+drill layer/F.Cu_B.Cu_1 layer/F.Cu..layer/B.Cu
+  4 features {"Barrel": 4}, 672 vertices, 1344 triangles, top area 0.3657 mm²
+components: 71
+  H4 at (174.9800, 0.7900, 113.8700) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
+  C25 at (153.7100, 0.7900, 101.8100) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder C_0402_1005Metric_2
+  R5 at (169.7000, 0.7900, 112.0700) mm, rotation (0.0000, 1.0000, 0.0000, 0.0000), placeholder R_0402_1005Metric_3
+  J4 at (136.8800, 0.7900, 98.4580) mm, rotation (0.0000, 1.0000, 0.0000, 0.0000), placeholder JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal_4
+  U1 at (169.1200, 0.7900, 104.9800) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder BM15x-LGA-45_15.8x10mm_5

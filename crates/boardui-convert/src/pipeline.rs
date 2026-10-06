@@ -103,6 +103,7 @@ pub(crate) fn run(
             _ => Features::default(),
         });
     }
+    let mut skipped = Vec::new();
     for (name, lf) in step.layer_features.iter() {
         let known = stack.index(name).is_some()
             || doc
@@ -112,10 +113,14 @@ pub(crate) fn run(
                 .is_some_and(|l| stackup::classify(&l.function) == LayerClass::Drill);
         if !known && lf.feature_count() > 0 {
             let function = doc.ecad.layers.get(name).map_or("?", |l| l.function.as_str());
-            ctx.warnings.push(format!(
-                "layer `{name}` ({function}) is not converted"
-            ));
+            skipped.push(format!("{name} ({function})"));
         }
+    }
+    if !skipped.is_empty() {
+        ctx.warnings.push(format!(
+            "layers outside the profile's scope were not converted: {}",
+            skipped.join(", ")
+        ));
     }
     let drills = ctx.drills(doc, &stack);
     let components = components::build(

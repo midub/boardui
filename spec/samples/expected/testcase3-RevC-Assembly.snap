@@ -1,0 +1,25 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step test-3_r2.-17_4, ASSEMBLY
+thickness: 1.6000 mm
+counts: 1544 features, 100066 vertices, 198932 triangles, 261 nets, 42 components, 487 pins (487 checked against pads)
+warnings: 11 from the reader, 0 from the converter
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 11818 vertices, 25764 triangles, top area 9853.1192 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  884 features {"Fill": 152, "Pad": 414, "Trace": 210, "Via": 108}, 30948 vertices, 58440 triangles, top area 896.5211 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized hidden
+  1 features {"Sheet": 1}, 8396 vertices, 17528 triangles, top area 10235.6099 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  483 features {"Fill": 116, "Pad": 150, "Trace": 109, "Via": 108}, 24938 vertices, 48196 triangles, top area 611.4206 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 9706 vertices, 20484 triangles, top area 10090.8611 mm²
+drill layer/DRILL_1-6 layer/TOP..layer/BOTTOM
+  174 features {"Barrel": 171, "Other": 3}, 14260 vertices, 28520 triangles, top area 11.3410 mm²
+components: 42
+  J1 at (-1.2700, 0.8000, -71.1200) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder ELECTROMECH
+  OR_0000020B161A9090 at (68.5800, 0.8000, -74.9300) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder SHIELD
+  C7 at (21.5900, 0.8000, -22.8600) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder 1206T
+  C2 at (3.8100, 0.8000, -23.1648) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder 1206T
+  C3 at (13.9700, 0.8000, -22.8600) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder 1206T
