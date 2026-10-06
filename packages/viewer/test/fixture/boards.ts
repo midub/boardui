@@ -37,10 +37,12 @@ export function smallBoardGlb(): Uint8Array<ArrayBuffer> {
 export interface DenseOptions {
   /**
    * Shapes as a converter writes them at a 5 µm tolerance (spec §6.1): round-cornered pads and
-   * fills, round-ended and curved traces, and a bottom silkscreen ring per cell. About 47
+   * fills, round-ended and curved traces, and a bottom silkscreen ring per cell. About 46
    * vertices per copper feature instead of about 20, and eleven features per cell instead of ten.
    */
   realistic?: boolean;
+  /** Arc tolerance of realistic mode; default 5 µm. */
+  tolerance?: number;
 }
 
 /**
@@ -533,8 +535,11 @@ export function smallBoard(): FixtureBoard {
  * The dense board: per cell one R0402 on the top side, a via, three traces, a fill, a silkscreen
  * outline and a barrel (and a bottom silkscreen ring in realistic mode).
  */
-export function denseBoard(grid: number, { realistic = false }: DenseOptions = {}): FixtureBoard {
-  const tolerance = realistic ? 5e-6 : 25e-6;
+export function denseBoard(
+  grid: number,
+  { realistic = false, tolerance: realisticTolerance = 5e-6 }: DenseOptions = {},
+): FixtureBoard {
+  const tolerance = realistic ? realisticTolerance : 25e-6;
   const pitch = mm(2.5);
   const stack = stackup(
     [

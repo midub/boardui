@@ -87,7 +87,9 @@ pnpm --filter @boardui/viewer build  # tsc → dist/, type-check of tests and de
 exercises the profile, and a dense board, by default 105 × 105 cells with about 110k features.
 They are dev/test only and not published. Dev page query parameters: `board=small|dense`,
 `grid=<cells per side>`, `realistic` (shapes as a converter writes them at the 5 µm default
-tolerance, about 47 vertices per copper feature) and `backend=webgl`.
+tolerance, about 46 vertices per copper feature), `tolerance=<µm>` (arc tolerance of `realistic`)
+and `backend=webgl`. `?board=dense&grid=60&realistic` is about the size of IPC-2581 testcase1
+(40k features, 5 M triangles); `grid=135` has 200k features (25 M triangles).
 
 `dev/review.mjs` takes review screenshots and performance numbers of the built dev page in headless
 Chromium with software rendering; its header says how to run it in the Playwright Docker image.

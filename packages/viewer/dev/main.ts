@@ -1,7 +1,7 @@
 /**
  * Dev page: loads a generated fixture into <board-viewer> and exposes the API through controls.
- * Query parameters: `board=small|dense`, `grid=<n>` and `realistic` (dense fixture options, see
- * `test/fixture/boards.ts`), `backend=webgl`. `globalThis.viewer` and `globalThis.timings` are
+ * Query parameters: `board=small|dense`, `grid=<n>`, `realistic` and `tolerance=<µm>` (dense
+ * fixture options, see `test/fixture/boards.ts`), `backend=webgl`. `globalThis.viewer` and `globalThis.timings` are
  * there for the console and for `dev/review.mjs`.
  */
 import '../src/index.js';
@@ -11,6 +11,7 @@ const params = new URLSearchParams(location.search);
 const boardName = params.get('board') === 'dense' ? 'dense' : 'small';
 const grid = Number(params.get('grid')) || undefined;
 const realistic = params.has('realistic');
+const toleranceUm = Number(params.get('tolerance')) || undefined;
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector(selector) as T;
 
 // The backend attribute is read on connect, so set it before the element enters the page.
@@ -31,6 +32,7 @@ const reload = () => {
   const next = new URLSearchParams({ board: boardSelect.value });
   if (boardSelect.value === 'dense' && grid) next.set('grid', String(grid));
   if (boardSelect.value === 'dense' && realistic) next.set('realistic', '');
+  if (boardSelect.value === 'dense' && toleranceUm) next.set('tolerance', String(toleranceUm));
   if (webgl.checked) next.set('backend', 'webgl');
   location.search = next.toString();
 };
@@ -40,7 +42,8 @@ webgl.addEventListener('change', reload);
 status.textContent = `Generating ${boardName} fixture…`;
 await new Promise((resolve) => setTimeout(resolve, 0));
 let start = performance.now();
-const glb = boardName === 'dense' ? denseBoardGlb(grid, { realistic }) : smallBoardGlb();
+const dense = { realistic, ...(toleranceUm ? { tolerance: toleranceUm * 1e-6 } : {}) };
+const glb = boardName === 'dense' ? denseBoardGlb(grid, dense) : smallBoardGlb();
 const generated = performance.now() - start;
 start = performance.now();
 await viewer.load(glb);

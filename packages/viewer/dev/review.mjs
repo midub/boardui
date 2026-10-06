@@ -13,7 +13,8 @@
  *   selection, layer toggles, focus).
  * - `perf <dist> <out> <query>…`: load time, frame time while orbiting and hover latency for
  *   each dev page query (e.g. `board=dense&grid=60&realistic`), at 1920 × 1080 or
- *   `REVIEW_SIZE=<w>x<h>`; results go to `<out>/perf.json`.
+ *   `REVIEW_SIZE=<w>x<h>`, with 10 or `REVIEW_HOVERS` hover samples; results go to
+ *   `<out>/perf.json`.
  * - `probe <dist> <out>`: which backends the browser offers.
  */
 
@@ -279,7 +280,7 @@ async function perf() {
       [x, y],
       [x + 50, y + 20],
     ];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < Number(process.env.REVIEW_HOVERS ?? 10); i++) {
       const [px, py] = points[i % 2];
       await page.mouse.move(px + (i % 3), py);
       await page.waitForFunction(
