@@ -15,7 +15,8 @@ to WebGL2 where WebGPU is missing.
 ```
 
 `three` is a peer dependency (`^0.186`). `@boardui/converter` (a dependency) is loaded on first use
-of `loadIpc2581`.
+of `loadIpc2581`. Neither package is published to npm in v1: the root README ("Embedding the
+viewer") shows how to install them from a source build.
 
 ## API
 
