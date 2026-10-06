@@ -54,7 +54,8 @@ pub use model::{
     Component, Content, Document, Ecad, Feature, FeatureElement, Features, Fiducial, FiducialKind,
     Hole, Layer, LayerFeature, Marking, MountType, Package, PackageDrawing, Pad, PadUsage, PadUse,
     PadstackDef, PadstackPad, Pin, PinRef, PlatingStatus, Polarity, Set, Side, SlotCavity, Span,
-    Spec, SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup, StackupLayer, Step, Units,
+    Spec, SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup, StackupLayer, Step,
+    StepRepeat, Units,
     WhereMeasured,
 };
 pub use shape::{

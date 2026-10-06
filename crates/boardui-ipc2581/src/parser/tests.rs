@@ -1196,6 +1196,92 @@ mod step {
     }
 }
 
+mod step_repeat {
+    use super::*;
+    use crate::{Point, StepRepeat};
+
+    /// Parses steps `B` (a board) and `P` (a panel with `repeats`), in inches.
+    fn panel(repeats: &str) -> Document {
+        doc(
+            "INCH",
+            "",
+            &format!(
+                r#"{LAYERS}<Step name="B"/><Step name="P"><Datum x="0" y="0"/>{repeats}</Step>"#
+            ),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn reads_all_attributes_in_metres() {
+        let d = panel(
+            r#"<StepRepeat stepRef="B" x="1" y="2" nx="2" ny="3" dx="1.5" dy="-0.5" angle="90.00" mirror="true"/>"#,
+        );
+        assert_eq!(d.diagnostics, []);
+        let p = d.ecad.steps.get("P").unwrap();
+        assert_eq!(
+            p.step_repeats,
+            [StepRepeat {
+                step_ref: "B".into(),
+                location: Point {
+                    x: 0.0254,
+                    y: 0.0508
+                },
+                nx: 2,
+                ny: 3,
+                dx: 1.5 * 0.0254,
+                dy: -0.5 * 0.0254,
+                angle: 90.0,
+                mirror: true,
+            }]
+        );
+        assert!(d.ecad.steps.get("B").unwrap().step_repeats.is_empty());
+    }
+
+    #[test]
+    fn optional_attributes_default_to_a_single_unrotated_copy() {
+        let d = panel(r#"<StepRepeat stepRef="B" x="0" y="0"/><StepRepeat stepRef="B" x="3" y="0" angle="180"/>"#);
+        let repeats = &d.ecad.steps.get("P").unwrap().step_repeats;
+        assert_eq!(repeats.len(), 2, "kept in document order");
+        let r = &repeats[0];
+        assert_eq!((r.nx, r.ny, r.dx, r.dy, r.angle, r.mirror), (1, 1, 0.0, 0.0, 0.0, false));
+        assert_eq!(repeats[1].angle, 180.0);
+    }
+
+    #[test]
+    fn references_to_later_steps_resolve_and_unknown_steps_are_reported() {
+        let d = doc(
+            "MILLIMETER",
+            "",
+            &format!(
+                r#"{LAYERS}<Step name="P"><StepRepeat stepRef="B" x="0" y="0"/><StepRepeat stepRef="NOPE" x="0" y="0"/></Step><Step name="B"/>"#
+            ),
+        )
+        .unwrap();
+        assert_eq!(kinds(&d.diagnostics), [&dangling(RefKind::Step, "NOPE")]);
+        assert_eq!(d.ecad.steps.get("P").unwrap().step_repeats.len(), 2);
+    }
+
+    #[test]
+    fn requires_step_ref_and_position() {
+        let e = panel_err(r#"<StepRepeat x="0" y="0"/>"#);
+        assert!(matches!(e.kind(), ErrorKind::MissingAttribute { attribute, .. } if attribute == "stepRef"));
+        let e = panel_err(r#"<StepRepeat stepRef="B" x="0"/>"#);
+        assert!(matches!(e.kind(), ErrorKind::MissingAttribute { attribute, .. } if attribute == "y"));
+        let e = panel_err(r#"<StepRepeat stepRef="B" x="0" y="0" nx="-1"/>"#);
+        assert!(matches!(e.kind(), ErrorKind::InvalidValue { value, .. } if value == "-1"));
+    }
+
+    fn panel_err(repeats: &str) -> Error {
+        doc(
+            "MILLIMETER",
+            "",
+            &format!(r#"{LAYERS}<Step name="B"/><Step name="P">{repeats}</Step>"#),
+        )
+        .unwrap_err()
+    }
+}
+
 mod features {
     use super::*;
     use crate::{
