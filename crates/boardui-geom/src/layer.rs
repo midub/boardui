@@ -113,11 +113,11 @@ pub fn resolve_layer(
             .enumerate()
             .filter_map(|(i, b)| Some((i, (*b)?))),
     );
-    let beats = |i: usize, k: usize| {
+    let loses_to = |i: usize, k: usize| {
         let (rank_i, rank_k) = (features[i].priority.rank(), features[k].priority.rank());
         rank_k < rank_i || (rank_k == rank_i && k < i)
     };
-    let trimmed = subtract_neighbours(&regions, &bounds, &positives, beats);
+    let trimmed = subtract_neighbours(&regions, &bounds, &positives, loses_to);
     apply(&mut regions, trimmed);
     Ok(regions)
 }

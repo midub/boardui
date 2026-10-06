@@ -71,7 +71,8 @@ fn extrude_shape(
     z_max: f32,
     prism: &mut Prism,
 ) -> Result<(), GeomError> {
-    let base = u32::try_from(prism.positions.len()).map_err(|_| GeomError::Triangulation)?;
+    // A prism can't come near 2³² vertices in memory, so indices fit u32.
+    let base = prism.positions.len() as u32;
     let mut occurrences = Vec::with_capacity(shape.iter().map(Vec::len).sum());
     for contour in shape {
         let first = occurrences.len() as u32;
@@ -96,15 +97,12 @@ fn extrude_shape(
     }
 
     // The triangulator dedupes and reorders points, so map them back to occurrences.
-    let mut sorted: Vec<u32> = (0..occurrences.len() as u32).collect();
-    sorted.sort_unstable_by_key(|&k| {
-        let p = occurrences[k as usize].point;
-        (p.x, p.y)
-    });
     let key = |k: u32| {
         let p = occurrences[k as usize].point;
         (p.x, p.y)
     };
+    let mut sorted: Vec<u32> = (0..occurrences.len() as u32).collect();
+    sorted.sort_unstable_by_key(|&k| key(k));
     let triangulation = shape.uncheck_triangulate();
     let points = triangulation.points();
     let candidates = points

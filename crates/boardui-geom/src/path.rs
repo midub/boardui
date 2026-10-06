@@ -9,7 +9,7 @@ use std::f64::consts::{FRAC_PI_4, PI, TAU};
 ///
 /// Arcs are split into chords that deviate from the true arc by at most this distance,
 /// with at least 8 chords per full circle.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Tolerance(f64);
 
 impl Tolerance {
