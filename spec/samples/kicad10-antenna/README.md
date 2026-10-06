@@ -11,5 +11,5 @@ A small antenna test board exported to IPC-2581 by KiCad 10, from the test fixtu
 
 What it exercises:
 
-- The output of KiCad 10, the first major version after the KiCad 9 exporter the other KiCad samples come from. It adds `Stackup@stackupStatus` and `Step@type`, which the reader ignores with a warning.
+- The output of KiCad 10, the next major version after the KiCad 9 exporter of the other KiCad samples. Unlike those, it lists `BomRef` and `AvlRef` in `Content`; the reader skips both with a warning.
 - A two-layer board with one component, one through drill and an `Edge.Cuts` outline.
