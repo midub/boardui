@@ -9,6 +9,9 @@
     "directory": "packages/viewer"
   },
   "type": "module",
+  "sideEffects": [
+    "./dist/index.js"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -19,11 +22,23 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "vitest run --passWithNoTests"
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.dev.json && vite build",
+    "dev": "vite",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "three": "catalog:"
+  },
+  "dependencies": {
+    "three-mesh-bvh": "catalog:"
   },
   "devDependencies": {
+    "@types/three": "catalog:",
+    "ajv": "catalog:",
+    "gltf-validator": "catalog:",
+    "three": "catalog:",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:"
   }
 }
