@@ -713,10 +713,13 @@ def text_element(d, string, box, font=None, xform="", color=""):
 
 def text():
     """`Text` in an embedded font, in the bundled font for an external font and without one,
-    rotated, mirrored, too wide for its box, with Latin-1 and unknown characters, and on
-    copper: cut by a hole, and knocked out of a plane (spec §6.6, §8.2)."""
+    rotated, mirrored, too wide for its box, with Latin-1 and unknown characters, on
+    copper: cut by a hole, and knocked out of a plane, and in a package's assembly drawing,
+    placed with its rotated part on `@assembly-top` (spec §6.6, §6.13, §8.2)."""
     d = Doc()
     d.line_desc("UNDERLINE", 0.3)
+    d.line_desc("OUTLINE", 0.1)
+    d.primitive("PAD", f'<RectCenter width="{d.u(0.9)}" height="{d.u(1.2)}"/>')
     d.layer("TOP", "CONDUCTOR", "TOP")
     d.layer("BOTTOM", "CONDUCTOR", "BOTTOM")
     d.layer("DRILL", "DRILL", "ALL", span=("TOP", "BOTTOM"))
@@ -782,6 +785,17 @@ def text():
     )
     d.font("ARIAL", '<FontDefExternal name="Arial" urn="urn:example:font:arial"/>')
 
+    # A part whose assembly drawing has its reference designator as a Text marking.
+    refdes = text_element(d, "U1", (-0.5, -0.3, 0.5, 0.3))
+    drawing = (
+        f'<AssemblyDrawing><Outline><Polygon>{d.rect(-1.0, -0.6, 1.0, 0.6)}</Polygon>'
+        f'<LineDescRef id="OUTLINE"/></Outline>'
+        f'<Marking markingUsage="REFDES">{refdes}</Marking></AssemblyDrawing>'
+    )
+    two_pin_package(d, "U0805", drawing)
+    pads = {"TOP": []}
+    place_two_pin(d, [("U1", "TOP", 44, 7, 90, False)], "U0805", pads)
+
     def features(inner, x=0, y=0):
         return f"<Features><Location {d.xy(x, y)}/>{inner}</Features>"
 
@@ -823,6 +837,7 @@ def text():
         f'<Set net="GND">{features(f"<UserSpecial>{gnd}{underline}</UserSpecial>")}</Set>'
         f'<Set net="GND">{fill(d, 20, 2, 38, 8)}</Set>'
         f'<Set polarity="NEGATIVE">{features(knockout)}</Set>'
+        f'{"".join(pads["TOP"])}'
         "</LayerFeature>"
     )
     d.step.append(

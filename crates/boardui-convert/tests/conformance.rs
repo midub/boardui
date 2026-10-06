@@ -254,6 +254,33 @@ fn package_drawings_belong_to_their_components() {
     }
 }
 
+/// Spec §6.13, §8.2: a `Text` in a package drawing's `Marking` is drawn with the drawing,
+/// and its feature has the string as `text`.
+#[test]
+fn package_marking_text_is_drawn() {
+    let (_, path) = samples()
+        .into_iter()
+        .find(|(n, _)| n == "text")
+        .expect("text");
+    let conversion = run(&path);
+    let (root, bin) = glb::read(&conversion.glb).expect("GLB");
+    let board: Board =
+        serde_json::from_value(root.extensions.board.clone().expect("board")).expect("board");
+    let entry = board
+        .layers
+        .iter()
+        .find(|l| l.name == "@assembly-top")
+        .expect("@assembly-top");
+    // U1's assembly drawing: its outline, then its REFDES marking.
+    let texts = strings(&root, bin, entry.feature_table, "text");
+    assert_eq!(texts, ["", "U1"]);
+    let kinds = column(&root, bin, entry.feature_table, "kind");
+    let marking = u32::from(FeatureKind::Marking.value());
+    assert!(kinds.iter().all(|&k| k == marking), "{kinds:?}");
+    let areas = feature_areas(&root, bin, entry.node);
+    assert!(areas.get(&1).is_some_and(|&a| a > 0.01e-6), "{areas:?}");
+}
+
 /// A `UINT32` or `ENUM` (`UINT8`) column of a property table. Missing columns read as
 /// `NO_ROW`.
 fn column(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<u32> {

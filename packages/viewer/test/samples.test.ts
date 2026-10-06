@@ -137,6 +137,11 @@ describe('text', () => {
     });
     expect(model.describe('feat/TOP/0')?.properties).toMatchObject({ kind: 'TRACE', text: 'GND' });
     expect(model.describe('feat/TOP/1')?.properties).toMatchObject({ kind: 'FILL', text: null });
+    // A package assembly drawing's Text marking (spec §6.13).
+    expect(model.describe('feat/@assembly-top/1')?.properties).toMatchObject({
+      kind: 'MARKING',
+      text: 'U1',
+    });
     const other = await load('fiducials');
     expect(other.describe('feat/TOP/0')?.properties).not.toHaveProperty('text');
   });

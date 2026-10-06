@@ -511,9 +511,14 @@ fn package_layers(ecad: &ipc::Ecad, step: &ipc::Step, stack: &Stack) -> Synthesi
 const SILKSCREEN_COVERED: f64 = 0.1;
 
 /// Adds package drawing shapes to a layer as `MARKING` features of `component`, numbered on
-/// from the layer's last feature.
-fn push_drawing(out: &mut Features, shapes: Vec<Option<Shape>>, component: u32) {
-    for shape in shapes {
+/// from the layer's last feature, with the `text` of each shape.
+fn push_drawing(
+    out: &mut Features,
+    shapes: Vec<Option<Shape>>,
+    texts: Vec<String>,
+    component: u32,
+) {
+    for (shape, text) in shapes.into_iter().zip(texts) {
         let source = out.rows.last().map_or(0, |r| r.source + 1);
         out.rows.push(FeatureRow {
             kind: FeatureKind::Marking,
@@ -522,7 +527,7 @@ fn push_drawing(out: &mut Features, shapes: Vec<Option<Shape>>, component: u32) 
             pin: None,
             component: Some(component),
             fiducial: None,
-            text: String::new(),
+            text,
         });
         out.shapes.push(geom::Feature {
             shape: shape.unwrap_or(Shape::Union(Vec::new())),
@@ -789,7 +794,8 @@ impl<'a> Context<'a> {
                 layer_of(Role::Assembly, side, true),
             ) {
                 let shapes = self.drawing_shapes(drawing, at);
-                push_drawing(&mut layer_features[i], shapes, row);
+                let texts = self.drawing_texts(drawing);
+                push_drawing(&mut layer_features[i], shapes, texts, row);
             }
             if let (Some(drawing), Some(i)) =
                 (&package.silkscreen, layer_of(Role::Silkscreen, side, false))
@@ -803,7 +809,8 @@ impl<'a> Context<'a> {
                         !covers(layer, &shapes, self.tolerance)
                     };
                 if draw {
-                    push_drawing(&mut layer_features[i], shapes, row);
+                    let texts = self.drawing_texts(drawing);
+                    push_drawing(&mut layer_features[i], shapes, texts, row);
                 }
             }
         }
@@ -824,6 +831,15 @@ impl<'a> Context<'a> {
             shapes.push(self.shapes.area(&marking.shape, at * inner));
         }
         shapes
+    }
+
+    /// The `text` of each shape of [`Self::drawing_shapes`]: empty for the `Outline`s, the
+    /// strings of a `Marking`'s `Text`s joined by line feeds (spec §8.2).
+    fn drawing_texts(&self, drawing: &ipc::PackageDrawing) -> Vec<String> {
+        let outlines = drawing.outlines.iter().map(|_| String::new());
+        let markings = drawing.markings.iter();
+        let markings = markings.map(|m| texts(&m.shape, self.content).join("\n"));
+        outlines.chain(markings).collect()
     }
 
     /// A pad's shape: its own, or its padstack's regular pad on this layer.
