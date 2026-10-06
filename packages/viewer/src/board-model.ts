@@ -20,6 +20,7 @@ import {
   type BoardDrillJson,
   type BoardExtensionJson,
   type BoardLayerJson,
+  DRAWING_ROLES,
   readBoardExtension,
 } from './board-extension.js';
 import { FeatureRanges } from './feature-ranges.js';
@@ -343,6 +344,25 @@ export class BoardModel {
       default:
         return null;
     }
+  }
+
+  /**
+   * The state texels to emphasize when an element is hovered or selected: its own, and for a
+   * component also its features on drawing layers (spec §6.12, §6.13), such as its assembly
+   * outline. Boards without drawing layers (profile < 0.4) get just the element's texels.
+   */
+  emphasis(element: ResolvedElement): Uint32Array {
+    if (element.kind !== 'component') return element.texels;
+    const row = (element.texels[0] as number) - this.componentOffset;
+    const drawings = this.#componentTexels.get(row).filter((texel) => {
+      const info = this.#layerOfTexel(texel)[0].info;
+      return 'role' in info && DRAWING_ROLES.has(info.role);
+    });
+    if (!drawings.length) return element.texels;
+    const texels = new Uint32Array(drawings.length + 1);
+    texels.set(drawings);
+    texels[drawings.length] = element.texels[0] as number;
+    return texels;
   }
 
   /** Whether a state texel belongs to an element (for example a feature to its net). */
