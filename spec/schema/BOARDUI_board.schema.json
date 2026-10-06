@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/midub/boardui/spec/schema/BOARDUI_board.schema.json",
+  "title": "BOARDUI_board",
+  "description": "Root-level glTF extension describing a board exported by boardui. See spec/README.md §8.3.",
+  "type": "object",
+  "required": ["profileVersion", "source", "tolerance", "platingThickness", "thickness", "layers", "drills", "tables"],
+  "properties": {
+    "profileVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "source": {
+      "type": "object",
+      "required": ["format", "sha256"],
+      "properties": {
+        "format": { "const": "IPC-2581" },
+        "revision": { "type": "string" },
+        "step": { "type": "string" },
+        "functionMode": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "tolerance": {
+      "description": "Maximum chord deviation used for arc tessellation, in metres.",
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "platingThickness": {
+      "description": "Barrel wall thickness, in metres.",
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "thickness": {
+      "description": "Copper-to-copper board thickness, in metres.",
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "layers": {
+      "description": "Layers ordered top to bottom.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/layer" }
+    },
+    "drills": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/drill" }
+    },
+    "tables": {
+      "description": "Indices into EXT_structural_metadata.propertyTables.",
+      "type": "object",
+      "required": ["nets", "components", "pins"],
+      "properties": {
+        "nets": { "$ref": "#/$defs/index" },
+        "components": { "$ref": "#/$defs/index" },
+        "pins": { "$ref": "#/$defs/index" }
+      },
+      "additionalProperties": false
+    },
+    "extensions": { "type": "object" },
+    "extras": {}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "index": { "type": "integer", "minimum": 0 },
+    "layerId": { "type": "string", "pattern": "^layer/[^/]+$" },
+    "layer": {
+      "type": "object",
+      "required": ["id", "name", "role", "side", "zMin", "zMax", "thicknessSource", "synthesized", "visible", "node", "featureTable"],
+      "properties": {
+        "id": { "$ref": "#/$defs/layerId" },
+        "name": { "type": "string" },
+        "role": { "enum": ["COPPER", "DIELECTRIC", "SOLDERMASK", "SILKSCREEN"] },
+        "ipcFunction": { "type": "string" },
+        "side": { "enum": ["TOP", "BOTTOM", "INTERNAL"] },
+        "zMin": { "type": "number" },
+        "zMax": { "type": "number" },
+        "thicknessSource": { "enum": ["FILE", "DEFAULT"] },
+        "synthesized": { "type": "boolean" },
+        "visible": { "type": "boolean" },
+        "node": { "$ref": "#/$defs/index" },
+        "featureTable": { "$ref": "#/$defs/index" }
+      },
+      "additionalProperties": false
+    },
+    "drill": {
+      "type": "object",
+      "required": ["id", "name", "from", "to", "node", "featureTable"],
+      "properties": {
+        "id": { "$ref": "#/$defs/layerId" },
+        "name": { "type": "string" },
+        "from": { "$ref": "#/$defs/layerId" },
+        "to": { "$ref": "#/$defs/layerId" },
+        "node": { "$ref": "#/$defs/index" },
+        "featureTable": { "$ref": "#/$defs/index" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
