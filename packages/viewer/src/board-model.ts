@@ -24,7 +24,7 @@ import {
 import { FeatureRanges } from './feature-ranges.js';
 import { type ElementKind, featureId, idKind, parseFeatureId } from './ids.js';
 import {
-  type PropertyTable,
+  PropertyTable,
   type PropertyValue,
   parsePropertyTables,
   type StructuralMetadataJson,
@@ -172,7 +172,9 @@ export class BoardModel {
       }
     }
     const tables = parsePropertyTables(metadata, (index) => views.get(index) as ArrayBuffer);
-    const table = (index: number, what: string): PropertyTable => {
+    // Tables without rows are omitted from the asset (spec §8.2); they read as empty.
+    const table = (index: number | undefined, what: string, name: string): PropertyTable => {
+      if (index === undefined) return new PropertyTable(name, what, 0, new Map());
       const found = tables[index];
       if (!found) throw new Error(`BOARDUI_board refers to missing ${what} table ${index}`);
       return found;
@@ -192,7 +194,7 @@ export class BoardModel {
     ].map(([kind, info]): LayerModel => {
       const node = nodes.get(info.node);
       if (!node) throw new Error(`${info.id}: node ${info.node} not found`);
-      const features = table(info.featureTable, 'feature');
+      const features = table(info.featureTable, 'feature', info.id);
       const ranges = new FeatureRanges(features.count);
       const group = new Group();
       group.name = info.id;
@@ -214,9 +216,9 @@ export class BoardModel {
     });
     return new BoardModel(
       board,
-      table(board.tables.nets, 'nets'),
-      table(board.tables.components, 'components'),
-      table(board.tables.pins, 'pins'),
+      table(board.tables.nets, 'net', 'nets'),
+      table(board.tables.components, 'component', 'components'),
+      table(board.tables.pins, 'pin', 'pins'),
       layers,
       nodes,
     );

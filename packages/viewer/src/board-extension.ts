@@ -25,7 +25,8 @@ export interface BoardLayerJson {
   /** Suggested default visibility. */
   visible: boolean;
   node: number;
-  featureTable: number;
+  /** Absent when the layer has no features (property tables can't be empty). */
+  featureTable?: number;
 }
 
 /** One entry of `BOARDUI_board.drills`. */
@@ -35,7 +36,8 @@ export interface BoardDrillJson {
   from: string;
   to: string;
   node: number;
-  featureTable: number;
+  /** Absent when the drill layer has no holes. */
+  featureTable?: number;
 }
 
 /** The `BOARDUI_board` extension object. */
@@ -53,7 +55,8 @@ export interface BoardExtensionJson {
   thickness: number;
   layers: BoardLayerJson[];
   drills: BoardDrillJson[];
-  tables: { nets: number; components: number; pins: number };
+  /** A table without rows is omitted (spec §8.2). */
+  tables: { nets?: number; components?: number; pins?: number };
 }
 
 /**

@@ -3,7 +3,7 @@
   "compilerOptions": {
     "noEmit": true,
     "resolveJsonModule": true,
-    "types": ["vite/client"]
+    "types": ["node", "vite/client"]
   },
   "include": ["src", "test", "dev", "vite.config.ts", "vitest.config.ts"]
 }

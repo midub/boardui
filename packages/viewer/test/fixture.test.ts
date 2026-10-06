@@ -115,7 +115,7 @@ describe.each([
     for (const layer of [...board.layers, ...board.drills]) {
       const mesh = json.meshes[json.nodes[layer.node]?.mesh as number];
       const rows =
-        json.extensions.EXT_structural_metadata.propertyTables[layer.featureTable]?.count;
+        json.extensions.EXT_structural_metadata.propertyTables[layer.featureTable ?? -1]?.count;
       let features = 0;
       for (const primitive of mesh?.primitives ?? []) {
         const ids = primitive.extensions?.EXT_mesh_features?.featureIds;

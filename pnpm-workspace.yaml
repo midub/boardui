@@ -3,6 +3,7 @@ packages:
 
 catalog:
   "@biomejs/biome": 2.5.15
+  "@types/node": ^24.0.0
   "@types/three": ^0.186.0
   ajv: ^8.20.0
   gltf-validator: 2.0.0-dev.3.10
