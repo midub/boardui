@@ -1,6 +1,39 @@
 /**
- * @boardui/viewer: the `<board-viewer>` web component.
+ * @boardui/viewer: the `<board-viewer>` web component, which shows boardui glTF boards
+ * (spec/README.md) in 3D. Importing this module defines the element.
  *
- * Arrives with milestone M4; see `docs/roadmap.md` and `docs/architecture.md`.
+ * @example
+ * ```html
+ * <board-viewer src="board.glb"></board-viewer>
+ * <script type="module">
+ *   import '@boardui/viewer';
+ *   const viewer = document.querySelector('board-viewer');
+ *   viewer.addEventListener('bui-select', (e) => console.log(e.detail));
+ * </script>
+ * ```
  */
-export {};
+import { BoardViewerElement } from './element.js';
+
+export type { LayerRole, Side } from './board-extension.js';
+export type { ElementInfo, ListableKind } from './board-model.js';
+export type { ViewPreset } from './camera.js';
+export {
+  BoardViewerElement,
+  type BoardViewerEventMap,
+  type ElementTarget,
+  type LayerState,
+} from './element.js';
+export { type ElementKind, encodeIdSegment, featureId } from './ids.js';
+export type { BoardSource } from './load.js';
+export type { RenderStats } from './renderer.js';
+export type { WidgetAnchor, WidgetOcclusion, WidgetOptions } from './widgets.js';
+
+if (!customElements.get('board-viewer')) {
+  customElements.define('board-viewer', BoardViewerElement);
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'board-viewer': BoardViewerElement;
+  }
+}

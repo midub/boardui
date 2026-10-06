@@ -63,13 +63,10 @@ pub struct StackLayer {
 }
 
 impl StackLayer {
-    /// Suggested default visibility: inner copper and dielectric are hidden (spec §8.3).
+    /// Suggested default visibility: inner copper is hidden, everything else (including the
+    /// dielectric, which keeps the board opaque) is shown (spec §8.3).
     pub fn visible(&self) -> bool {
-        match self.role {
-            Role::Dielectric => false,
-            Role::Copper => self.side != Side::Internal,
-            Role::Soldermask | Role::Silkscreen => true,
-        }
+        self.role != Role::Copper || self.side != Side::Internal
     }
 }
 
@@ -506,7 +503,7 @@ mod tests {
         assert!(core.synthesized && mask.synthesized && !top.synthesized);
         assert_eq!(top.side, Side::Top);
         assert_eq!(bottom.side, Side::Bottom);
-        assert!(!core.visible());
+        assert!(core.visible());
         assert!(w.is_empty());
     }
 
