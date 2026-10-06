@@ -58,6 +58,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # `pnpm build` builds the WASM module of crates/boardui-wasm for @boardui/converter.
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      # The wasm-bindgen CLI must match the wasm-bindgen crate in Cargo.lock.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@0.2.129
+      - name: Install wasm-opt (binaryen)
+        run: |
+          curl -sSfL https://github.com/WebAssembly/binaryen/releases/download/version_133/binaryen-version_133-x86_64-linux.tar.gz \
+            | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/binaryen-version_133/bin" >> "$GITHUB_PATH"
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -67,3 +79,40 @@ jobs:
       - run: pnpm lint
       - run: pnpm build
       - run: pnpm test
+      - uses: actions/upload-artifact@v7
+        with:
+          name: demo-dist
+          path: packages/demo/dist
+          retention-days: 3
+
+  e2e:
+    name: Demo (Playwright)
+    needs: web
+    runs-on: ubuntu-latest
+    # The screenshots in packages/demo/e2e/*-snapshots are made in this image.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: demo-dist
+          path: packages/demo/dist
+      # Converts every sample in the browser (WASM in a worker), plus smoke and screenshot
+      # tests, in Chromium with software rendering.
+      - run: pnpm --filter @boardui/demo e2e
+        env:
+          HOME: /root
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-results
+          path: packages/demo/test-results
+          retention-days: 7

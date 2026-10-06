@@ -13,7 +13,7 @@ export type Rgb = readonly [number, number, number];
 export const HIDDEN_ALPHA = 255;
 
 /** Tint used for the element under the pointer. */
-export const HOVER_TINT = { color: [0.05, 0.45, 1] as Rgb, strength: 0.55 };
+export const HOVER_TINT = { color: [0.05, 0.45, 1] as Rgb, strength: 0.75 };
 /** Tint used for the selected element. */
 export const SELECTION_TINT = { color: [1, 0.02, 0.7] as Rgb, strength: 0.8 };
 /** Tint strength of {@link ElementState.highlight}. */

@@ -43,7 +43,7 @@ pub(crate) fn run(
     doc: &ipc::Document,
     sha256: &str,
     options: &Options,
-    timings: Timings,
+    timings: Timings<'_>,
 ) -> Result<Conversion, ConvertError> {
     let tolerance = Tolerance::new(options.tolerance)
         .map_err(|e| ConvertError::Input(format!("invalid tolerance: {e}")))?;

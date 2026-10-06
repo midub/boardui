@@ -76,9 +76,13 @@ export class BoardRenderer {
       new RoomEnvironment(),
       0.04,
     ).texture;
+    // A key light from above and a weaker one from below, so that the bottom side (bodies,
+    // mask) is lit in the bottom view too; the room environment mostly lights from above.
     const light = new DirectionalLight(0xffffff, 1.2);
     light.position.set(0.5, 1, 0.8);
-    this.scene.add(light);
+    const under = new DirectionalLight(0xffffff, 0.9);
+    under.position.set(-0.5, -1, -0.6);
+    this.scene.add(light, under);
   }
 
   /**
@@ -132,7 +136,12 @@ export class BoardRenderer {
    */
   frame(box: Box3, direction?: Vector3, animate = true, margin = 1.05): void {
     const center = box.getCenter(new Vector3());
-    const dir = (direction ?? this.camera.position.clone().sub(this.controls.target)).normalize();
+    // Without a direction, keep the current one; during a flight, the one it is heading for.
+    const flight = this.#flight;
+    const current = flight
+      ? flight.toPosition.clone().sub(flight.toTarget)
+      : this.camera.position.clone().sub(this.controls.target);
+    const dir = (direction ?? current).normalize();
     const { fov, aspect, up } = this.camera;
     const fit = fitBoxDistance(box, dir, up, fov, aspect, margin);
     const distance = Math.max(fit, this.controls.minDistance);
@@ -164,6 +173,16 @@ export class BoardRenderer {
     );
     this.#raycaster.setFromCamera(ndc, this.camera);
     return target.copy(this.#raycaster.ray);
+  }
+
+  /** Whether the camera orbits the board on its own (one turn in about 30 s at 60 fps). */
+  get autoRotate(): boolean {
+    return this.controls.autoRotate;
+  }
+
+  set autoRotate(on: boolean) {
+    this.controls.autoRotate = on;
+    this.requestRender();
   }
 
   /** Schedules a frame. */
@@ -199,7 +218,9 @@ export class BoardRenderer {
       if (t === 1) this.#flight = null;
       again = true;
     }
-    again = this.controls.update() || again;
+    // `update` reports no change for camera moves under 1 mm (its epsilon suits metre-sized
+    // scenes), so auto-rotation keeps the loop going by itself.
+    again = this.controls.update() || this.controls.autoRotate || again;
     // Near and far follow the orbit distance: enough depth precision for 10 µm silkscreen on
     // the soldermask, whether the whole board or a single pad fills the view.
     const distance = this.camera.position.distanceTo(this.controls.target);

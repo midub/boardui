@@ -25,6 +25,8 @@ export interface PickHit {
 export class Picker {
   readonly #model: BoardModel;
   readonly #bvhs = new WeakMap<BufferGeometry, MeshBVH>();
+  /** Meshes whose BVH is being built elsewhere (a worker); they are skipped meanwhile. */
+  readonly #pending = new WeakSet<BufferGeometry>();
   readonly #raycaster = new Raycaster();
 
   constructor(model: BoardModel) {
@@ -52,6 +54,7 @@ export class Picker {
     for (const layer of layers) {
       if (!layer.group.visible) continue;
       for (const mesh of layer.meshes) {
+        if (this.#pending.has(mesh.geometry)) continue;
         const ids = mesh.geometry.getAttribute('_feature_id_0');
         for (const hit of this.bvh(mesh).raycast(ray, FrontSide)) {
           if (hit.face) consider(layer.stateOffset + ids.getX(hit.face.a), hit.point, hit.distance);
@@ -69,6 +72,26 @@ export class Picker {
       }
     }
     return best;
+  }
+
+  /** Whether a mesh's BVH exists. */
+  has(mesh: Mesh): boolean {
+    return this.#bvhs.has(mesh.geometry);
+  }
+
+  /**
+   * Marks a mesh's BVH as being built elsewhere (`pending`), so {@link pick} skips the mesh
+   * instead of building it, or clears the mark.
+   */
+  setPending(mesh: Mesh, pending: boolean): void {
+    if (pending) this.#pending.add(mesh.geometry);
+    else this.#pending.delete(mesh.geometry);
+  }
+
+  /** Sets a BVH built elsewhere; it must be indirect, so the index buffer stays as it is. */
+  setBvh(mesh: Mesh, bvh: MeshBVH): void {
+    this.#bvhs.set(mesh.geometry, bvh);
+    this.#pending.delete(mesh.geometry);
   }
 
   /** The BVH of a layer mesh, built on first use. It leaves the index buffer as it is. */
