@@ -85,8 +85,9 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 - Strokes (lines, arcs, polylines on any layer) become regions using the width and `lineEnd` of their `LineDesc`:
   - `ROUND` ends are half circles, and corners between segments are round;
   - `SQUARE` ends extend half the width beyond the end point, `NONE` ends stop at it, and corners of both are mitered, with corners sharper than 30° clipped;
-  - a polyline that ends at its start point is closed and has no ends.
-- An IPC-2581 `Outline` encloses an area: it is filled, and its line (if wider than zero) is drawn on top. KiCad writes silkscreen text and slots this way, with zero-width lines. A `Polygon` is filled unless its `FillDesc` says `HOLLOW` (stroked only) or `VOID` (nothing); `HATCH` and `MESH` fills are drawn solid.
+  - a polyline that ends at its start point is closed and has no ends;
+  - a stroke whose `LineDesc` has zero width is a hairline, drawn 0.1 mm wide whatever the `Xform` scale. The IPC consortium test case 10 draws its silkscreen this way.
+- An IPC-2581 `Outline` encloses an area: it is filled, and its line (if wider than zero) is drawn on top. KiCad writes silkscreen text and slots this way, with zero-width lines. A `Polygon` is filled unless its `FillDesc` says `HOLLOW` (stroked only, so a zero-width line is a hairline) or `VOID` (nothing); `HATCH` and `MESH` fills are drawn solid.
 - Shapes are placed with their `Location` and `Xform`: scaled, rotated and mirrored (in the file's mirror order, §6.8), then offset by `xOffset`/`yOffset` and moved to the location.
 - Normals SHOULD be omitted. glTF clients then compute flat normals, which suit prisms and save roughly 45 % of vertex data.
 
