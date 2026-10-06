@@ -11,7 +11,7 @@ layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesiz
 layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
   1 features {"Pad": 1}, 152 vertices, 304 triangles, top area 2.4870 mm²
     row 0: Pad net 0 area 2.4870 mm²
-layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized hidden
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
   1 features {"Sheet": 1}, 140 vertices, 284 triangles, top area 36.4766 mm²
     row 0: Sheet net - area 36.4766 mm²
 layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
