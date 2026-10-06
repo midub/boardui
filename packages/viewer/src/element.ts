@@ -51,6 +51,8 @@ export interface BoardViewerEventMap extends HTMLElementEventMap {
   'bui-progress': CustomEvent<LoadProgress>;
 }
 
+/** Constant depth bias of the soldermask, in units of the depth buffer's resolution. */
+const MASK_DEPTH_BIAS = 4;
 /** Share of {@link LoadProgress.fraction} taken by the conversion; loading takes the rest. */
 const CONVERT_SHARE = 0.9;
 
@@ -212,11 +214,13 @@ export class BoardViewerElement extends HTMLElement {
         mesh.material = materials.layer(source, layer.stateOffset, xray);
         if ('role' in layer.info && layer.info.role === 'SOLDERMASK') {
           // The mask's bottom face lies on the dielectric and the copper (spec §6.5, ADR 0006):
-          // push it back so that coplanar faces don't z-fight when the dielectric is hidden.
+          // push it back a little so that the copper wins where they meet (seen from below with
+          // the dielectric hidden). A constant bias only: a slope-scaled one pushes the whole
+          // mask behind the copper (20 µm below its top) in oblique views.
           const material = mesh.material as Material;
           material.polygonOffset = true;
-          material.polygonOffsetFactor = 1;
-          material.polygonOffsetUnits = 1;
+          material.polygonOffsetFactor = 0;
+          material.polygonOffsetUnits = MASK_DEPTH_BIAS;
         }
         if (copper) {
           const overlay = new Mesh(mesh.geometry, materials.overlay(source, layer.stateOffset));

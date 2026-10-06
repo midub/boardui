@@ -1,20 +1,20 @@
 // Review images and performance numbers (not a test): runs only with REVIEW_OUT=<dir>.
 // PERF_XML=<file> also converts that file (e.g. the ~200k-feature synthetic board) and
-// records its timings. Results go to <dir>/*.png and <dir>/perf.json.
+// records its timings. Results go to <dir>/*.png and <dir>/perf-*.json.
 import { writeFileSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 import { openBoard, screenPoint, settle, viewerCall } from './helpers.js';
 
 const out = process.env.REVIEW_OUT ?? '';
 const perfXml = process.env.PERF_XML;
-const perf: Record<string, unknown> = {};
 
 test.skip(!out, 'set REVIEW_OUT=<dir> to write review images');
 test.use({ viewport: { width: 1600, height: 1000 } });
-test.describe.configure({ mode: 'serial', timeout: 1_200_000 });
-test.afterAll(() => {
-  if (out) writeFileSync(`${out}/perf.json`, `${JSON.stringify(perf, null, 2)}\n`);
-});
+test.describe.configure({ timeout: 1_200_000 });
+
+/** Writes one measurement to `<out>/perf-<name>.json`. */
+const record = (name: string, value: unknown) =>
+  writeFileSync(`${out}/perf-${name}.json`, `${JSON.stringify(value, null, 2)}\n`);
 
 const shot = async (page: Page, name: string) => {
   await settle(page);
@@ -74,7 +74,7 @@ test('landing page', async ({ page }) => {
 
 test('testcase1: progress, views, timings', async ({ page }) => {
   await page.goto('./?stats');
-  await page.locator('.sample-card', { hasText: 'Test case 1' }).click();
+  await page.locator('.sample-card[data-sample="testcase1"]').click();
   await expect(page.locator('#progress-title')).toContainText('Converting', { timeout: 60_000 });
   await expect(page.locator('#progress-step')).toContainText(/overlaps|sheets|extruding/, {
     timeout: 60_000,
@@ -89,16 +89,16 @@ test('testcase1: progress, views, timings', async ({ page }) => {
   await shot(page, '06-testcase1-bottom');
   const t = Date.now();
   await viewerCall(page, 'whenPickable');
-  perf.testcase1 = {
+  record('testcase1', {
     ...numbers,
     pickableAfterLoadMs: Date.now() - t,
     orbit: await orbitFps(page, 20),
-  };
+  });
 });
 
 test('KiCad board: views, selection with tags, nets, x-ray, hover', async ({ page }) => {
   await openBoard(page, 'sample=royalblue54l-feather');
-  perf.kicad = await loadNumbers(page);
+  record('kicad', await loadNumbers(page));
   await shot(page, '03-kicad-iso');
   await viewerCall(page, 'setView', 'top');
   await viewerCall(page, 'whenPickable');
@@ -128,19 +128,25 @@ test('KiCad board: views, selection with tags, nets, x-ray, hover', async ({ pag
 
   await page.keyboard.press('b');
   await shot(page, '09-kicad-bottom');
+
+  // X-ray without highlights (tinted elements stay opaque): inner copper shows too.
+  const removeButtons = page.locator('#net-active .remove');
+  while ((await removeButtons.count()) > 0) await removeButtons.first().click();
   await page.keyboard.press('i');
   await page.keyboard.press('x');
   await shot(page, '10-kicad-xray');
+  await page.keyboard.press('b');
+  await shot(page, '10-kicad-xray-bottom');
   await page.keyboard.press('x');
 
-  // Hover a pad of U2 from the top: tooltip and hover tint.
+  // Hover a pad of the bottom header J1 from the top: tooltip and hover tint on copper.
   await page.keyboard.press('t');
-  await viewerCall(page, 'focus', 'cmp/U2');
+  await viewerCall(page, 'focus', 'pin/J1/5');
   await settle(page);
-  const pad = await screenPoint(page, 'pin/U2/1');
+  const pad = await screenPoint(page, 'pin/J1/5');
   await page.mouse.move(pad.x, pad.y);
   await expect(page.locator('#tooltip')).toBeVisible();
-  await shot(page, '11-hover');
+  await shot(page, '11-hover-pad');
 });
 
 test('bottom-placement: bottom view lighting', async ({ page }) => {
@@ -162,9 +168,9 @@ test('synthetic board (PERF_XML)', async ({ page }) => {
     timeout: 1_100_000,
   });
   if (await page.locator('#error').isVisible()) {
-    perf.synthetic = { error: await page.locator('#error-message').innerText() };
+    record('synthetic', { error: await page.locator('#error-message').innerText() });
     return;
   }
-  perf.synthetic = { ...(await loadNumbers(page)), wallMs: Date.now() - start };
+  record('synthetic', { ...(await loadNumbers(page)), wallMs: Date.now() - start });
   await shot(page, '14-synthetic');
 });

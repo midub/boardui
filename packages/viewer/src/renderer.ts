@@ -213,7 +213,9 @@ export class BoardRenderer {
       if (t === 1) this.#flight = null;
       again = true;
     }
-    again = this.controls.update() || again;
+    // `update` reports no change for camera moves under 1 mm (its epsilon suits metre-sized
+    // scenes), so auto-rotation keeps the loop going by itself.
+    again = this.controls.update() || this.controls.autoRotate || again;
     // Near and far follow the orbit distance: enough depth precision for 10 µm silkscreen on
     // the soldermask, whether the whole board or a single pad fills the view.
     const distance = this.camera.position.distanceTo(this.controls.target);

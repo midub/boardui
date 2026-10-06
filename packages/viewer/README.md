@@ -14,7 +14,8 @@ to WebGL2 where WebGPU is missing.
 </script>
 ```
 
-`three` is a peer dependency (`^0.186`).
+`three` is a peer dependency (`^0.186`). `@boardui/converter` (a dependency) is loaded on first use
+of `loadIpc2581`.
 
 ## API
 
@@ -24,9 +25,11 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 | Member | |
 |---|---|
 | `load(urlOrBytes)` | Loads a GLB (URL, `ArrayBuffer` or `Uint8Array`). Rejects non-boardui assets. |
+| `loadIpc2581(file, options)` | Converts IPC-2581 locally with `@boardui/converter` (WASM in a worker) and loads the result. `options`: `models`, `tolerance`, `platingThickness`, `step`, `signal`, `onProgress`. Resolves with the conversion (`glb` for download, `warnings`, `stats`, `timings`). |
+| `whenPickable()` | Resolves when hover and picking cover the whole board (see "Picking" below). |
 | `layers` | Layers and drill layers, top to bottom, with their current visibility. |
 | `setLayerVisible(id, visible)` | Defaults come from `BOARDUI_board.layers[].visible`; drill layers start visible. |
-| `setXray(on)`, `xray` | Makes the board translucent (copper less than the rest); tinted elements stay opaque. |
+| `setXray(on)`, `xray` | Makes the board translucent (copper less than the rest); tinted elements stay opaque. Inner copper that is hidden by default is shown while x-ray is on, unless `setLayerVisible` hid it. |
 | `highlight({ ids } \| { net }, { color })` | Tints elements with a CSS colour. Returns a function that removes the highlight. |
 | `hide({ ids } \| { net })` | Hides elements. Returns a function that shows them again. |
 | `select(id \| null)`, `selection` | Selects any element; a net selects all its copper. |
@@ -36,9 +39,11 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 | `info(id)` | `{ id, kind, properties }`, with references to other elements as IDs. |
 | `ids(kind)` | All IDs of a kind: `'layer'`, `'component'`, `'pin'` or `'net'`. |
 | `stats()` | Backend, draw calls and triangles of the last frame, and the number of frames rendered. |
+| `autoRotate` | Orbits the camera continuously; the board is then rendered every frame (frame-rate measurements). |
 
 Events (`bubbles`, `composed`): `bui-hover` when the element under the pointer changes, and
-`bui-select` when the user clicks an element or empty space. `detail` is `info(id)`, or `null`.
+`bui-select` when the user clicks an element or empty space; `detail` is `info(id)`, or `null`.
+`bui-progress` reports `loadIpc2581`: `{ stage: 'convert' | 'load', step, fraction }`.
 
 Attributes: `src` loads a GLB (failures dispatch `error`); `backend="webgl"` forces the WebGL2
 backend (read when the element connects).
@@ -56,6 +61,9 @@ Widgets are ordinary elements from any framework. They are moved into `<board-vi
 - `offset`: `[x, y]` in CSS pixels.
 - `occlusion`: `'fade'` (default), `'hide'` or `'none'`, checked by ray casts at most every 150 ms.
 
+A widget is hidden while its element isn't drawn at all: its layer (or, for a component, the
+component) is switched off or the element is hidden with `hide`.
+
 ## How it works
 
 - **Loading.** `GLTFLoader` with `MeshoptDecoder`. The `EXT_structural_metadata` tables are read
@@ -63,6 +71,9 @@ Widgets are ordinary elements from any framework. They are moved into `<board-vi
 - **Layers.** Each layer's primitives are merged into one mesh per material (32-bit indices), so a
   layer is one draw call however many 65k-vertex primitives it had. Feature vertex/index ranges and
   bounding boxes are found in the same pass (spec §8.1).
+- **Lighting and depth.** Room environment, a key light from above and a weaker one from below
+  (bottom view). The soldermask gets a polygon offset: its bottom face is coplanar with the
+  dielectric's top and the copper's bottom (ADR 0006), which z-fought with the dielectric hidden.
 - **Element state.** One RGBA8 texel per feature and per component. A TSL node graph reads it per
   vertex (feature ID + layer offset) and tints, or discards, the fragment. Hover, selection,
   highlights and hiding are texel writes. Copper and drill layers get a second, overlay draw that
@@ -70,8 +81,12 @@ Widgets are ordinary elements from any framework. They are moved into `<board-vi
   tint.
 - **Components.** Component nodes that share geometry and material become one `InstancedMesh`; an
   instanced attribute carries each instance's component row into the same state-texture lookup.
-- **Picking.** `three-mesh-bvh` BVHs per layer mesh (built in idle time after loading), three's
-  instanced ray cast for components. Picking and widget occlusion look through the translucent
+- **Picking.** `three-mesh-bvh` BVHs per layer mesh, three's instanced ray cast for components.
+  Meshes with 50k triangles or more get their BVH built in Web Workers (`src/bvh.worker.ts`, a pool
+  of up to three) from copies of their positions and indices, so loading a dense board doesn't
+  block the main thread; smaller ones are built in idle time. Until a layer's BVH arrives, hover
+  and widget occlusion skip that layer (`whenPickable()` resolves when all are built). The BVHs are
+  indirect, so the index buffer stays as it is. Picking and widget occlusion look through the translucent
   soldermask. Dielectric sheets can't be hovered or selected (over bare board the pointer finds
   nothing), but they block the pointer and hide widgets whose element is on the far side.
 
