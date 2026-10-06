@@ -1,0 +1,53 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step testcase11-rdgflx-RevC, USERDEF
+thickness: 0.9195 mm
+counts: 2168 features, 200332 vertices, 396560 triangles, 116 nets, 78 components, 312 pins (312 checked against pads)
+warnings: 20 from the reader, 10 from the converter
+  - layer `COVERLAY_FLEX_1` is not in the stack-up and was skipped
+  - layer `ADHESIVE_FLEX_1` is not in the stack-up and was skipped
+  - layer `ADHESIVE_FLEX_2` is not in the stack-up and was skipped
+  - layer `COVERLAY_FLEX_2` is not in the stack-up and was skipped
+  - layer `STIFFENER_TOP` is not in the stack-up and was skipped
+  - layer `EPOXY_TOP` is not in the stack-up and was skipped
+  - layer `PASTEMASK_INT_4` is not in the stack-up and was skipped
+  - layer `SOLDERMASK_INT_4` is not in the stack-up and was skipped
+  - layers outside the profile's scope were not converted: GOLD_HARD_FLEX_2 (COATINGCOND), SS_TOP (DOCUMENT), Asm_top (ASSEMBLY), Zones (DOCUMENT), Asm_Rgd2_Bottom (DOCUMENT), Asm_Flex2 (DOCUMENT), ASM_Flex1 (DOCUMENT), asm_rgd2_top (DOCUMENT)
+  - zero-width lines are drawn as 0.1 mm hairlines
+layer layer/SOLDERMASK_TOP Soldermask Top z 0.4293..0.4748 mm File
+  1 features {"Sheet": 1}, 3576 vertices, 7496 triangles, top area 10775.7880 mm²
+layer layer/TOP Copper Top z 0.4293..0.4597 mm File
+  400 features {"Fill": 1, "Pad": 170, "Trace": 146, "Via": 83}, 16030 vertices, 30800 triangles, top area 2220.1739 mm²
+layer layer/DIELECTRIC_INDEX_12 Dielectric Internal z 0.2261..0.4293 mm File
+  1 features {"Sheet": 1}, 3576 vertices, 7496 triangles, top area 10775.7880 mm²
+layer layer/INT_1 Copper Internal z 0.1956..0.2261 mm File hidden
+  411 features {"Fill": 1, "Pad": 84, "Trace": 149, "Via": 177}, 27458 vertices, 54308 triangles, top area 4062.5636 mm²
+layer layer/DIELECTRIC_INDEX_14 Dielectric Internal z 0.0686..0.1956 mm File
+  1 features {"Sheet": 1}, 6208 vertices, 13136 triangles, top area 10766.8032 mm²
+layer layer/FLEX_1 Copper Internal z 0.0381..0.0686 mm File hidden
+  240 features {"Fill": 6, "Pad": 6, "Trace": 51, "Via": 177}, 34196 vertices, 68444 triangles, top area 3014.9127 mm²
+layer layer/DIELECTRIC_INDEX_16 Dielectric Internal z -0.0381..0.0381 mm File
+  1 features {"Sheet": 1}, 6208 vertices, 13136 triangles, top area 10766.8032 mm²
+layer layer/FLEX_2 Copper Internal z -0.0686..-0.0381 mm File hidden
+  569 features {"Fill": 3, "Pad": 38, "Trace": 351, "Via": 177}, 43538 vertices, 80988 triangles, top area 6081.0809 mm²
+layer layer/DIELECTRIC_INDEX_18 Dielectric Internal z -0.1956..-0.0686 mm File
+  1 features {"Sheet": 1}, 6208 vertices, 13136 triangles, top area 10766.8032 mm²
+layer layer/INT_4 Copper Internal z -0.2261..-0.1956 mm File hidden
+  271 features {"Fill": 1, "Pad": 34, "Trace": 59, "Via": 177}, 24098 vertices, 48128 triangles, top area 3984.4022 mm²
+layer layer/DIELECTRIC_INDEX_20 Dielectric Internal z -0.4293..-0.2261 mm File
+  1 features {"Sheet": 1}, 3576 vertices, 7496 triangles, top area 10775.7880 mm²
+layer layer/BOTTOM Copper Bottom z -0.4597..-0.4293 mm File
+  89 features {"Fill": 1, "Pad": 4, "Trace": 1, "Via": 83}, 12526 vertices, 25384 triangles, top area 3927.1961 mm²
+layer layer/SOLDERMASK_BOTTOM Soldermask Bottom z -0.4748..-0.4293 mm File
+  1 features {"Sheet": 1}, 3576 vertices, 7496 triangles, top area 10775.7880 mm²
+drill layer/DRILL_2-5 layer/INT_1..layer/INT_4
+  94 features {"Barrel": 94}, 5076 vertices, 10152 triangles, top area 2.3900 mm²
+drill layer/DRILL_1-6 layer/TOP..layer/BOTTOM
+  87 features {"Barrel": 83, "Other": 4}, 4482 vertices, 8964 triangles, top area 2.1104 mm²
+components: 78
+  D3 at (93.9800, 0.4597, -29.5910) mm, rotation (1.0000, 0.0000, 0.0000, 0.0000), placeholder A_DIODE-157
+  RV1 at (98.2980, 0.4597, -40.3860) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder A_SOT363
+  RV2 at (95.2500, 0.4597, -66.6750) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder A_SOT363
+  R39 at (103.6320, 0.4597, -45.7200) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder 1206RF_WV_12D
+  C5 at (82.5500, 0.4597, -65.4050) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder 1206RF_WV_12D

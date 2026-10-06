@@ -3,6 +3,14 @@
 All notable changes to boardui. Versions follow [Semantic Versioning](https://semver.org); the
 glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#11-versioning)).
 
+## [Unreleased]
+
+- Eight more conformance samples from other exporters: Allegro rigid-flex, Polar Speedstack,
+  Altium (revision A, `.cvg`), KiCad 9 (blind, buried and micro vias, castellations, inches,
+  revision B, a KiKit panel) and KiCad 10. A `Stackup` without `name` (Polar, Altium) is now a
+  warning instead of an error, and the CLI no longer panics on a parse error far into a file
+  written on one line.
+
 ## [1.0.0] - 2026-10-06
 
 The first release of the 3D rewrite. It replaces the 2023 Angular/SVG viewer, which stays

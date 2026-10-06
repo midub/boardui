@@ -84,6 +84,15 @@ pub enum DiagnosticKind {
         /// The revision as written.
         revision: String,
     },
+    /// A required attribute that some exporters omit was missing; a default was used.
+    MissingAttribute {
+        /// Local name of the element.
+        element: String,
+        /// Local name of the missing attribute.
+        attribute: String,
+        /// The value used instead.
+        default: String,
+    },
 }
 
 impl fmt::Display for DiagnosticKind {
@@ -107,6 +116,14 @@ impl fmt::Display for DiagnosticKind {
             Self::UnsupportedRevision { revision } => {
                 write!(f, "unsupported revision `{revision}`, read as revision C")
             }
+            Self::MissingAttribute {
+                element,
+                attribute,
+                default,
+            } => write!(
+                f,
+                "element `{element}` is missing attribute `{attribute}`; using `{default}`"
+            ),
         }
     }
 }
