@@ -797,10 +797,11 @@ select.addEventListener('change', () => {
   if (sample) void openSample(sample);
 });
 const cards = $('#sample-cards');
+const chips = $('#sample-chips');
 for (const sample of SAMPLES) {
   const featured = sample.group !== 'Hand-written';
   append(
-    cards,
+    featured ? cards : chips,
     h(
       'button',
       {

@@ -459,8 +459,13 @@ body:not([data-board]) board-viewer {
   text-align: center;
 }
 
+.sample-chips {
+  margin-top: 10px;
+}
+
 .sample-card {
   display: grid;
+  align-content: start;
   grid-template-areas: "group size" "name name" "desc desc";
   grid-template-columns: 1fr auto;
   gap: 2px 8px;
