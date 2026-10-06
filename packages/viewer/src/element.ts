@@ -22,6 +22,8 @@ export interface LayerState {
   kind: 'layer' | 'drill';
   role?: LayerRole;
   side?: Side;
+  /** Base colour of the layer's material as a CSS hex colour (sRGB), e.g. for a swatch. */
+  color?: string;
   visible: boolean;
 }
 
@@ -307,6 +309,7 @@ export class BoardViewerElement extends HTMLElement {
         kind: layer.kind,
         visible: layer.group.visible,
       };
+      if (layer.color) state.color = layer.color;
       if ('role' in info) {
         state.role = info.role;
         state.side = info.side;

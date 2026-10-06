@@ -197,6 +197,36 @@ Per-model `offsetMm`, `rotationDeg` and `scale` correct models that deviate. The
 
 A model's default scene is flattened into one mesh (node transforms baked into the vertices), so that every component using it shares the mesh. Positions, normals, the first texture coordinate and colour sets, indices and materials with their textures are kept; skins, morph targets, animations, cameras and lights are dropped.
 
+### 6.10 Colours
+
+Soldermask and silkscreen layers take their colour from the source when it states one; the other roles keep their defaults (§7). A layer's colour comes from the `Spec`s (in `CadHeader`) it refers to: its `Layer/SpecRef`s, then the `SpecRef`s of its `StackupLayer`s in the first stack-up, in document order. Of each spec, only `General` is read. The first rule that gives a colour wins:
+
+1. An explicit colour: `General/Color`, or `General/ColorRef` into `DictionaryColor`. It is used as written (sRGB).
+2. A colour name: `General/ColorTerm@name` (its `comment` when the name is `OTHER`), or a `General/Property@text` of the form `Color : <name>` as KiCad writes it. Names are matched case-insensitively, ignoring finish words (`Matte`, `Glossy`, `Satin`) and reading `Grey` as `Gray`, and stand for a realistic board colour:
+
+   | Name | Soldermask | Silkscreen |
+   |---|---|---|
+   | Green | `#1E6B2E` | `#2F8F43` |
+   | Red | `#A01C1C` | `#C62B23` |
+   | Blue | `#1F4E9C` | `#2E5BB8` |
+   | Purple | `#4F2373` | `#6B3E94` |
+   | Black | `#151515` | `#1C1C1C` |
+   | White | `#E9E9E6` | `#F2F2F2` |
+   | Yellow | `#D4B417` | `#EED33A` |
+   | Orange | `#C9601C` | `#E2782A` |
+   | Brown | `#5C3A1F` | `#7A5030` |
+   | Pink | `#C85A8A` | `#E68AAE` |
+   | Gray | `#5B6066` | `#8C8C8C` |
+
+   `#RRGGBB` and `#RRGGBBAA` (KiCad's user-defined colours) are used as written. `Not specified`, `User defined`, `OTHER` without a comment, `BOARD`, `BOARDPANEL` and empty names state no colour. Any other name gives the default and a warning.
+3. Otherwise the default.
+
+Notes:
+
+- Names stand for realistic colours rather than an exporter's swatch. KiCad also writes RGB entries in `DictionaryColor` (its swatches: `0,0,128` for blue, `200,200,200` for white), but nothing refers to them, so they are not used.
+- `ColorRef` in a `Set` is not a board colour: the consortium test cases use it for the CAD tool's display colours (red and blue copper, pink silkscreen). It is ignored.
+- KiCad 9 writes `StackupLayer/SpecRef id="SPEC_<layer>"` but names the spec `<layer>_<n>`. A dangling reference `SPEC_<layer>` resolves to the spec named `<layer>_<digits>` if there is exactly one; such references are not reported.
+
 ## 7. Materials
 
 | Name | Used for | Default |
@@ -209,8 +239,8 @@ A model's default scene is flattened into one mesh (node transforms baked into t
 | `boardui/pin1` | pin-1 markers | base `#E0E0E0`, roughness 0.6 |
 
 - Materials MUST be shared: each name appears once.
-- Colours from the source (IPC-2581 colour dictionaries, specs) MAY override defaults.
-- Viewers MAY restyle by material name.
+- A colour from the source (§6.10) gives the layer the material `<name>/<rrggbb>`, for example `boardui/soldermask/1f4e9c`: the role's material with that base colour (lower-case sRGB hex in the name), keeping the role's alpha, metallic and roughness. Layers with the same colour share it; a colour equal to the default uses the default material.
+- Viewers MAY restyle by material name. They SHOULD treat `boardui/<kind>/<rrggbb>` as `boardui/<kind>`.
 
 ## 8. Metadata
 

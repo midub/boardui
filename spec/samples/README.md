@@ -12,6 +12,7 @@ Each sample is an IPC-2581 input plus the expected boardui asset. Together they 
 | [`zero-width-lines`](hand-written/zero-width-lines/) | hand-written | a silkscreen polyline and line with zero-width `LineDesc`s, drawn as hairlines; §6.1 |
 | [`slots`](hand-written/slots/) | hand-written | a plated slot with pads and a non-plated slot; §6.3 |
 | [`bottom-placement`](hand-written/bottom-placement/) | hand-written | an asymmetric package on the bottom side at 0°, 30°, 90° and 270°, and one on top; §6.8 |
+| [`colours`](hand-written/colours/) | hand-written | soldermask and silkscreen colours from a `ColorRef`, a `ColorTerm` and KiCad-style names, a KiCad 9 `SpecRef`, and colours that are ignored (copper, `Set/ColorRef`); §6.10 |
 | [`units-inch`](hand-written/units-inch/), [`units-micron`](hand-written/units-micron/) | hand-written | `minimal-2layer` in `INCH` and `MICRON`; the test checks that all three give the same geometry; §3 |
 | [`user-models`](hand-written/user-models/) | hand-written | `minimal-2layer` with `models.json` mapping the resistor's package to a glTF box; §6.9 |
 | [`testcase3-RevC-Assembly`](ipc-testcases/) | IPC consortium test case 3 | ASSEMBLY mode, no stack-up, no soldermask: default thicknesses and synthesized layers; profile cutouts |
