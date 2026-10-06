@@ -1,0 +1,30 @@
+---
+source: crates/boardui-ipc2581/tests/samples.rs
+expression: summary(&doc)
+---
+units: Inch
+layers:
+  TOP CONDUCTOR Some(Top) Positive
+  BOTTOM CONDUCTOR Some(Bottom) Positive
+  DRILL_1-12 DRILL Some(All) Positive span TOP..BOTTOM
+  silkscreen_top.art SILKSCREEN Some(Top) Positive
+  silkscreen_bottom.art SILKSCREEN Some(Bottom) Positive
+step testcase1-v174-RevC: datum Some(Point { x: 0.0, y: 0.0 })
+  TOP: {"(with componentRef)": 37, "Features/Contour": 368, "Features/Line": 6, "Features/Polyline": 3607, "Pad": 9872}
+  BOTTOM: {"(with componentRef)": 28, "Features/Contour": 35, "Features/Line": 3, "Features/Polyline": 3698, "Pad": 9961}
+  DRILL_1-12: {"(with componentRef)": 297, "Hole": 5819}
+  silkscreen_top.art: {"Features/Polyline": 1509}
+  silkscreen_bottom.art: {"Features/Polyline": 754}
+  first component: Component { ref_des: "DD_CONV3", package_ref: "SDDCONV7_635_3708X586X72", layer_ref: "BOTTOM", part: Some("TA55401-0252B2"), mount_type: Some(Smt), standoff: Some(0.0), height: Some(0.00722884), location: Point { x: 0.1654175, y: 0.18922746000000001 }, xform: Xform { offset: Point { x: 0.0, y: 0.0 }, rotation: 180.0, mirror: true, scale: 1.0 } }
+diagnostics:
+  line 3 (byte 204): ignored unknown attribute `roleRef` of `Content`
+  line 11 (byte 490): skipped unknown element `BomRef` in `Content`
+  line 864 (byte 33032): skipped unknown element `LogisticHeader` in `IPC-2581`
+  line 869 (byte 33229): skipped unknown element `HistoryRecord` in `IPC-2581`
+  line 876 (byte 33635): skipped unknown element `Bom` in `IPC-2581`
+  line 5493 (byte 494651): ignored unknown attribute `pinOneOrientation` of `Package` (105 occurrences)
+  line 5504 (byte 495173): skipped unknown element `PickupPoint` in `Package` (105 occurrences)
+  line 5610 (byte 499425): ignored unknown attribute `type` of `Pin` (3233 occurrences)
+  line 5610 (byte 499425): ignored unknown attribute `electricalType` of `Pin` (3233 occurrences)
+  line 30525 (byte 1625895): skipped unknown element `NonstandardAttribute` in `Component` (2930 occurrences)
+  line 85896 (byte 3996241): skipped unknown element `NonstandardAttribute` in `Set` (28581 occurrences)

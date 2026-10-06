@@ -8,6 +8,10 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+quick-xml = "0.42.0"
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+insta = "1.49.0"
