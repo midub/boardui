@@ -8,7 +8,15 @@ import { encodeIdSegment } from '../../src/ids.js';
 import { type Part, prism, type Vec2 } from './geometry.js';
 import { ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, type GltfPrimitive, GltfWriter } from './gltf.js';
 
-export type FeatureKind = 'PAD' | 'VIA' | 'TRACE' | 'FILL' | 'BARREL' | 'MARKING' | 'SHEET' | 'OTHER';
+export type FeatureKind =
+  | 'PAD'
+  | 'VIA'
+  | 'TRACE'
+  | 'FILL'
+  | 'BARREL'
+  | 'MARKING'
+  | 'SHEET'
+  | 'OTHER';
 export type MaterialName = 'copper' | 'soldermask' | 'silkscreen' | 'dielectric' | 'body' | 'pin1';
 
 /** One source feature of a layer, in document order. */
@@ -187,7 +195,10 @@ export function writeBoard(board: FixtureBoard): Uint8Array {
         encoded.forEach((bytes, i) => {
           values.set(bytes, offsets[i]);
         });
-        properties[property] = { values: w.bufferView(values), stringOffsets: w.bufferView(offsets) };
+        properties[property] = {
+          values: w.bufferView(values),
+          stringOffsets: w.bufferView(offsets),
+        };
       } else if ('u32' in column) {
         properties[property] = { values: w.bufferView(Uint32Array.from(column.u32)) };
       } else {
@@ -208,10 +219,19 @@ export function writeBoard(board: FixtureBoard): Uint8Array {
 
   const layerEntries: Record<string, unknown>[] = [];
   for (const layer of board.layers) {
-    const id = `layer/${encodeIdSegment(layer.name)}`;
+    // Synthesized layer names keep their leading `@` unencoded (§5).
+    const id = layer.synthesized
+      ? `layer/@${encodeIdSegment(layer.name.slice(1))}`
+      : `layer/${encodeIdSegment(layer.name)}`;
     const node = w.node({ name: id });
     json.nodes[layersGroup]?.children?.push(node);
-    const table = writeFeatures(id, layer.features, false, material(LAYER_MATERIAL[layer.role]), node);
+    const table = writeFeatures(
+      id,
+      layer.features,
+      false,
+      material(LAYER_MATERIAL[layer.role]),
+      node,
+    );
     const entry: Record<string, unknown> = {
       id,
       name: layer.name,
@@ -232,7 +252,13 @@ export function writeBoard(board: FixtureBoard): Uint8Array {
     const id = `layer/${encodeIdSegment(drill.name)}`;
     const node = w.node({ name: id });
     json.nodes[drillsGroup]?.children?.push(node);
-    const table = writeFeatures(id, drill.features, drill.reverseRows ?? false, material('copper'), node);
+    const table = writeFeatures(
+      id,
+      drill.features,
+      drill.reverseRows ?? false,
+      material('copper'),
+      node,
+    );
     return {
       id,
       name: drill.name,
@@ -254,14 +280,20 @@ export function writeBoard(board: FixtureBoard): Uint8Array {
       packageMeshes.set(component.package, mesh);
     }
     const id = `cmp/${encodeIdSegment(component.refDes)}`;
-    const angle = (component.rotation * Math.PI) / 180;
-    const ry = [0, Math.sin(angle / 2), 0, Math.cos(angle / 2)];
-    // Bottom side: then 180° about the local X axis, so q = ry · rx(π).
-    const rotation = component.side === 'TOP' ? ry : [ry[3], 0, -(ry[1] as number), 0];
+    const half = (component.rotation * Math.PI) / 360;
+    // Rotation about +Y; bottom side: then 180° about the local X axis, so q = ry · rx(π).
+    const rotation =
+      component.side === 'TOP'
+        ? [0, Math.sin(half), 0, Math.cos(half)]
+        : [Math.cos(half), 0, -Math.sin(half), 0];
     const node = w.node({
       name: component.refDes,
       mesh,
-      translation: [component.x, (component.side === 'TOP' ? 1 : -1) * (board.thickness / 2), -component.y],
+      translation: [
+        component.x,
+        (component.side === 'TOP' ? 1 : -1) * (board.thickness / 2),
+        -component.y,
+      ],
       rotation,
       extras: {
         boardui: {
@@ -294,12 +326,12 @@ export function writeBoard(board: FixtureBoard): Uint8Array {
     'component',
     board.components.length,
     {
-    id: { strings: board.components.map((c) => `cmp/${encodeIdSegment(c.refDes)}`) },
-    refDes: { strings: board.components.map((c) => c.refDes) },
-    part: { strings: board.components.map((c) => c.part) },
-    package: { strings: board.components.map((c) => c.package) },
-    side: { u8: board.components.map((c) => (c.side === 'TOP' ? 0 : 1)) },
-    mount: { u8: board.components.map((c) => (c.mount === 'SMT' ? 0 : 1)) },
+      id: { strings: board.components.map((c) => `cmp/${encodeIdSegment(c.refDes)}`) },
+      refDes: { strings: board.components.map((c) => c.refDes) },
+      part: { strings: board.components.map((c) => c.part) },
+      package: { strings: board.components.map((c) => c.package) },
+      side: { u8: board.components.map((c) => (c.side === 'TOP' ? 0 : 1)) },
+      mount: { u8: board.components.map((c) => (c.mount === 'SMT' ? 0 : 1)) },
       node: { u32: componentNodes },
     },
     componentsTable,
@@ -309,10 +341,12 @@ export function writeBoard(board: FixtureBoard): Uint8Array {
     'pin',
     pins.length,
     {
-    id: { strings: pins.map((p) => `pin/${encodeIdSegment(p.refDes)}/${encodeIdSegment(p.number)}`) },
-    number: { strings: pins.map((p) => p.number) },
-    name: { strings: pins.map((p) => p.name) },
-    component: { u32: pins.map((p) => rowOf(componentRow, p.refDes)) },
+      id: {
+        strings: pins.map((p) => `pin/${encodeIdSegment(p.refDes)}/${encodeIdSegment(p.number)}`),
+      },
+      number: { strings: pins.map((p) => p.number) },
+      name: { strings: pins.map((p) => p.name) },
+      component: { u32: pins.map((p) => rowOf(componentRow, p.refDes)) },
       net: { u32: pins.map((p) => p.net) },
     },
     pinsTable,
@@ -358,7 +392,9 @@ export function writeBoard(board: FixtureBoard): Uint8Array {
       const vertices = positions.length / 3;
       primitives.push({
         attributes: {
-          POSITION: w.accessor(Float32Array.from(positions), 'VEC3', ARRAY_BUFFER, { minMax: true }),
+          POSITION: w.accessor(Float32Array.from(positions), 'VEC3', ARRAY_BUFFER, {
+            minMax: true,
+          }),
           _FEATURE_ID_0: float
             ? w.accessor(Float32Array.from(ids), 'SCALAR', ARRAY_BUFFER)
             : w.accessor(Uint16Array.from(ids), 'SCALAR', ARRAY_BUFFER, { byteStride: 4 }),
@@ -383,7 +419,7 @@ export function writeBoard(board: FixtureBoard): Uint8Array {
     };
     rows.forEach((feature, row) => {
       const part = feature.part;
-      if (!part || !part.indices.length) return;
+      if (!part?.indices.length) return;
       const vertices = part.positions.length / 3;
       if (positions.length / 3 + vertices > MAX_PRIMITIVE_VERTICES) flush();
       const base = positions.length / 3;

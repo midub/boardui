@@ -102,7 +102,11 @@ export class GltfWriter {
     const accessor: Record<string, unknown> = {
       bufferView: this.bufferView(view, target, options.byteStride),
       componentType:
-        data instanceof Float32Array ? FLOAT : data instanceof Uint16Array ? UNSIGNED_SHORT : UNSIGNED_INT,
+        data instanceof Float32Array
+          ? FLOAT
+          : data instanceof Uint16Array
+            ? UNSIGNED_SHORT
+            : UNSIGNED_INT,
       count: data.length / components,
       type,
     };

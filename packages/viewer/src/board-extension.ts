@@ -61,7 +61,9 @@ export interface BoardExtensionJson {
  *
  * @throws if the extension is missing or has an unsupported major version (spec §11).
  */
-export function readBoardExtension(json: { extensions?: Record<string, unknown> }): BoardExtensionJson {
+export function readBoardExtension(json: {
+  extensions?: Record<string, unknown>;
+}): BoardExtensionJson {
   const board = json.extensions?.BOARDUI_board as BoardExtensionJson | undefined;
   if (!board || typeof board.profileVersion !== 'string') {
     throw new Error('Not a boardui asset: the BOARDUI_board extension is missing');

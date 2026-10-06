@@ -72,7 +72,11 @@ interface TablePropertyJson {
   scale?: unknown;
 }
 
-type ArrayConstructor = new (buffer: ArrayBuffer, byteOffset?: number, length?: number) => NumericArray;
+type ArrayConstructor = new (
+  buffer: ArrayBuffer,
+  byteOffset?: number,
+  length?: number,
+) => NumericArray;
 
 const COMPONENT_TYPES: Readonly<Record<string, ArrayConstructor>> = {
   INT8: Int8Array,
@@ -208,7 +212,11 @@ function readColumn(
         return null;
       }
       const noData = typeof definition.noData === 'number' ? definition.noData : null;
-      return { kind: 'number', values: typedArray(type, bufferView(property.values), count), noData };
+      return {
+        kind: 'number',
+        values: typedArray(type, bufferView(property.values), count),
+        noData,
+      };
     }
     case 'ENUM': {
       const enumDef = schema.enums?.[definition.enumType ?? ''];

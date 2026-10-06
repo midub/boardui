@@ -10,7 +10,16 @@ import {
   type FixturePackage,
   writeBoard,
 } from './board.js';
-import { circle, place, prism, type Region, type Ring, rect, sheet, type Vec2 } from './geometry.js';
+import {
+  circle,
+  place,
+  prism,
+  type Region,
+  type Ring,
+  rect,
+  sheet,
+  type Vec2,
+} from './geometry.js';
 
 const mm = (value: number) => value / 1000;
 const THICKNESS = mm(1.6);
@@ -184,11 +193,25 @@ function stackup(coppers: { name: string; ipcFunction: string }[], dielectrics: 
   return {
     copper,
     layers: [
-      layer('F.SilkS', 'SILKSCREEN', 'TOP', top + SOLDERMASK, top + SOLDERMASK + SILKSCREEN, 'SILKSCREEN'),
+      layer(
+        'F.SilkS',
+        'SILKSCREEN',
+        'TOP',
+        top + SOLDERMASK,
+        top + SOLDERMASK + SILKSCREEN,
+        'SILKSCREEN',
+      ),
       layer('@soldermask-top', 'SOLDERMASK', 'TOP', top - COPPER, top + SOLDERMASK),
       ...middle,
       layer('@soldermask-bottom', 'SOLDERMASK', 'BOTTOM', -top - SOLDERMASK, t),
-      layer('B.SilkS', 'SILKSCREEN', 'BOTTOM', -top - SOLDERMASK - SILKSCREEN, -top - SOLDERMASK, 'SILKSCREEN'),
+      layer(
+        'B.SilkS',
+        'SILKSCREEN',
+        'BOTTOM',
+        -top - SOLDERMASK - SILKSCREEN,
+        -top - SOLDERMASK,
+        'SILKSCREEN',
+      ),
     ],
   };
 }
@@ -199,7 +222,11 @@ function byName(stack: Stack, name: string): FixtureLayer {
   return found;
 }
 
-function add(layer: FixtureLayer, feature: Omit<FixtureFeature, 'part'>, region: Region | null): void {
+function add(
+  layer: FixtureLayer,
+  feature: Omit<FixtureFeature, 'part'>,
+  region: Region | null,
+): void {
   layer.features.push({ ...feature, part: region && prism(region, layer.zMin, layer.zMax) });
 }
 
@@ -322,7 +349,11 @@ export function smallBoard(): FixtureBoard {
     for (const pad of pkgOf(c).pads) {
       const region = { outer: toBoard(c, pad.shape), holes: [] };
       padRegions.get(layer)?.push(region);
-      add(layer, { kind: 'PAD', pin: [c.refDes, pad.number], ...net(netOf(c, pad.number)) }, region);
+      add(
+        layer,
+        { kind: 'PAD', pin: [c.refDes, pad.number], ...net(netOf(c, pad.number)) },
+        region,
+      );
     }
   }
   for (const layer of [fcu, bcu]) {
@@ -331,11 +362,23 @@ export function smallBoard(): FixtureBoard {
       padRegions.get(layer)?.push({ outer: region.outer, holes: [] });
       add(layer, { kind: 'PAD', pin: ['J1', pin.pin], ...net(pin.net) }, region);
     }
-    add(layer, { kind: 'VIA', net: via.net }, annulus(via.at, via.land / 2, holeRadius(via.drill), tolerance));
+    add(
+      layer,
+      { kind: 'VIA', net: via.net },
+      annulus(via.at, via.land / 2, holeRadius(via.drill), tolerance),
+    );
   }
   const w = mm(0.25);
-  add(fcu, { kind: 'TRACE', net: 'Net-(R1-Pad2)' }, trace(mm(8.75), mm(21.55), mm(8.75), mm(15.375), w));
-  add(fcu, { kind: 'TRACE', net: 'Net-(R1-Pad2)' }, trace(mm(8.45), mm(15.25), mm(8.875), mm(15.25), w));
+  add(
+    fcu,
+    { kind: 'TRACE', net: 'Net-(R1-Pad2)' },
+    trace(mm(8.75), mm(21.55), mm(8.75), mm(15.375), w),
+  );
+  add(
+    fcu,
+    { kind: 'TRACE', net: 'Net-(R1-Pad2)' },
+    trace(mm(8.45), mm(15.25), mm(8.875), mm(15.25), w),
+  );
   add(fcu, { kind: 'TRACE', net: '/SDA' }, trace(mm(17), mm(18.635), mm(20.525), mm(18.635), w));
   add(fcu, { kind: 'TRACE', net: 'VCC' }, trace(mm(27.475), mm(19.905), mm(31), mm(19.905), w));
   add(fcu, { kind: 'TRACE', net: 'GND' }, null); // fully covered by higher-priority copper
@@ -357,9 +400,17 @@ export function smallBoard(): FixtureBoard {
 
   // Silkscreen outlines, plus one marking without a component.
   for (const c of components) {
-    add(byName(stack, c.side === 'TOP' ? 'F.SilkS' : 'B.SilkS'), { kind: 'MARKING', component: c.refDes }, silkRing(c, pkgOf(c)));
+    add(
+      byName(stack, c.side === 'TOP' ? 'F.SilkS' : 'B.SilkS'),
+      { kind: 'MARKING', component: c.refDes },
+      silkRing(c, pkgOf(c)),
+    );
   }
-  add(byName(stack, 'F.SilkS'), { kind: 'MARKING' }, { outer: rect(mm(35), mm(25), mm(4), mm(2)), holes: [] });
+  add(
+    byName(stack, 'F.SilkS'),
+    { kind: 'MARKING' },
+    { outer: rect(mm(35), mm(25), mm(4), mm(2)), holes: [] },
+  );
 
   // Sheets: soldermask (outline − openings − holes) and dielectric (outline − holes).
   const viaHole = circle(via.at[0], via.at[1], holeRadius(via.drill), tolerance);
@@ -451,14 +502,34 @@ export function denseBoard(grid: number): FixtureBoard {
       const viaHole = circle(viaAt[0], viaAt[1], hole, tolerance);
       pads.forEach((outer, i) => {
         const pin = String(i + 1);
-        add(fcu, { kind: 'PAD', pin: [component.refDes, pin], net: i ? netName : 'GND' }, { outer, holes: [] });
+        add(
+          fcu,
+          { kind: 'PAD', pin: [component.refDes, pin], net: i ? netName : 'GND' },
+          { outer, holes: [] },
+        );
       });
-      add(fcu, { kind: 'TRACE', net: netName }, trace(cx + mm(0.1), cy - mm(0.325), cx + mm(0.1), cy + mm(0.225), w));
-      add(fcu, { kind: 'TRACE', net: 'GND' }, trace(cx - mm(1.24), cy + mm(0.5), cx - mm(1), cy + mm(0.5), mm(0.1)));
+      add(
+        fcu,
+        { kind: 'TRACE', net: netName },
+        trace(cx + mm(0.1), cy - mm(0.325), cx + mm(0.1), cy + mm(0.225), w),
+      );
+      add(
+        fcu,
+        { kind: 'TRACE', net: 'GND' },
+        trace(cx - mm(1.24), cy + mm(0.5), cx - mm(1), cy + mm(0.5), mm(0.1)),
+      );
       add(fcu, { kind: 'VIA', net: netName }, annulus(viaAt, mm(0.275), hole, tolerance));
-      add(fcu, { kind: 'FILL', net: 'GND' }, { outer: rect(cx - mm(0.85), cy - mm(0.8), mm(0.7), mm(0.8)), holes: [] });
+      add(
+        fcu,
+        { kind: 'FILL', net: 'GND' },
+        { outer: rect(cx - mm(0.85), cy - mm(0.8), mm(0.7), mm(0.8)), holes: [] },
+      );
       add(bcu, { kind: 'VIA', net: netName }, annulus(viaAt, mm(0.275), hole, tolerance));
-      add(bcu, { kind: 'TRACE', net: netName }, trace(cx + mm(0.375), cy - mm(0.6), cx + mm(1.1), cy - mm(0.6), w));
+      add(
+        bcu,
+        { kind: 'TRACE', net: netName },
+        trace(cx + mm(0.375), cy - mm(0.6), cx + mm(1.1), cy - mm(0.6), w),
+      );
       add(silk, { kind: 'MARKING', component: component.refDes }, silkRing(component, R0402));
       barrels.push({
         kind: 'BARREL',

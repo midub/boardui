@@ -48,8 +48,8 @@ export class ElementState {
   readonly #owner: Uint32Array;
   readonly #highlights = new Map<number, Highlight>();
   #nextHighlight = 1;
-  #hover = new Uint32Array(0);
-  #selection = new Uint32Array(0);
+  #hover: Uint32Array = new Uint32Array(0);
+  #selection: Uint32Array = new Uint32Array(0);
   #version = 0;
 
   /**
@@ -90,7 +90,10 @@ export class ElementState {
    */
   highlight(indices: ArrayLike<number>, color: Rgb): () => void {
     const id = this.#nextHighlight++;
-    const entry: Highlight = { rgb: Uint8Array.from(color, toByte), indices: sortedUnique(indices) };
+    const entry: Highlight = {
+      rgb: Uint8Array.from(color, toByte),
+      indices: sortedUnique(indices),
+    };
     this.#highlights.set(id, entry);
     for (const i of entry.indices) {
       this.#owner[i] = id;
