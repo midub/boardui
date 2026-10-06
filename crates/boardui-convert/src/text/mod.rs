@@ -1,4 +1,4 @@
-//! The bundled stroke font, for `Text` without embedded glyphs (spec §6.6). See `README.md`
+//! The bundled stroke font, for `Text` without embedded glyphs (spec §6.1). See `README.md`
 //! for its source, licence and format.
 
 use std::collections::HashMap;

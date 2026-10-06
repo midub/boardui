@@ -339,7 +339,7 @@ impl<'a> ShapeConverter<'a> {
         }
     }
 
-    /// `Text` (spec §6.6): its string in its embedded font, or in the bundled stroke font,
+    /// `Text` (spec §6.1): its string in its embedded font, or in the bundled stroke font,
     /// fitted into its bounding box.
     fn text(&mut self, text: &ipc::Text, at: DAffine2, depth: usize) -> Option<Shape> {
         let at = at * self.placement(ipc::Point::default(), &text.xform);

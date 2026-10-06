@@ -1,7 +1,7 @@
 # Bundled stroke font
 
 `newstroke.txt` is the font the converter draws IPC-2581 `Text` with when the file has no
-embedded glyph for a character (spec §6.6).
+embedded glyph for a character (spec §6.1).
 
 ## Source and licence
 
