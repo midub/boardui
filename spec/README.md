@@ -81,6 +81,10 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 - Every layer occupies a Z range `[zMin, zMax]` (§6.4). Every element on a layer is a prism: a 2D region extruded over that range.
 - Prisms MUST be closed (watertight) with consistent outward-facing triangle winding (counter-clockwise, as glTF requires).
 - Arcs and circles are tessellated with a maximum chord deviation of `tolerance`, with at least 8 segments per full circle. The default `tolerance` is 5 µm, and the value used is recorded in `BOARDUI_board.tolerance`.
+- Strokes (lines, arcs, polylines on any layer) become regions using the width and `lineEnd` of their `LineDesc`:
+  - `ROUND` ends are half circles, and corners between segments are round;
+  - `SQUARE` ends extend half the width beyond the end point, `NONE` ends stop at it, and corners of both are mitered, with corners sharper than 30° clipped;
+  - a polyline that ends at its start point is closed and has no ends.
 - Normals SHOULD be omitted. glTF clients then compute flat normals, which suit prisms and save roughly 45 % of vertex data.
 
 ### 6.2 Copper layers: features never overlap
@@ -114,7 +118,7 @@ A feature whose region becomes empty keeps its metadata row (§8.2) and has no v
 - Non-plated holes are cut at `diameter / 2` and have no barrel.
 - The drill layer's `Span` defines a hole's span. Without a `Span`, the hole runs through all layers.
 - Barrels are features of their drill layer (kind `BARREL`) and carry the net of their `Set`.
-- Slots follow the same rules, using the slot outline instead of a circle.
+- Slots follow the same rules, using the slot outline instead of a circle. Where a circle's radius grows by `platingThickness`, the outline is offset outward by it, with rounded corners.
 
 ### 6.4 Stack-up
 
