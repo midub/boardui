@@ -8,7 +8,7 @@ use boardui_gltf::buffer::{read_u32s, read_vec3, view_bytes};
 use boardui_gltf::json::{FLOAT, Root, UNSIGNED_SHORT};
 use boardui_gltf::metadata::{NO_ROW, PropertyTable, SCHEMA_JSON};
 use boardui_gltf::{
-    Board, ComponentExtras, EXTENSIONS, FeatureKind, Mount, PROFILE_VERSION, Role, Side,
+    Board, ComponentExtras, EXTENSIONS, FeatureKind, Fiducial, Mount, PROFILE_VERSION, Role, Side,
     encode_id_segment, glb, layer_id,
 };
 
@@ -762,6 +762,20 @@ impl Validator<'_> {
             {
                 self.report.error(format!("`{id}`: invalid feature kinds"));
             }
+            if let Some(kinds) = table.numbers("kind") {
+                // Fiducials, and only they, have a fiducial type (§8.2).
+                let fiducials = table.numbers("fiducial");
+                let wrong = (0..table.count).any(|row| {
+                    let fiducial = fiducials.map_or(255, |f| f[row]);
+                    let typed = fiducial != 255;
+                    (typed && Fiducial::from_value(fiducial as u8).is_none())
+                        || typed != (kinds[row] == u32::from(FeatureKind::Fiducial.value()))
+                });
+                if wrong {
+                    self.report
+                        .error(format!("`{id}`: invalid or missing fiducial types"));
+                }
+            }
             if let Some(sources) = table.numbers("source") {
                 let distinct: HashSet<_> = sources.iter().collect();
                 if distinct.len() != sources.len() {
@@ -1274,6 +1288,19 @@ mod tests {
     }
 
     #[test]
+    fn fiducials_need_their_type() {
+        let (root, mut bin) = sample();
+        let b = board(&root);
+        let top = b.layers.iter().find(|l| l.name == "TOP").unwrap();
+        let metadata = root.extensions.structural_metadata.as_ref().unwrap();
+        let table = &metadata.property_tables[top.feature_table.unwrap() as usize];
+        assert!(!table.properties.contains_key("fiducial"));
+        let view = &root.buffer_views[table.properties["kind"].values as usize];
+        bin[view.byte_offset as usize] = FeatureKind::Fiducial.value();
+        assert_error(&check(&root, &bin), "invalid or missing fiducial types");
+    }
+
+    #[test]
     fn feature_ids_must_be_contiguous() {
         let (root, mut bin) = sample();
         let b = board(&root);
@@ -1330,6 +1357,7 @@ mod tests {
                 net: None,
                 pin: None,
                 component: None,
+                fiducial: None,
             };
             BoardAsset {
                 generator: "test".into(),

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use boardui_geom::{Indices, LayerMesh, Prism};
 
 use crate::board::{
-    Board, BoardDrill, BoardLayer, ComponentExtras, ComponentInfo, FeatureKind, Mount,
+    Board, BoardDrill, BoardLayer, ComponentExtras, ComponentInfo, FeatureKind, Fiducial, Mount,
     PROFILE_VERSION, Role, Side, Source, Tables, ThicknessSource,
 };
 use crate::buffer::{AssetBuilder, push};
@@ -172,6 +172,8 @@ pub struct FeatureRow {
     pub pin: Option<u32>,
     /// Row in the `components` table.
     pub component: Option<u32>,
+    /// The fiducial type of a [`FeatureKind::Fiducial`] feature.
+    pub fiducial: Option<Fiducial>,
 }
 
 /// A layer of the board (spec §4, §8.3).
@@ -740,9 +742,20 @@ impl Writer {
                 ));
             }
         }
+        if rows.iter().any(|r| r.fiducial.is_some()) {
+            columns.push(Column::U8(
+                "fiducial",
+                rows.iter()
+                    .map(|r| r.fiducial.map_or(FIDUCIAL_NONE, Fiducial::value))
+                    .collect(),
+            ));
+        }
         self.table(id, "feature", rows.len(), columns)
     }
 }
+
+/// `NONE` in the `Fiducial` enum: the feature is not a fiducial.
+const FIDUCIAL_NONE: u8 = 255;
 
 fn named(name: &str) -> Node {
     Node {

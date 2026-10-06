@@ -128,6 +128,80 @@ impl Path {
         self
     }
 
+    /// Length of the path, in metres. An arc whose start and end lie at different distances
+    /// from its centre counts with its mean radius.
+    pub fn length(&self) -> f64 {
+        let mut current = self.start;
+        let mut total = 0.0;
+        for segment in &self.segments {
+            let piece = Piece::new(current, *segment);
+            total += piece.length;
+            current = piece.end;
+        }
+        total
+    }
+
+    /// Splits the path into dashes, like an SVG dash array: `pattern` alternates dash and
+    /// gap lengths in metres, starting with a dash at the start of the path and repeating
+    /// until its end. Dashes keep the path's arcs and corners. A dash of length 0 is a
+    /// single point (a zero-length line), which round and square caps draw as a dot.
+    ///
+    /// A pattern that is empty, has a negative or non-finite length, or adds up to 0 leaves
+    /// the path whole.
+    pub fn dashes(&self, pattern: &[f64]) -> Vec<Path> {
+        const EPSILON: f64 = 1e-12;
+        let valid = pattern.iter().all(|l| l.is_finite() && *l >= 0.0);
+        if !valid || pattern.iter().sum::<f64>() <= EPSILON {
+            return vec![self.clone()];
+        }
+        let mut dashes = Vec::new();
+        let mut dash: Option<Path> = None;
+        let (mut index, mut remaining, mut on) = (0, pattern[0], true);
+        let mut current = self.start;
+        for segment in &self.segments {
+            let piece = Piece::new(current, *segment);
+            let mut pos = 0.0;
+            loop {
+                if on && dash.is_none() {
+                    dash = Some(Path::new(piece.point(pos)));
+                }
+                // Rounding may leave a sliver at the end of the segment: skip it.
+                let step = remaining.min(piece.length - pos);
+                let step = if step < EPSILON { 0.0 } else { step };
+                if on && step > 0.0 {
+                    let d = dash.take().expect("dash started");
+                    dash = Some(piece.extend(d, pos, pos + step));
+                }
+                pos += step;
+                remaining -= step;
+                if remaining <= EPSILON {
+                    if on {
+                        let d = dash.take().expect("dash started");
+                        dashes.push(if d.segments.is_empty() {
+                            let at = d.start;
+                            d.line_to(at)
+                        } else {
+                            d
+                        });
+                    }
+                    index = (index + 1) % pattern.len();
+                    remaining = pattern[index];
+                    on = !on;
+                    continue;
+                }
+                if pos >= piece.length - EPSILON {
+                    break;
+                }
+            }
+            current = piece.end;
+        }
+        // A dash cut short by the end of the path; one that has not begun yet is dropped.
+        if let Some(d) = dash.filter(|d| !d.segments.is_empty()) {
+            dashes.push(d);
+        }
+        dashes
+    }
+
     /// Tessellates the path onto the grid, dropping consecutive duplicate points.
     ///
     /// Arc chord counts are chosen for the arc radius plus `margin`, so that an outline
@@ -179,6 +253,111 @@ impl Path {
             points.pop();
         }
         Ok(points)
+    }
+}
+
+/// A segment with its start point, measured along its length.
+struct Piece {
+    start: DVec2,
+    end: DVec2,
+    length: f64,
+    /// `None` for a straight line.
+    arc: Option<ArcPiece>,
+}
+
+/// The circle of an arc [`Piece`].
+struct ArcPiece {
+    center: DVec2,
+    direction: ArcDirection,
+    /// Radius at the start and the end.
+    radii: (f64, f64),
+    /// Angle of the start, in radians.
+    angle: f64,
+    /// Signed sweep, in radians: positive is counter-clockwise.
+    sweep: f64,
+}
+
+impl Piece {
+    fn new(start: DVec2, segment: Segment) -> Self {
+        match segment {
+            Segment::Line { end } => Self {
+                start,
+                end,
+                length: start.distance(end),
+                arc: None,
+            },
+            Segment::Arc {
+                end,
+                center,
+                direction,
+            } => {
+                let (from, to) = (start - center, end - center);
+                let radii = (from.length(), to.length());
+                if radii.0 < GRID_STEP || radii.1 < GRID_STEP || !center.is_finite() {
+                    // Drawn as a straight line (see `arc_points`).
+                    return Self::new(start, Segment::Line { end });
+                }
+                let full = matches!(
+                    (grid_point(start), grid_point(end)),
+                    (Ok(a), Ok(b)) if a == b
+                );
+                let ccw = (to.to_angle() - from.to_angle()).rem_euclid(TAU);
+                let sweep = match (full, direction) {
+                    (true, ArcDirection::CounterClockwise) => TAU,
+                    (true, ArcDirection::Clockwise) => -TAU,
+                    (false, _) if ccw == 0.0 => 0.0,
+                    (false, ArcDirection::CounterClockwise) => ccw,
+                    (false, ArcDirection::Clockwise) => ccw - TAU,
+                };
+                Self {
+                    start,
+                    end,
+                    length: sweep.abs() * (radii.0 + radii.1) / 2.0,
+                    arc: Some(ArcPiece {
+                        center,
+                        direction,
+                        radii,
+                        angle: from.to_angle(),
+                        sweep,
+                    }),
+                }
+            }
+        }
+    }
+
+    /// The point at distance `s` from the start.
+    fn point(&self, s: f64) -> DVec2 {
+        let t = if self.length > 0.0 {
+            (s / self.length).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        if t == 0.0 {
+            return self.start;
+        }
+        if t == 1.0 {
+            return self.end;
+        }
+        match &self.arc {
+            None => self.start.lerp(self.end, t),
+            Some(arc) => {
+                let radius = arc.radii.0 + (arc.radii.1 - arc.radii.0) * t;
+                arc.center + radius * DVec2::from_angle(arc.angle + arc.sweep * t)
+            }
+        }
+    }
+
+    /// Appends the part of the segment from distance `from` to `to` to `path`, which ends at
+    /// the point at `from`.
+    fn extend(&self, path: Path, from: f64, to: f64) -> Path {
+        let end = self.point(to);
+        match &self.arc {
+            // A piece of arc too short to tell from a full circle on the grid is a line.
+            Some(arc) if self.point(from).distance(end) > 10.0 * GRID_STEP || to - from > 1e-6 => {
+                path.arc_to(end, arc.center, arc.direction)
+            }
+            _ => path.line_to(end),
+        }
     }
 }
 
@@ -387,5 +566,86 @@ mod tests {
             path.tessellate(Tolerance::DEFAULT, 0.0),
             Err(GeomError::OutOfRange { .. })
         ));
+    }
+
+    fn end(path: &Path) -> DVec2 {
+        match path.segments.last() {
+            Some(Segment::Line { end } | Segment::Arc { end, .. }) => *end,
+            None => path.start,
+        }
+    }
+
+    #[test]
+    fn dashes_follow_lines_and_corners() {
+        let mm = |x: f64, y: f64| DVec2::new(x * 1e-3, y * 1e-3);
+        // An L of 4 mm + 3 mm, dashed 2 mm on, 1 mm off.
+        let path = Path::new(mm(0.0, 0.0))
+            .line_to(mm(4.0, 0.0))
+            .line_to(mm(4.0, 3.0));
+        assert!((path.length() - 7e-3).abs() < 1e-15);
+        let dashes = path.dashes(&[2e-3, 1e-3]);
+        assert_eq!(dashes.len(), 3);
+        assert!(end(&dashes[0]).distance(mm(2.0, 0.0)) < 1e-12);
+        // The second dash turns the corner.
+        assert!(dashes[1].start.distance(mm(3.0, 0.0)) < 1e-12);
+        assert_eq!(dashes[1].segments.len(), 2);
+        assert!(end(&dashes[1]).distance(mm(4.0, 1.0)) < 1e-12);
+        // The last one starts at 6 mm and is cut short by the end.
+        assert!(dashes[2].start.distance(mm(4.0, 2.0)) < 1e-12);
+        assert!(end(&dashes[2]).distance(mm(4.0, 3.0)) < 1e-12);
+        let total: f64 = dashes.iter().map(Path::length).sum();
+        assert!((total - 5e-3).abs() < 1e-12);
+    }
+
+    #[test]
+    fn zero_length_dashes_are_dots() {
+        let path = Path::new(DVec2::ZERO).line_to(DVec2::new(1e-3, 0.0));
+        let dots = path.dashes(&[0.0, 0.3e-3]);
+        // At 0, 0.3, 0.6 and 0.9 mm.
+        assert_eq!(dots.len(), 4);
+        for (k, dot) in dots.iter().enumerate() {
+            assert_eq!(dot.segments.len(), 1);
+            assert!(dot.start.distance(DVec2::new(0.3e-3 * k as f64, 0.0)) < 1e-12);
+            assert_eq!(dot.length(), 0.0);
+        }
+    }
+
+    #[test]
+    fn dashes_follow_arcs() {
+        // A clockwise half circle of radius 1 mm from (1, 0) over (0, -1) to (-1, 0).
+        let path = Path::new(DVec2::new(1e-3, 0.0)).arc_to(
+            DVec2::new(-1e-3, 0.0),
+            DVec2::ZERO,
+            ArcDirection::Clockwise,
+        );
+        assert!((path.length() - PI * 1e-3).abs() < 1e-12);
+        let quarter = PI / 2.0 * 1e-3;
+        let dashes = path.dashes(&[quarter, 2.0 * quarter]);
+        assert_eq!(dashes.len(), 1);
+        assert!(matches!(
+            dashes[0].segments[..],
+            [Segment::Arc {
+                direction: ArcDirection::Clockwise,
+                ..
+            }]
+        ));
+        assert!(end(&dashes[0]).distance(DVec2::new(0.0, -1e-3)) < 1e-12);
+        // A full circle in four dashes.
+        let circle = Path::new(DVec2::new(1e-3, 0.0)).arc_to(
+            DVec2::new(1e-3, 0.0),
+            DVec2::ZERO,
+            ArcDirection::CounterClockwise,
+        );
+        let dashes = circle.dashes(&[quarter / 2.0, quarter / 2.0]);
+        assert_eq!(dashes.len(), 4);
+        assert!(dashes[1].start.distance(DVec2::new(0.0, 1e-3)) < 1e-12);
+    }
+
+    #[test]
+    fn degenerate_patterns_keep_the_path() {
+        let path = Path::new(DVec2::ZERO).line_to(DVec2::new(1e-3, 0.0));
+        for pattern in [&[][..], &[0.0, 0.0], &[1e-3, -1.0], &[f64::NAN]] {
+            assert_eq!(path.dashes(pattern), [path.clone()]);
+        }
     }
 }

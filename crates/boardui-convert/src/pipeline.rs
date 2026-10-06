@@ -7,14 +7,14 @@ use boardui_geom::{
     Shape, Tolerance, par,
 };
 use boardui_gltf::{
-    BoardAsset, DrillAsset, FeatureKind, FeatureRow, LayerAsset, PinRow, Role, Side, Source,
+    BoardAsset, DrillAsset, FeatureKind, FeatureRow, Fiducial, LayerAsset, PinRow, Role, Side, Source,
 };
 use boardui_ipc2581 as ipc;
 use glam::DAffine2;
 
 use crate::colours;
 use crate::components::{self, PadRef};
-use crate::shapes::{ShapeConverter, is_stroke, point};
+use crate::shapes::{ShapeConverter, erases, is_stroke, point};
 use crate::stackup::{self, LayerClass, Stack};
 use crate::{Conversion, ConvertError, Options, Stats, Timings, Warning, Warnings};
 
@@ -224,7 +224,9 @@ pub(crate) fn run(
                     .rows
                     .iter()
                     .zip(&regions[c])
-                    .filter(|(row, r)| row.kind == FeatureKind::Pad && !r.is_empty())
+                    .filter(|(row, r)| {
+                        matches!(row.kind, FeatureKind::Pad | FeatureKind::Fiducial) && !r.is_empty()
+                    })
                     .map(|(_, r)| r.clone())
                     .collect(),
                 None => Vec::new(),
@@ -455,6 +457,7 @@ fn sheet_row() -> FeatureRow {
         net: None,
         pin: None,
         component: None,
+        fiducial: None,
     }
 }
 
@@ -550,6 +553,8 @@ impl<'a> Context<'a> {
                 .as_deref()
                 .and_then(|n| self.net_rows.get(n))
                 .copied();
+            let mut polarity = set.polarity;
+            let mut fiducial = None;
             let (kind, shape, pin_ref) = match &feature.element {
                 ipc::FeatureElement::Pad(pad) => {
                     let kind = match set.pad_usage {
@@ -562,6 +567,9 @@ impl<'a> Context<'a> {
                 ipc::FeatureElement::Features(f) => {
                     let at = self.shapes.placement(f.location, &f.xform);
                     let shape = self.shapes.area(&f.shape, at);
+                    if erases(&f.shape, self.content) {
+                        polarity = ipc::Polarity::Negative;
+                    }
                     let kind = if is_stroke(&f.shape, self.content) {
                         FeatureKind::Trace
                     } else {
@@ -573,6 +581,16 @@ impl<'a> Context<'a> {
                         }
                     };
                     (kind, shape, None)
+                }
+                ipc::FeatureElement::Fiducial(f) => {
+                    let at = self.shapes.placement(f.location, &f.xform);
+                    fiducial = Some(match f.kind {
+                        ipc::FiducialKind::Global => Fiducial::Global,
+                        ipc::FiducialKind::Local => Fiducial::Local,
+                        ipc::FiducialKind::BadBoard => Fiducial::BadBoard,
+                        ipc::FiducialKind::GoodPanel => Fiducial::GoodPanel,
+                    });
+                    (FeatureKind::Fiducial, self.shapes.area(&f.shape, at), None)
                 }
                 ipc::FeatureElement::Hole(_) | ipc::FeatureElement::SlotCavity(_) => {
                     (FeatureKind::Other, None, None)
@@ -600,17 +618,18 @@ impl<'a> Context<'a> {
                 net,
                 pin,
                 component,
+                fiducial: fiducial.filter(|_| kind == FeatureKind::Fiducial),
             });
             out.shapes.push(geom::Feature {
                 shape: shape.unwrap_or(Shape::Union(Vec::new())),
                 priority: match kind {
-                    FeatureKind::Pad => Priority::Pad,
+                    FeatureKind::Pad | FeatureKind::Fiducial => Priority::Pad,
                     FeatureKind::Via => Priority::ViaLand,
                     FeatureKind::Trace => Priority::Trace,
                     FeatureKind::Fill => Priority::Fill,
                     _ => Priority::Other,
                 },
-                polarity: match set.polarity {
+                polarity: match polarity {
                     ipc::Polarity::Positive => Polarity::Positive,
                     ipc::Polarity::Negative => Polarity::Negative,
                 },
@@ -739,6 +758,7 @@ impl<'a> Context<'a> {
                     net,
                     pin: None,
                     component,
+                    fiducial: None,
                 });
                 holes.push(hole);
             }
