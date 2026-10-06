@@ -1758,4 +1758,196 @@ mod tests {
         let s = conv.area(&outlined, DAffine2::IDENTITY).unwrap();
         close_to(area(&s), 1.8e-3 * 1.8e-3, 1e-12);
     }
+
+    fn text(string: &str, width: f64, height: f64, font: Option<&str>) -> ipc::Shape {
+        ipc::Shape::Text(Box::new(ipc::Text {
+            string: string.to_owned(),
+            font_size: None,
+            xform: ipc::Xform::default(),
+            lower_left: ipc::Point::default(),
+            upper_right: ipc::Point {
+                x: width,
+                y: height,
+            },
+            font_ref: font.map(str::to_owned),
+            line: None,
+            color: None,
+        }))
+    }
+
+    /// Content with embedded font `E` in millimetres: an `I` (a 0.1 mm line) in a cell from
+    /// -0.25 to 1, and a stroke of 0.05; external font `X`.
+    fn fonts() -> ipc::Content {
+        let xml = r#"<IPC-2581 revision="C"><Content><FunctionMode mode="ASSEMBLY"/>
+            <DictionaryFont units="MILLIMETER">
+              <EntryFont id="E"><FontDefEmbedded name="plotter">
+                <LineDesc lineWidth="0.05" lineEnd="ROUND"/>
+                <Glyph charCode="49" lowerLeftX="0" lowerLeftY="-0.25" upperRightX="0.5" upperRightY="1">
+                  <Line startX="0.25" startY="0" endX="0.25" endY="1"><LineDesc lineWidth="0.1" lineEnd="ROUND"/></Line>
+                </Glyph>
+              </FontDefEmbedded></EntryFont>
+              <EntryFont id="X"><FontDefExternal name="Arial" urn="urn:arial"/></EntryFont>
+            </DictionaryFont></Content>
+            <Ecad name="e"><CadHeader units="MILLIMETER"/><CadData/></Ecad></IPC-2581>"#;
+        ipc::parse_bytes(xml.as_bytes()).unwrap().content
+    }
+
+    fn close_to_box(actual: (DVec2, DVec2), min: (f64, f64), max: (f64, f64)) {
+        // Round caps are polygons: their extremes may fall a few micrometres short.
+        let eps = 5e-6;
+        close_to(actual.0.x, min.0, eps);
+        close_to(actual.0.y, min.1, eps);
+        close_to(actual.1.x, max.0, eps);
+        close_to(actual.1.y, max.1, eps);
+    }
+
+    #[test]
+    fn bundled_text_fills_the_box_height() {
+        let c = content();
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
+        // The cell is 28 units (descenders to capitals): 0.1 mm per unit, strokes
+        // 0.15 × 2.1 mm wide. `H` has stems at 5 and 17 units of its 22.
+        let s = conv
+            .area(&text("HH", 10e-3, 2.8e-3, None), DAffine2::IDENTITY)
+            .unwrap();
+        let w = STROKE_WIDTH * 2.1e-3 / 2.0;
+        let (bottom, top) = (0.7e-3 - w, 2.8e-3 + w);
+        close_to_box(bounds(&s), (0.5e-3 - w, bottom), (3.9e-3 + w, top));
+        assert_eq!(conv.take_warnings(), Vec::<String>::new());
+
+        // Rotated and mirrored by the `Text`'s `Xform`, then placed.
+        let ipc::Shape::Text(mut t) = text("HH", 10e-3, 2.8e-3, None) else {
+            unreachable!()
+        };
+        t.xform = ipc::Xform {
+            rotation: 90.0,
+            mirror: true,
+            ..ipc::Xform::default()
+        };
+        let at = DAffine2::from_translation(DVec2::new(1.0, 2.0));
+        let s = conv.area(&ipc::Shape::Text(t), at).unwrap();
+        // Mirrored (x → -x), then rotated (x, y) → (-y, x).
+        close_to_box(
+            bounds(&s),
+            (1.0 - top, 2.0 - 3.9e-3 - w),
+            (1.0 - bottom, 2.0 - 0.5e-3 + w),
+        );
+    }
+
+    #[test]
+    fn wide_text_is_scaled_down_to_fit() {
+        let c = content();
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
+        // 88 units into 2.2 mm: 0.025 mm per unit, centred in the 2.8 mm height.
+        let s = conv
+            .area(&text("HHHH", 2.2e-3, 2.8e-3, None), DAffine2::IDENTITY)
+            .unwrap();
+        let w = STROKE_WIDTH * 21.0 * 0.025e-3 / 2.0;
+        let lift = (2.8e-3 - 28.0 * 0.025e-3) / 2.0;
+        close_to_box(
+            bounds(&s),
+            (5.0 * 0.025e-3 - w, lift + 7.0 * 0.025e-3 - w),
+            (83.0 * 0.025e-3 + w, lift + 28.0 * 0.025e-3 + w),
+        );
+        assert_eq!(
+            conv.take_warnings(),
+            ["1 texts are wider than their bounding box and were scaled down to fit"]
+        );
+        assert!(conv.take_warnings().is_empty());
+        // An empty box draws nothing.
+        assert!(
+            conv.area(&text("H", 0.0, 1e-3, None), DAffine2::IDENTITY)
+                .is_none()
+        );
+        assert!(
+            conv.area(&text("", 1e-3, 1e-3, None), DAffine2::IDENTITY)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn embedded_glyphs_and_their_fallbacks() {
+        let c = fonts();
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
+        // The 1.25 mm cell into 2.5 mm: scale 2, lines 0.2 mm wide at x = 0.5 and 1.5 mm,
+        // from the baseline at 0.5 mm to 2.5 mm.
+        let s = conv
+            .area(&text("II", 10e-3, 2.5e-3, Some("E")), DAffine2::IDENTITY)
+            .unwrap();
+        close_to_box(bounds(&s), (0.4e-3, 0.4e-3), (1.6e-3, 2.6e-3));
+        assert!(conv.take_warnings().is_empty());
+        // Characters the font lacks come from the bundled font, scaled to its cell, and
+        // unknown ones are boxes; the bundled strokes are as wide as the font's.
+        let s = conv
+            .area(
+                &text("I-\u{2603}\u{2603}Ω", 10e-3, 2.5e-3, Some("E")),
+                DAffine2::IDENTITY,
+            )
+            .unwrap();
+        let (min, max) = bounds(&s);
+        close_to(min.x, 0.4e-3, 5e-6);
+        // Three boxes of 16 units after `I` (1 mm) and `-` (its advance).
+        let unit = 2.5e-3 / 28.0;
+        let dash = StrokeFont::get().glyph('-').unwrap().advance * unit;
+        close_to(
+            max.x,
+            1e-3 + dash + 2.0 * 16.0 * unit + 13.0 * unit + 0.05e-3,
+            2e-6,
+        );
+        close_to(max.y, 2.6e-3, 5e-6);
+        assert_eq!(
+            conv.take_warnings(),
+            [
+                "embedded font `plotter` lacks some characters; they are drawn with the bundled font",
+                "2 text characters have no glyph and are drawn as boxes: U+03A9, U+2603",
+            ]
+        );
+        // External and undefined fonts fall back to the bundled font.
+        for (font, warning) in [
+            (
+                "X",
+                "external font `Arial` is not available; its text is drawn with the bundled font",
+            ),
+            (
+                "nope",
+                "font `nope` is not defined; its text is drawn with the bundled font",
+            ),
+        ] {
+            let s = conv
+                .area(&text("HH", 10e-3, 2.8e-3, Some(font)), DAffine2::IDENTITY)
+                .unwrap();
+            close_to(bounds(&s).1.x, 3.9e-3 + STROKE_WIDTH * 2.1e-3 / 2.0, 5e-6);
+            assert_eq!(conv.take_warnings(), [warning]);
+        }
+    }
+
+    #[test]
+    fn text_strokes_follow_a_line_desc() {
+        let c = content();
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
+        let ipc::Shape::Text(mut t) = text("H", 10e-3, 2.8e-3, None) else {
+            unreachable!()
+        };
+        t.line = Some(desc(0.4e-3, LineEnd::Round, LineProperty::Solid));
+        let s = conv.area(&ipc::Shape::Text(t), DAffine2::IDENTITY).unwrap();
+        close_to_box(bounds(&s), (0.3e-3, 0.5e-3), (1.9e-3, 3.0e-3));
+        assert!(
+            conv.filled(&text("H", 1e-3, 1e-3, None), DAffine2::IDENTITY)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn texts_are_collected_and_strokes() {
+        let c = content();
+        let group = ipc::Shape::UserSpecial(vec![
+            text("R1", 1e-3, 1e-3, None),
+            square(1e-3, None, None),
+            ipc::Shape::UserSpecial(vec![text("10k", 1e-3, 1e-3, None)]),
+        ]);
+        assert_eq!(texts(&group, &c), ["R1", "10k"]);
+        assert!(texts(&square(1e-3, None, None), &c).is_empty());
+        assert!(is_stroke(&text("A", 1e-3, 1e-3, None), &c));
+        assert!(!erases(&text("A", 1e-3, 1e-3, None), &c));
+    }
 }
