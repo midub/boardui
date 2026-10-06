@@ -84,8 +84,10 @@ pub struct BoardLayer {
     pub visible: bool,
     /// `node`: the layer node.
     pub node: u32,
-    /// `featureTable`: index into `EXT_structural_metadata.propertyTables`.
-    pub feature_table: u32,
+    /// `featureTable`: index into `EXT_structural_metadata.propertyTables`; absent when the
+    /// layer has no features (property tables can't be empty).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feature_table: Option<u32>,
 }
 
 /// An entry of `BOARDUI_board.drills`.
@@ -102,20 +104,25 @@ pub struct BoardDrill {
     pub to: String,
     /// `node`: the drill node.
     pub node: u32,
-    /// `featureTable`.
-    pub feature_table: u32,
+    /// `featureTable`; absent when the drill layer has no features.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feature_table: Option<u32>,
 }
 
-/// `BOARDUI_board.tables`.
+/// `BOARDUI_board.tables`. A table without rows is omitted, because property tables can't
+/// be empty.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Tables {
     /// The `nets` table.
-    pub nets: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nets: Option<u32>,
     /// The `components` table.
-    pub components: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub components: Option<u32>,
     /// The `pins` table.
-    pub pins: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pins: Option<u32>,
 }
 
 /// `role` of a layer.

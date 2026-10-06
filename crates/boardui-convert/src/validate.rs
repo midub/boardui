@@ -167,9 +167,18 @@ impl Validator<'_> {
         let components =
             self.shared_table(&tables, board.tables.components, "components", "component");
         let pins = self.shared_table(&tables, board.tables.pins, "pins", "pin");
+        let empty = Table {
+            count: 0,
+            columns: HashMap::new(),
+        };
         let (Some(nets), Some(components), Some(pins)) = (nets, components, pins) else {
             return;
         };
+        let (nets, components, pins) = (
+            nets.unwrap_or(&empty),
+            components.unwrap_or(&empty),
+            pins.unwrap_or(&empty),
+        );
         self.nets(nets);
         self.components(&board, components);
         self.pins(pins, components, nets);
@@ -348,16 +357,21 @@ impl Validator<'_> {
             .collect()
     }
 
+    /// The shared table `what`: `Some(None)` when it is absent (no rows), `None` when it is
+    /// broken.
     fn shared_table<'t>(
         &mut self,
         tables: &'t [Option<Table>],
-        index: u32,
+        index: Option<u32>,
         what: &str,
         class: &str,
-    ) -> Option<&'t Table> {
+    ) -> Option<Option<&'t Table>> {
+        let Some(index) = index else {
+            return Some(None);
+        };
         let metadata = self.root.extensions.structural_metadata.as_ref()?;
         match metadata.property_tables.get(index as usize) {
-            Some(t) if t.class == class => tables[index as usize].as_ref(),
+            Some(t) if t.class == class => tables[index as usize].as_ref().map(Some),
             Some(t) => {
                 self.report.error(format!(
                     "BOARDUI_board.tables.{what} is table {index} of class `{}`, expected `{class}`",
@@ -710,6 +724,19 @@ impl Validator<'_> {
             );
         let mut used_tables = HashSet::new();
         for (id, node, table_index, layer) in entries {
+            let Some(table_index) = table_index else {
+                // No features: no table and no geometry.
+                if self
+                    .root
+                    .nodes
+                    .get(node as usize)
+                    .is_some_and(|n| n.mesh.is_some())
+                {
+                    self.report
+                        .error(format!("`{id}` has a mesh but no feature table"));
+                }
+                continue;
+            };
             let Some(Some(table)) = tables.get(table_index as usize) else {
                 self.report.error(format!(
                     "`{id}`: feature table {table_index} does not exist"

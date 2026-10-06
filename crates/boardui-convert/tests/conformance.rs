@@ -5,8 +5,8 @@
 //! - `INSTA_UPDATE=always cargo test -p boardui-convert --test conformance` rewrites the
 //!   expected summaries; `BOARDUI_BLESS=1` also rewrites the expected GLBs of the
 //!   hand-written samples.
-//! - `BOARDUI_CONFORMANCE_OUT=<dir>` writes every converted GLB to `<dir>`, for the Khronos
-//!   validator step in CI.
+//! - `BOARDUI_CONFORMANCE_OUT=<dir>` writes every converted GLB to `<dir>` (relative to the
+//!   workspace root), for the Khronos validator step in CI.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -68,9 +68,12 @@ fn check(name: &str, path: &Path) {
         "{name}: component pins are not on their pads"
     );
     if let Ok(dir) = std::env::var("BOARDUI_CONFORMANCE_OUT") {
+        // Relative to the workspace root, not to this crate.
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join(dir);
         std::fs::create_dir_all(&dir).expect("output directory");
-        std::fs::write(Path::new(&dir).join(format!("{name}.glb")), &conversion.glb)
-            .expect("write GLB");
+        std::fs::write(dir.join(format!("{name}.glb")), &conversion.glb).expect("write GLB");
     }
     let hand_written = path.starts_with(samples_dir().join("hand-written"));
     if hand_written {
@@ -214,7 +217,10 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         .as_ref()
         .expect("metadata")
         .property_tables;
-    let column = |table: u32, name: &str| -> Vec<u32> {
+    let column = |table: Option<u32>, name: &str| -> Vec<u32> {
+        let Some(table) = table else {
+            return Vec::new();
+        };
         let t = &tables[table as usize];
         let Some(p) = t.properties.get(name) else {
             return vec![NO_ROW; t.count as usize];

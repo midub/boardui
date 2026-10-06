@@ -429,7 +429,7 @@ impl Writer {
         id: &str,
         mesh: &LayerMesh,
         material: u32,
-        table: u32,
+        table: Option<u32>,
         rows: usize,
     ) -> u32 {
         let float_ids = rows > usize::from(u16::MAX);
@@ -455,7 +455,7 @@ impl Writer {
                         feature_ids: vec![FeatureIdSet {
                             feature_count: primitive.features.len() as u32,
                             attribute: Some(0),
-                            property_table: Some(table),
+                            property_table: table,
                             ..FeatureIdSet::default()
                         }],
                     }),
@@ -572,13 +572,24 @@ impl Writer {
         )
     }
 
-    fn table(&mut self, name: &str, class: &str, count: usize, columns: Vec<Column>) -> u32 {
+    /// Writes a property table, or nothing for a table without rows.
+    fn table(
+        &mut self,
+        name: &str,
+        class: &str,
+        count: usize,
+        columns: Vec<Column>,
+    ) -> Option<u32> {
+        if count == 0 {
+            return None;
+        }
         let mut properties = std::collections::BTreeMap::new();
         for column in columns {
-            let (name, property) = column.write(&mut self.out);
-            properties.insert(name, property);
+            if let Some((name, property)) = column.write(&mut self.out) {
+                properties.insert(name, property);
+            }
         }
-        push(
+        Some(push(
             &mut self.tables,
             PropertyTable {
                 name: Some(name.to_owned()),
@@ -586,10 +597,10 @@ impl Writer {
                 count: count as u32,
                 properties,
             },
-        )
+        ))
     }
 
-    fn nets_table(&mut self, asset: &BoardAsset) -> u32 {
+    fn nets_table(&mut self, asset: &BoardAsset) -> Option<u32> {
         let ids = asset
             .nets
             .iter()
@@ -606,7 +617,7 @@ impl Writer {
         )
     }
 
-    fn components_table(&mut self, asset: &BoardAsset, nodes: &[u32]) -> u32 {
+    fn components_table(&mut self, asset: &BoardAsset, nodes: &[u32]) -> Option<u32> {
         let components = &asset.components;
         let columns = vec![
             Column::Strings(
@@ -647,7 +658,7 @@ impl Writer {
         self.table("components", "component", components.len(), columns)
     }
 
-    fn pins_table(&mut self, asset: &BoardAsset) -> u32 {
+    fn pins_table(&mut self, asset: &BoardAsset) -> Option<u32> {
         let pins = &asset.pins;
         let ids = pins
             .iter()
@@ -682,7 +693,7 @@ impl Writer {
         self.table("pins", "pin", pins.len(), columns)
     }
 
-    fn feature_table(&mut self, id: &str, rows: &[FeatureRow]) -> u32 {
+    fn feature_table(&mut self, id: &str, rows: &[FeatureRow]) -> Option<u32> {
         let mut columns = vec![
             Column::U8("kind", rows.iter().map(|r| r.kind.value()).collect()),
             Column::U32("source", rows.iter().map(|r| r.source).collect()),
@@ -721,9 +732,14 @@ enum Column {
 }
 
 impl Column {
-    fn write(self, out: &mut AssetBuilder) -> (String, PropertyTableProperty) {
-        match self {
+    /// Writes the column. Optional string columns whose values are all empty are left out:
+    /// their `noData` is the empty string, and glTF buffer views can't be empty.
+    fn write(self, out: &mut AssetBuilder) -> Option<(String, PropertyTableProperty)> {
+        Some(match self {
             Self::Strings(name, values) => {
+                if values.iter().all(String::is_empty) {
+                    return None;
+                }
                 let mut bytes = Vec::new();
                 let mut offsets = Vec::with_capacity((values.len() + 1) * 4);
                 for value in &values {
@@ -748,7 +764,7 @@ impl Column {
                 let bytes: Vec<u8> = values.iter().flat_map(|v| v.to_le_bytes()).collect();
                 (name.to_owned(), plain(out, &bytes))
             }
-        }
+        })
     }
 }
 
