@@ -205,6 +205,9 @@ importers:
 
   packages/converter:
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.1
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

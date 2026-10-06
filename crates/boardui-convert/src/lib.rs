@@ -153,6 +153,28 @@ impl std::error::Error for ConvertError {
     }
 }
 
+/// The steps of a conversion, in order, as reported by [`convert_with_progress`]. They match
+/// the pipeline in `docs/architecture.md`; [`Conversion::timings`] uses the same names.
+pub const STEPS: [&str; 8] = [
+    "parse",
+    "stack-up, features, components",
+    "resolve",
+    "hole cuts",
+    "cut and sheets",
+    "extrude",
+    "barrels",
+    "write",
+];
+
+/// A pipeline step starting or ending, as reported by [`convert_with_progress`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Progress {
+    /// The step (one of [`STEPS`]) started.
+    Start(&'static str),
+    /// The step ended.
+    End(&'static str),
+}
+
 /// Converts an IPC-2581 file to a boardui asset.
 ///
 /// # Errors
@@ -160,7 +182,21 @@ impl std::error::Error for ConvertError {
 /// Returns [`ConvertError::Parse`] if the XML can't be read and [`ConvertError::Input`] if
 /// it has nothing to convert (no step or no copper layer) or the options are invalid.
 pub fn convert(xml: &[u8], options: &Options) -> Result<Conversion, ConvertError> {
-    let timings = Timings::default();
+    convert_with_progress(xml, options, &mut |_| {})
+}
+
+/// Converts an IPC-2581 file like [`convert`], calling `progress` when each of the [`STEPS`]
+/// starts and ends. The steps run in order; each starts once.
+///
+/// # Errors
+///
+/// See [`convert`].
+pub fn convert_with_progress(
+    xml: &[u8],
+    options: &Options,
+    progress: &mut dyn FnMut(Progress),
+) -> Result<Conversion, ConvertError> {
+    let timings = Timings::new(progress);
     let document = {
         let _step = timings.step("parse");
         ipc::parse_bytes(xml).map_err(ConvertError::Parse)?
@@ -178,7 +214,7 @@ pub fn convert_document(
     sha256: &str,
     options: &Options,
 ) -> Result<Conversion, ConvertError> {
-    pipeline::run(document, sha256, options, Timings::default())
+    pipeline::run(document, sha256, options, Timings::new(&mut |_| {}))
 }
 
 /// Lowercase hex SHA-256 of `bytes`.
@@ -188,13 +224,25 @@ pub fn sha256(bytes: &[u8]) -> String {
     digest.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// Times pipeline steps: a tracing span each and, on native targets, the wall-clock time.
-#[derive(Debug, Default)]
-pub(crate) struct Timings(std::cell::RefCell<Vec<(&'static str, f64)>>);
+/// Times pipeline steps: a tracing span each, progress events and, on native targets, the
+/// wall-clock time.
+pub(crate) struct Timings<'p> {
+    list: std::cell::RefCell<Vec<(&'static str, f64)>>,
+    progress: std::cell::RefCell<&'p mut dyn FnMut(Progress)>,
+}
 
-impl Timings {
+impl<'p> Timings<'p> {
+    pub(crate) fn new(progress: &'p mut dyn FnMut(Progress)) -> Self {
+        Self {
+            list: std::cell::RefCell::default(),
+            progress: std::cell::RefCell::new(progress),
+        }
+    }
+
     /// Starts a step; it ends when the returned guard is dropped.
-    pub(crate) fn step(&self, name: &'static str) -> Step<'_> {
+    pub(crate) fn step(&self, name: &'static str) -> Step<'_, 'p> {
+        debug_assert!(STEPS.contains(&name), "unknown step {name}");
+        (self.progress.borrow_mut())(Progress::Start(name));
         Step {
             timings: self,
             name,
@@ -205,28 +253,27 @@ impl Timings {
     }
 
     pub(crate) fn into_vec(self) -> Vec<(&'static str, f64)> {
-        self.0.into_inner()
+        self.list.into_inner()
     }
 }
 
 /// A running pipeline step.
-pub(crate) struct Step<'a> {
-    timings: &'a Timings,
+pub(crate) struct Step<'a, 'p> {
+    timings: &'a Timings<'p>,
     name: &'static str,
     _span: tracing::span::EnteredSpan,
     #[cfg(not(target_arch = "wasm32"))]
     start: std::time::Instant,
 }
 
-impl Drop for Step<'_> {
+impl Drop for Step<'_, '_> {
     fn drop(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         self.timings
-            .0
+            .list
             .borrow_mut()
             .push((self.name, self.start.elapsed().as_secs_f64()));
-        #[cfg(target_arch = "wasm32")]
-        let _ = (self.timings, self.name);
+        (self.timings.progress.borrow_mut())(Progress::End(self.name));
     }
 }
 
