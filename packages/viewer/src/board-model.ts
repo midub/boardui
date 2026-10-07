@@ -449,7 +449,8 @@ export class BoardModel {
     const texels: number[] = [];
     const box = new Box3();
     for (let r = 0; r < this.instances.count; r++) {
-      if (inside(r)) texels.push(...this.#instanceTexels.get(r));
+      if (!inside(r)) continue;
+      for (const texel of this.#instanceTexels.get(r)) texels.push(texel);
     }
     const featureBox = this.#featureBox(Uint32Array.from(texels));
     if (featureBox) box.union(featureBox);
