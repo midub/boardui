@@ -1,0 +1,52 @@
+{
+  "name": "@boardui/react",
+  "version": "1.1.1",
+  "private": true,
+  "description": "React wrapper for <board-viewer>: a typed <BoardViewer> component and widgets rendered by React.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midub/boardui.git",
+    "directory": "packages/react"
+  },
+  "type": "module",
+  "sideEffects": [
+    "./dist/index.js",
+    "./src/index.ts"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "catalog:"
+  },
+  "dependencies": {
+    "@boardui/viewer": "workspace:*"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@types/three": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "three": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
