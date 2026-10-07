@@ -1,0 +1,24 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev A, step board, FABRICATION
+thickness: 0.3900 mm
+counts: 5 features, 80 vertices, 140 triangles, 1 nets, 0 components, 0 pins (0 checked against pads)
+warnings: 1 from the reader, 1 from the converter
+  - layer `Dielectric 1` has `layerFunction` `CONDUCTOR`, but its side is `NONE` and its stack-up material is `FR-4`; it is converted as a dielectric
+layer layer/@soldermask-top Soldermask Top z 0.1600..0.2150 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 24.0000 mm²
+    row 0: Sheet net - area 24.0000 mm²
+layer layer/Top%20Layer Copper Top z 0.1600..0.1950 mm File
+  1 features {"Trace": 1}, 28 vertices, 52 triangles, top area 1.0468 mm²
+    row 0: Trace net 0 area 1.0468 mm²
+layer layer/Dielectric%201 Dielectric Internal z -0.1600..0.1600 mm File
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 24.0000 mm²
+    row 0: Sheet net - area 24.0000 mm²
+layer layer/Bottom%20Layer Copper Bottom z -0.1950..-0.1600 mm File
+  1 features {"Trace": 1}, 28 vertices, 52 triangles, top area 1.0468 mm²
+    row 0: Trace net 0 area 1.0468 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.2150..-0.1600 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 24.0000 mm²
+    row 0: Sheet net - area 24.0000 mm²
+components: 0

@@ -1,6 +1,6 @@
 # boardui glTF profile
 
-**Version 0.6 — draft**
+**Version 0.7 — draft**
 
 This document specifies how boardui represents a printed circuit board as a glTF 2.0 asset. The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
@@ -72,8 +72,8 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 | instance | `inst/<instance>` | panel layout unchanged |
 
 - Each `<…>` segment is percent-encoded. `%`, `/`, `#`, `@`, whitespace (Unicode `White_Space`) and control characters MUST be written as `%XX`: one `%XX` per UTF-8 byte, with upper-case hex digits. Other characters MUST NOT be encoded, so every ID has exactly one spelling.
-- Layers that the converter synthesizes (§6.4, §6.5, §6.13) get names starting with an unencoded `@`, for example `layer/@soldermask-top`. Because `@` in source names is always encoded, the two never collide.
-- `<n>` is the 0-based index of the feature among the layer's source features in document order. The step's `LayerFeature` elements for that layer are walked in document order (a step may split one layer over several of them), counting every `Pad`, `Features`, fiducial (`GlobalFiducial`, `LocalFiducial`, `BadBoardMark`, `GoodPanelMark`), `Hole` and `SlotCavity` element of their `Set`s.
+- Layers that the converter synthesizes (§6.3 since 0.7, §6.4, §6.5, §6.13) get names starting with an unencoded `@`, for example `layer/@soldermask-top`. Because `@` in source names is always encoded, the two never collide.
+- `<n>` is the 0-based index of the feature among the layer's source features in document order. The step's `LayerFeature` elements for that layer are walked in document order (a step may split one layer over several of them), counting every `Pad`, `Features`, fiducial (`GlobalFiducial`, `LocalFiducial`, `BadBoardMark`, `GoodPanelMark`), `Hole` and `SlotCavity` element of their `Set`s. In revision A and B files, the features of the step's `PadStack`s (§6.3) follow, in document order: each `LayerPad` on its layer, and each `LayerHole` the converter adds on its drill layer.
 - Features drawn from package drawings (§6.13) follow the layer's source features: they are numbered on from the last one, in the order of §6.13 (from 0 on a synthesized layer).
 - Soldermask and dielectric layers have a single feature, their sheet (§6.5, §6.7), with `n = 0`. The source features of a soldermask layer are its openings; they shape the sheet but get no rows of their own.
 - Feature IDs are stable only for identical input. Viewers and widgets SHOULD bind to components, pins and nets where possible.
@@ -137,6 +137,8 @@ A feature whose region becomes empty keeps its metadata row (§8.2) and has no v
   - Layers along the span are cut at `diameter / 2 + platingThickness`.
 - Non-plated holes are cut at `diameter / 2` and have no barrel.
 - Layers with `layerFunction` `DRILL` or `ROUT` are drill layers. The drill layer's `Span` defines a hole's span. Without a `Span`, the hole runs through all layers.
+- Revision A and B files can place padstacks in the step as `PadStack` elements (Altium does). Each `LayerPad` is a feature of its `layerRef` layer with the `PadStack`'s `net` and its `PinRef`: a via land (kind `VIA`) if the `LayerHole` has `platingStatus` `VIA`, a pad (kind `PAD`) otherwise. The `LayerHole` is a hole, with the `PadStack`'s net, of the first `DRILL` layer with the same span (from its `Span`; a `Span` that doesn't name copper layers, or none, spans all of them). If there is no such layer, the converter synthesizes one, `@drill-<from>-<to>`, named after the span's copper layers.
+- A file can describe a hole both ways: Altium also writes every hole on a `Drill Guide` drill layer. A `LayerHole` whose drill layer already has a hole of the same diameter at the same centre, within the tolerance, is not added again. The drill layer's hole stays, because it is a source feature of its own, and takes the `PadStack`'s net if its `Set` has no net and no other feature.
 - A hole is cut from the copper and dielectric layers of its span. It is cut from a side's soldermask, paste and silkscreen when its span reaches that side's outer copper layer. Drawings (§6.12) are not cut.
 - Barrels are features of their drill layer (kind `BARREL`) and carry the net of their `Set`. Non-plated holes keep their row in the drill layer's table (kind `OTHER`) but have no geometry.
 - Slots follow the same rules, using the slot outline instead of a circle. Where a circle's radius grows by `platingThickness`, the outline is offset outward by it, with rounded corners.
@@ -157,6 +159,7 @@ A feature whose region becomes empty keeps its metadata row (§8.2) and has no v
 
   Dielectric layers without a thickness share what the copper leaves of the 1.6 mm evenly.
 - Where two adjacent copper layers have no dielectric between them, the converter synthesizes one. With `g` gaps counted from the top (0-based), the middle gap `⌊(g − 1) / 2⌋` is `@core` and gap `k` otherwise is `@prepreg-<k+1>`; a 2-layer board gets `@core`, a 4-layer board `@prepreg-1`, `@core`, `@prepreg-3`. A board with a single copper layer sits on a synthesized `@core`.
+- A layer with a copper `layerFunction` (`CONDUCTOR`, `SIGNAL`, `PLANE`, …) is a dielectric if its `side` is `NONE` or its stack-up layer's `materialType` (revision A) names a material other than copper; a copper material keeps it copper. Altium declares its core this way. The converter warns, and `ipcFunction` keeps the source `layerFunction`.
 - Each entry in `BOARDUI_board.layers` records its actual `zMin` and `zMax`, and whether the thickness came from the file or from defaults.
 - Layer Z ranges are ordered top to bottom and MUST NOT overlap, with two exceptions: a soldermask layer starts at the top of the dielectric beneath the outer copper layer (§6.5), and a paste layer overlaps the soldermask and silkscreen of its side (§6.11).
 - Outside the copper layers, the layers of a side are ordered by their outer face: the top side's by `zMax`, highest first, and the bottom side's by `zMin`, highest first. A paste layer thicker than the mask and silkscreen therefore comes before them.
@@ -354,7 +357,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 
 ```json
 "BOARDUI_board": {
-  "profileVersion": "0.6",
+  "profileVersion": "0.7",
   "source": {
     "format": "IPC-2581",
     "revision": "C",

@@ -1,0 +1,29 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev A, step board, FABRICATION
+thickness: 1.6000 mm
+counts: 9 features, 556 vertices, 1124 triangles, 1 nets, 0 components, 0 pins (0 checked against pads)
+warnings: 1 from the reader, 0 from the converter
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 64 vertices, 132 triangles, top area 31.8140 mm²
+    row 0: Sheet net - area 31.8140 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  2 features {"Via": 2}, 128 vertices, 256 triangles, top area 0.3680 mm²
+    row 0: Via net 0 area 0.1840 mm²
+    row 1: Via net 0 area 0.1840 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 64 vertices, 132 triangles, top area 31.8140 mm²
+    row 0: Sheet net - area 31.8140 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  2 features {"Via": 2}, 128 vertices, 256 triangles, top area 0.3680 mm²
+    row 0: Via net 0 area 0.1840 mm²
+    row 1: Via net 0 area 0.1840 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 64 vertices, 132 triangles, top area 31.8140 mm²
+    row 0: Sheet net - area 31.8140 mm²
+drill layer/Drill%20Guide layer/TOP..layer/BOTTOM
+  2 features {"Barrel": 2}, 108 vertices, 216 triangles, top area 0.0501 mm²
+    row 0: Barrel net 0 area 0.0250 mm²
+    row 1: Barrel net 0 area 0.0250 mm²
+components: 0

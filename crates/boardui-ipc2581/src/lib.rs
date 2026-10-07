@@ -3,7 +3,8 @@
 //! [`parse`] reads an IPC-2581 revision B or C file with a pull parser (no DOM) and returns a
 //! [`Document`]: the content dictionaries, layers, stack-ups and steps, with every length
 //! converted to metres. Shapes are described as written in the file; turning them into
-//! geometry is up to the caller (`boardui-geom`).
+//! geometry is up to the caller (`boardui-geom`). The `PadStack`s of revision A and B
+//! steps (Altium writes them) are kept as written, in [`Step::pad_stacks`].
 //!
 //! ```
 //! let xml = br#"<IPC-2581 revision="C">
@@ -52,10 +53,10 @@ pub use diagnostic::{Diagnostic, DiagnosticKind, RefKind};
 pub use error::{Error, ErrorKind, Position};
 pub use model::{
     Component, Content, Document, Ecad, Feature, FeatureElement, Features, Fiducial, FiducialKind,
-    Hole, Layer, LayerFeature, Marking, MountType, Package, PackageDrawing, Pad, PadUsage, PadUse,
-    PadstackDef, PadstackPad, Pin, PinRef, PlatingStatus, Polarity, Set, Side, SlotCavity, Span,
-    Spec, SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup, StackupLayer, Step,
-    StepRepeat, Units, WhereMeasured,
+    Hole, Layer, LayerFeature, LayerHole, LayerPad, Marking, MountType, Package, PackageDrawing,
+    Pad, PadStack, PadUsage, PadUse, PadstackDef, PadstackPad, Pin, PinRef, PlatingStatus,
+    Polarity, Set, Side, SlotCavity, Span, Spec, SpecColor, SpecGeneral, SpecProperty, Stackup,
+    StackupGroup, StackupLayer, Step, StepRepeat, Units, WhereMeasured,
 };
 pub use shape::{
     Arc, ButterflyShape, Color, Contour, Corners, EmbeddedFont, FillDesc, FillProperty, FillStyle,

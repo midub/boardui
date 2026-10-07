@@ -46,16 +46,22 @@ impl<T> Table<T> {
         self.entries.iter().map(|(_, v)| v)
     }
 
+    /// Iterates mutably over entries in document order.
+    pub fn values_mut(&mut self) -> impl ExactSizeIterator<Item = &mut T> {
+        self.entries.iter_mut().map(|(_, v)| v)
+    }
+
     /// Appends an entry. If the key is already taken, the entry is kept but lookups keep
     /// returning the earlier one.
-    pub(crate) fn insert(&mut self, key: String, value: T) {
+    pub fn insert(&mut self, key: String, value: T) {
         if !self.index.contains_key(&key) {
             self.index.insert(key.clone(), self.entries.len());
         }
         self.entries.push((key, value));
     }
 
-    pub(crate) fn get_mut(&mut self, key: &str) -> Option<&mut T> {
+    /// Returns the first entry with the given key, mutably.
+    pub fn get_mut(&mut self, key: &str) -> Option<&mut T> {
         self.index.get(key).map(|&i| &mut self.entries[i].1)
     }
 }

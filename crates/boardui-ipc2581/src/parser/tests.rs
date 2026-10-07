@@ -1031,6 +1031,27 @@ mod layers {
         );
     }
 
+    /// Revision A (Altium) names each stack-up layer's material.
+    #[test]
+    fn reads_stackup_material_types() {
+        let d = doc(
+            "MILLIMETER",
+            "",
+            &format!(
+                r#"{LAYERS}<Stackup><StackupGroup name="G">
+                  <StackupLayer layerOrGroupRef="TOP" materialType="Copper" thickness="0.035"/>
+                  <StackupLayer layerOrGroupRef="BOTTOM"/>
+                </StackupGroup></Stackup>"#
+            ),
+        )
+        .unwrap();
+        let layers = &d.ecad.stackups[0].groups[0].layers;
+        assert_eq!(layers[0].material_type.as_deref(), Some("Copper"));
+        assert_eq!(layers[1].material_type, None);
+        // Only the missing stack-up name is reported, not `materialType`.
+        assert_eq!(d.diagnostics.len(), 1);
+    }
+
     #[test]
     fn content_layer_and_step_references_are_checked() {
         let d = doc("INCH", r#"<StepRef name="X"/><LayerRef name="Y"/>"#, "").unwrap();
@@ -1111,6 +1132,111 @@ mod step {
             &def.pads[1].shape,
             Some(Shape::Standard(p)) if p.kind == PrimitiveKind::Circle { diameter: mm(0.8) }
         ));
+    }
+
+    /// Revision A and B `PadStack`s, as Altium writes them: a via with its hole and a
+    /// component pad on several layers.
+    #[test]
+    fn reads_pad_stacks() {
+        let s = step(
+            r#"<PadStack net="GND">
+              <LayerHole name="Via_1" diameter="0.7" platingStatus="VIA" plusTol="0" minusTol="0" x="1" y="2">
+                <Span fromLayer="TOP" toLayer="BOTTOM"/>
+              </LayerHole>
+              <LayerPad layerRef="TOP"><Location x="1" y="2"/><StandardPrimitiveRef id="C"/></LayerPad>
+              <LayerPad layerRef="BOTTOM"><Location x="1" y="2"/><Circle diameter="0.8"/></LayerPad>
+            </PadStack>
+            <PadStack>
+              <LayerPad layerRef="TOP"><Xform rotation="270"/><Location x="3" y="4"/><StandardPrimitiveRef id="C"/><PinRef componentRef="U1" pin="1"/></LayerPad>
+            </PadStack>
+            <Package name="P"><Pin number="1"/></Package>
+            <Component refDes="U1" packageRef="P" layerRef="TOP"/>"#,
+        );
+        let [via, pad] = s.pad_stacks.as_slice() else {
+            panic!()
+        };
+        assert_eq!(via.net.as_deref(), Some("GND"));
+        let hole = via.hole.as_ref().unwrap();
+        assert_eq!(hole.hole.name, "Via_1");
+        assert_eq!(hole.hole.plating, PlatingStatus::Via);
+        assert_close(hole.hole.diameter, mm(0.7));
+        assert_eq!(
+            hole.hole.position,
+            Point {
+                x: mm(1.0),
+                y: mm(2.0)
+            }
+        );
+        let span = hole.span.as_ref().unwrap();
+        assert_eq!(
+            (span.from_layer.as_str(), span.to_layer.as_str()),
+            ("TOP", "BOTTOM")
+        );
+        let layers: Vec<_> = via.pads.iter().map(|p| p.layer_ref.as_str()).collect();
+        assert_eq!(layers, ["TOP", "BOTTOM"]);
+        assert_eq!(via.pads[0].shape, Shape::StandardRef("C".to_owned()));
+        assert!(via.pads.iter().all(|p| p.pin_ref.is_none()));
+        assert_eq!(pad.net, None);
+        assert_eq!(pad.hole, None);
+        let [pad] = pad.pads.as_slice() else { panic!() };
+        assert_eq!(pad.xform.rotation, 270.0);
+        assert_eq!(
+            pad.location,
+            Point {
+                x: mm(3.0),
+                y: mm(4.0)
+            }
+        );
+        let pin = pad.pin_ref.as_ref().unwrap();
+        assert_eq!(
+            (pin.component_ref.as_deref(), pin.pin.as_str()),
+            (Some("U1"), "1")
+        );
+    }
+
+    #[test]
+    fn checks_pad_stack_references() {
+        let d = step_doc(
+            r#"<PadStack>
+              <LayerHole name="H" diameter="0.3" platingStatus="PLATED" plusTol="0" minusTol="0" x="0" y="0"><Span fromLayer="TOP" toLayer="L9"/></LayerHole>
+              <LayerHole name="H2" diameter="0.3" platingStatus="PLATED" plusTol="0" minusTol="0" x="0" y="0"/>
+              <LayerPad layerRef="NOPE"><Location x="0" y="0"/><StandardPrimitiveRef id="C"/><PinRef componentRef="U1" pin="1"/><PinRef componentRef="U1" pin="2"/></LayerPad>
+            </PadStack>"#,
+        )
+        .unwrap();
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [
+                &DiagnosticKind::DuplicateElement {
+                    element: "LayerHole".to_owned(),
+                    parent: "PadStack".to_owned()
+                },
+                &DiagnosticKind::DuplicateElement {
+                    element: "PinRef".to_owned(),
+                    parent: "LayerPad".to_owned()
+                },
+                &dangling(RefKind::Component, "U1"),
+                &dangling(RefKind::Layer, "L9"),
+                &dangling(RefKind::Layer, "NOPE"),
+            ]
+        );
+        let s = d.ecad.steps.get("S").unwrap();
+        assert_eq!(s.pad_stacks[0].pads[0].pin_ref.as_ref().unwrap().pin, "1");
+    }
+
+    #[test]
+    fn a_layer_pad_needs_a_shape() {
+        let e = step_doc(
+            r#"<PadStack><LayerPad layerRef="TOP"><Location x="0" y="0"/></LayerPad></PadStack>"#,
+        )
+        .unwrap_err();
+        assert_eq!(
+            e.kind(),
+            &ErrorKind::MissingElement {
+                element: "LayerPad".to_owned(),
+                expected: "a shape".to_owned()
+            }
+        );
     }
 
     const PACKAGE: &str = r#"<Package name="SOIC8" type="SOIC" pinOne="1" height="1.75">
