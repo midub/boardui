@@ -15,7 +15,7 @@ use glam::DAffine2;
 
 use crate::colours;
 use crate::components::{self, PadRef};
-use crate::shapes::{ShapeConverter, erases, is_stroke, point};
+use crate::shapes::{ShapeConverter, erases, is_stroke, point, texts};
 use crate::stackup::{self, LayerClass, Stack, Synthesize};
 use crate::{Conversion, ConvertError, Options, Stats, Timings, Warning, Warnings};
 
@@ -163,7 +163,7 @@ pub(crate) fn run(
         .as_ref()
         .and_then(|p| ctx.shapes.contour(p, DAffine2::IDENTITY));
     let pins = std::mem::take(&mut ctx.pins);
-    for message in std::mem::take(&mut ctx.shapes.warnings) {
+    for message in ctx.shapes.take_warnings() {
         ctx.warnings.push(message);
     }
     drop(ctx);
@@ -511,9 +511,14 @@ fn package_layers(ecad: &ipc::Ecad, step: &ipc::Step, stack: &Stack) -> Synthesi
 const SILKSCREEN_COVERED: f64 = 0.1;
 
 /// Adds package drawing shapes to a layer as `MARKING` features of `component`, numbered on
-/// from the layer's last feature.
-fn push_drawing(out: &mut Features, shapes: Vec<Option<Shape>>, component: u32) {
-    for shape in shapes {
+/// from the layer's last feature, with the `text` of each shape.
+fn push_drawing(
+    out: &mut Features,
+    shapes: Vec<Option<Shape>>,
+    texts: Vec<String>,
+    component: u32,
+) {
+    for (shape, text) in shapes.into_iter().zip(texts) {
         let source = out.rows.last().map_or(0, |r| r.source + 1);
         out.rows.push(FeatureRow {
             kind: FeatureKind::Marking,
@@ -522,6 +527,7 @@ fn push_drawing(out: &mut Features, shapes: Vec<Option<Shape>>, component: u32) 
             pin: None,
             component: Some(component),
             fiducial: None,
+            text,
         });
         out.shapes.push(geom::Feature {
             shape: shape.unwrap_or(Shape::Union(Vec::new())),
@@ -569,6 +575,7 @@ fn sheet_row() -> FeatureRow {
         pin: None,
         component: None,
         fiducial: None,
+        text: String::new(),
     }
 }
 
@@ -667,6 +674,7 @@ impl<'a> Context<'a> {
                 .copied();
             let mut polarity = set.polarity;
             let mut fiducial = None;
+            let mut text = String::new();
             let (kind, shape, pin_ref) = match &feature.element {
                 ipc::FeatureElement::Pad(pad) => {
                     let kind = match set.pad_usage {
@@ -679,6 +687,7 @@ impl<'a> Context<'a> {
                 ipc::FeatureElement::Features(f) => {
                     let at = self.shapes.placement(f.location, &f.xform);
                     let shape = self.shapes.area(&f.shape, at);
+                    text = texts(&f.shape, self.content).join("\n");
                     if erases(&f.shape, self.content) {
                         polarity = ipc::Polarity::Negative;
                     }
@@ -731,6 +740,7 @@ impl<'a> Context<'a> {
                 pin,
                 component,
                 fiducial: fiducial.filter(|_| kind == FeatureKind::Fiducial),
+                text,
             });
             out.shapes.push(geom::Feature {
                 shape: shape.unwrap_or(Shape::Union(Vec::new())),
@@ -784,7 +794,8 @@ impl<'a> Context<'a> {
                 layer_of(Role::Assembly, side, true),
             ) {
                 let shapes = self.drawing_shapes(drawing, at);
-                push_drawing(&mut layer_features[i], shapes, row);
+                let texts = self.drawing_texts(drawing);
+                push_drawing(&mut layer_features[i], shapes, texts, row);
             }
             if let (Some(drawing), Some(i)) =
                 (&package.silkscreen, layer_of(Role::Silkscreen, side, false))
@@ -798,7 +809,8 @@ impl<'a> Context<'a> {
                         !covers(layer, &shapes, self.tolerance)
                     };
                 if draw {
-                    push_drawing(&mut layer_features[i], shapes, row);
+                    let texts = self.drawing_texts(drawing);
+                    push_drawing(&mut layer_features[i], shapes, texts, row);
                 }
             }
         }
@@ -819,6 +831,15 @@ impl<'a> Context<'a> {
             shapes.push(self.shapes.area(&marking.shape, at * inner));
         }
         shapes
+    }
+
+    /// The `text` of each shape of [`Self::drawing_shapes`]: empty for the `Outline`s, the
+    /// strings of a `Marking`'s `Text`s joined by line feeds (spec §8.2).
+    fn drawing_texts(&self, drawing: &ipc::PackageDrawing) -> Vec<String> {
+        let outlines = drawing.outlines.iter().map(|_| String::new());
+        let markings = drawing.markings.iter();
+        let markings = markings.map(|m| texts(&m.shape, self.content).join("\n"));
+        outlines.chain(markings).collect()
     }
 
     /// A pad's shape: its own, or its padstack's regular pad on this layer.
@@ -942,6 +963,7 @@ impl<'a> Context<'a> {
                     pin: None,
                     component,
                     fiducial: None,
+                    text: String::new(),
                 });
                 holes.push(hole);
             }

@@ -1363,6 +1363,7 @@ mod tests {
                 pin: None,
                 component: None,
                 fiducial: None,
+                text: String::new(),
             };
             BoardAsset {
                 generator: "test".into(),

@@ -22,6 +22,7 @@ mod models;
 mod pipeline;
 mod shapes;
 mod stackup;
+mod text;
 mod validate;
 
 use std::fmt;

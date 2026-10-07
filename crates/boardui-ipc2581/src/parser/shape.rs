@@ -4,9 +4,10 @@ use std::io::BufRead;
 
 use super::{Parser, missing_element};
 use crate::{
-    Arc, ButterflyShape, Contour, Corners, DiagnosticKind, Error, ErrorKind, FillDesc, FillStyle,
-    Line, LineDesc, LineStyle, Moire, Outline, Path, Point, PolyStep, Polygon, Polyline, Position,
-    PrimitiveKind, RefKind, Shape, StandardPrimitive, Xform,
+    Arc, ButterflyShape, Contour, Corners, DiagnosticKind, EmbeddedFont, Error, ErrorKind,
+    FillDesc, FillStyle, Font, Glyph, Line, LineDesc, LineStyle, Moire, Outline, Path, Point,
+    PolyStep, Polygon, Polyline, Position, PrimitiveKind, RefKind, Shape, StandardPrimitive, Text,
+    Xform,
 };
 
 /// Deepest `UserSpecial` nesting accepted.
@@ -80,6 +81,7 @@ impl<R: BufRead> Parser<R> {
             "Polygon" => Shape::Polygon(self.read_polygon()?),
             "Outline" => Shape::Outline(self.read_outline()?),
             "UserSpecial" => Shape::UserSpecial(self.read_user_special()?),
+            "Text" => Shape::Text(Box::new(self.read_text()?)),
             name if PRIMITIVES.contains(&name) => Shape::Standard(self.read_standard_primitive()?),
             _ => Shape::Unsupported {
                 element: self.unsupported()?,
@@ -115,6 +117,111 @@ impl<R: BufRead> Parser<R> {
         });
         self.nesting -= 1;
         result.map(|()| shapes)
+    }
+
+    fn read_text(&mut self) -> Result<Text, Error> {
+        let position = self.tag.position;
+        let string = self.req_str("textString")?;
+        let font_size = self.opt_u32("fontSize")?;
+        let (mut xform, mut corners, mut font_ref, mut line, mut color) =
+            (None, None, None, None, None);
+        self.children("Text", |p| {
+            if p.line_style("Text", &mut line)? || p.color_group("Text", &mut color)? {
+                return Ok(());
+            }
+            match p.tag.name() {
+                "Xform" if xform.is_some() => p.duplicate("Text"),
+                "Xform" => {
+                    xform = Some(p.read_xform()?);
+                    Ok(())
+                }
+                "BoundingBox" if corners.is_some() => p.duplicate("Text"),
+                "BoundingBox" => {
+                    corners = Some(p.read_corners("BoundingBox")?);
+                    Ok(())
+                }
+                "FontRef" if font_ref.is_some() => p.duplicate("Text"),
+                "FontRef" => {
+                    font_ref = Some(p.read_ref("FontRef", "id", RefKind::Font)?);
+                    Ok(())
+                }
+                _ => p.unknown("Text"),
+            }
+        })?;
+        let (lower_left, upper_right) =
+            corners.ok_or_else(|| missing_element("Text", "`BoundingBox`", position))?;
+        Ok(Text {
+            string,
+            font_size,
+            xform: xform.unwrap_or_default(),
+            lower_left,
+            upper_right,
+            font_ref,
+            line,
+            color,
+        })
+    }
+
+    /// Reads an element whose only content is a box: `lowerLeftX`, `lowerLeftY`,
+    /// `upperRightX` and `upperRightY`.
+    fn read_corners(&mut self, element: &'static str) -> Result<(Point, Point), Error> {
+        let corners = self.box_corners()?;
+        self.leaf(element)?;
+        Ok(corners)
+    }
+
+    fn box_corners(&mut self) -> Result<(Point, Point), Error> {
+        Ok((
+            self.point("lowerLeftX", "lowerLeftY")?,
+            self.point("upperRightX", "upperRightY")?,
+        ))
+    }
+
+    /// Reads the current element, a `FontDef` of an `EntryFont`. Returns `None` for other
+    /// elements, which are skipped.
+    pub(super) fn read_font(&mut self) -> Result<Option<Font>, Error> {
+        match self.tag.name() {
+            "FontDefExternal" => {
+                let name = self.req_str("name")?;
+                let urn = self.req_str("urn")?;
+                self.leaf("FontDefExternal")?;
+                Ok(Some(Font::External { name, urn }))
+            }
+            "FontDefEmbedded" => {
+                let name = self.req_str("name")?;
+                let (mut line, mut glyphs) = (None, Vec::new());
+                self.children("FontDefEmbedded", |p| {
+                    if p.line_style("FontDefEmbedded", &mut line)? {
+                        return Ok(());
+                    }
+                    match p.tag.name() {
+                        "Glyph" => {
+                            glyphs.push(p.read_glyph()?);
+                            Ok(())
+                        }
+                        _ => p.unknown("FontDefEmbedded"),
+                    }
+                })?;
+                Ok(Some(Font::Embedded(EmbeddedFont { name, line, glyphs })))
+            }
+            _ => self.unknown("EntryFont").map(|()| None),
+        }
+    }
+
+    fn read_glyph(&mut self) -> Result<Glyph, Error> {
+        let char_code = self.req_hex("charCode")?;
+        let (lower_left, upper_right) = self.box_corners()?;
+        let mut shapes = Vec::new();
+        self.children("Glyph", |p| {
+            shapes.push(p.read_shape()?);
+            Ok(())
+        })?;
+        Ok(Glyph {
+            char_code,
+            lower_left,
+            upper_right,
+            shapes,
+        })
     }
 
     /// Reads the current element as a standard primitive. Unknown elements become

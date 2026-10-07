@@ -25,6 +25,10 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   board. Package assembly drawings fill a synthesized `@assembly-top`/`-bottom` when the file has
   no assembly layer, and package silkscreens are drawn where the silkscreen layer has nothing for
   a part. The viewer and demo list the new layers, switched off (profile 0.4; spec §6.11–§6.13).
+- **Text:** IPC-2581 `Text` is drawn as strokes, fitted into its `BoundingBox`: with the glyphs of
+  a `FontDefEmbedded` font, else with a bundled single-stroke font (KiCad's Newstroke, ASCII and
+  Latin-1, CC0); characters no font has are boxes. Features carry their strings in a new `text`
+  property, shown by the viewer's `info()` (profile 0.5; spec §6.1, §8.2).
 
 ## [1.0.0] - 2026-10-06
 

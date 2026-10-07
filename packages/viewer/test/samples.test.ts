@@ -55,13 +55,13 @@ describe('converter samples', () => {
   });
 });
 
-describe('fiducials', () => {
-  const load = async (name: string) => {
-    const bytes = readFileSync(path.join(samples, name, `${name}.glb`));
-    const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    return BoardModel.fromGltf(await loadGltf(glb));
-  };
+const load = async (name: string) => {
+  const bytes = readFileSync(path.join(samples, name, `${name}.glb`));
+  const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  return BoardModel.fromGltf(await loadGltf(glb));
+};
 
+describe('fiducials', () => {
   it('describes fiducials with their type (spec §8.2)', async () => {
     const model = await load('fiducials');
     expect(model.describe('feat/TOP/0')?.properties).toMatchObject({
@@ -76,11 +76,6 @@ describe('fiducials', () => {
 });
 
 describe('optional layers', () => {
-  const load = async (name: string) => {
-    const bytes = readFileSync(path.join(samples, name, `${name}.glb`));
-    const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    return BoardModel.fromGltf(await loadGltf(glb));
-  };
   const roles = (model: BoardModel) =>
     Object.fromEntries(
       model.layers
@@ -127,5 +122,27 @@ describe('optional layers', () => {
     const r1 = other.resolve('cmp/R1');
     if (!r1) throw new Error('cmp/R1');
     expect([...other.emphasis(r1)]).toEqual([...r1.texels]);
+  });
+});
+
+describe('text', () => {
+  it('describes features with the strings of their text (spec §8.2)', async () => {
+    const model = await load('text');
+    expect(model.describe('feat/SILK/0')?.properties).toMatchObject({
+      kind: 'MARKING',
+      text: 'BOARD Ø2',
+    });
+    expect(model.describe('feat/SILK/2')?.properties).toMatchObject({
+      text: 'Ærøskøbing µ±0.1° Ω',
+    });
+    expect(model.describe('feat/TOP/0')?.properties).toMatchObject({ kind: 'TRACE', text: 'GND' });
+    expect(model.describe('feat/TOP/1')?.properties).toMatchObject({ kind: 'FILL', text: null });
+    // A package assembly drawing's Text marking (spec §6.13).
+    expect(model.describe('feat/@assembly-top/1')?.properties).toMatchObject({
+      kind: 'MARKING',
+      text: 'U1',
+    });
+    const other = await load('fiducials');
+    expect(other.describe('feat/TOP/0')?.properties).not.toHaveProperty('text');
   });
 });
