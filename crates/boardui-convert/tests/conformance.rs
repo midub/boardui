@@ -400,6 +400,57 @@ fn units_give_the_same_board() {
     }
 }
 
+/// Spec §6.1: a standard primitive's own `Xform` turns it in its own frame before the pad
+/// places it.
+#[test]
+fn primitive_xforms_apply_before_the_pad() {
+    let (_, path) = samples()
+        .into_iter()
+        .find(|(n, _)| n == "primitive-xform")
+        .expect("sample");
+    let (elements, _) = elements(&run(&path).glb);
+    let (c30, s30) = (30f64.to_radians().cos(), 30f64.to_radians().sin());
+    // Centre and half size (mm) of each pad on TOP, in document order. U3's oval (2 × 0.8,
+    // turned 270° by its `Xform`, then 30° by the pad) lies at 300°.
+    let oval = (0.6 * s30 + 0.4, 0.6 * c30 + 0.4);
+    let expected = [
+        (2.5, 8.0, 0.5, 1.0),
+        (5.5, 8.0, 0.5, 1.0),
+        (10.0, 6.5, 1.0, 0.5),
+        (10.0, 9.5, 1.0, 0.5),
+        (16.0 - 1.5 * c30, 8.0 - 1.5 * s30, oval.0, oval.1),
+        (16.0 + 1.5 * c30, 8.0 + 1.5 * s30, oval.0, oval.1),
+        (3.0, 3.0, 1.0, 0.5),
+        (7.0, 3.0, 0.5, 1.0),
+        (12.5, 3.0, 0.8, 0.4),
+        (16.0, 3.5, 0.4, 0.8),
+    ];
+    for (row, (x, y, w, h)) in expected.into_iter().enumerate() {
+        let id = format!("feat/TOP/{row}");
+        let face = elements[&id].1.as_ref().expect("face");
+        let (min, max) = ([x - w, y - h], [x + w, y + h]);
+        for k in 0..2 {
+            // Within the tessellation tolerance (5 µm).
+            assert!((face.min[k] * 1e3 - min[k]).abs() < 0.01, "{id}: {face:?}");
+            assert!((face.max[k] * 1e3 - max[k]).abs() < 0.01, "{id}: {face:?}");
+        }
+    }
+    // The chamfer of the upper-right corner, mirrored by the primitive's `Xform`, cuts the
+    // upper-left corner: the area's centroid lies right of and below the pad's centre. Turned
+    // by the pad's 90°, the cut is at the lower left.
+    let centroid = |row: usize| {
+        elements[&format!("feat/TOP/{row}")]
+            .1
+            .as_ref()
+            .expect("face")
+            .centroid
+    };
+    let [x, y] = centroid(6);
+    assert!(x * 1e3 > 3.0 && y * 1e3 < 3.0, "{x} {y}");
+    let [x, y] = centroid(7);
+    assert!(x * 1e3 > 7.0 && y * 1e3 > 3.0, "{x} {y}");
+}
+
 /// Spec §6.13, §8.2: features from package drawings reference their component and are
 /// numbered on after the layer's own features.
 #[test]

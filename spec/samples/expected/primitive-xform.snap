@@ -31,4 +31,4 @@ layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default s
 components: 3
   U1 at (4.0000, 0.8000, -8.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder P_RECT
   U2 at (10.0000, 0.8000, -8.0000) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder P_RECT
-  U3 at (16.0000, 0.8000, -8.0000) mm, rotation (0.0000, 0.3827, 0.0000, 0.9239), placeholder P_OVAL
+  U3 at (16.0000, 0.8000, -8.0000) mm, rotation (0.0000, 0.2588, 0.0000, 0.9659), placeholder P_OVAL

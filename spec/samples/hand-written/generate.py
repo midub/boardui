@@ -341,7 +341,7 @@ def primitive_xform():
     """Standard primitives with their own `Xform` (rev B; Allegro 17.4 writes it in rev C
     files): it turns the primitive in its own frame, before the pad places it (spec §6.1).
 
-    Top row: 2-pin parts at 0°, 90° and 45° whose pads carry the part's rotation and use a
+    Top row: 2-pin parts at 0°, 90° and 30° whose pads carry the part's rotation and use a
     rectangle or oval turned upright by its own `Xform`, so every pad lies across the pin axis.
     Bottom row: a rectangle chamfered at its upper-right corner, mirrored by its own `Xform`
     (chamfer upper left), and an oval moved 0.5 mm along its X axis, each in a pad at 0° and 90°.
@@ -379,7 +379,7 @@ def primitive_xform():
     for ref, package, shape, x, y, rot in (
         ("U1", "P_RECT", "RECT_R90", 4, 8, 0),
         ("U2", "P_RECT", "RECT_R90", 10, 8, 90),
-        ("U3", "P_OVAL", "OVAL_R270", 16, 8, 45),
+        ("U3", "P_OVAL", "OVAL_R270", 16, 8, 30),
     ):
         xform = f'<Xform rotation="{rot:g}"/>' if rot else ""
         d.step.append(
