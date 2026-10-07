@@ -17,6 +17,7 @@ import {
   Group,
   InstancedBufferAttribute,
   InstancedMesh,
+  type InterleavedBufferAttribute,
   type Material,
   Matrix3,
   Matrix4,
@@ -264,17 +265,15 @@ export class MergedBatch implements ComponentBatch {
         // Rounded like an instance matrix, so that bounds are as an instanced batch stores them.
         matrix.fromArray(Float32Array.from((matrices[k] as Matrix4).elements));
         normalMatrix.getNormalMatrix(matrix);
-        const box = new Box3();
+        const box = transformPositions(position, matrix, this.#positions, v);
         for (const name of names) {
+          if (name === 'position') continue;
           const source = geometry.getAttribute(name);
           const target = arrays.get(name) as Float32Array;
           const size = source.itemSize;
           for (let j = 0; j < position.count; j++) {
             const at = (v + j) * size;
-            if (name === 'position') {
-              point.fromBufferAttribute(source, j).applyMatrix4(matrix).toArray(target, at);
-              box.expandByPoint(point);
-            } else if (name === 'normal') {
+            if (name === 'normal') {
               point.fromBufferAttribute(source, j).applyNormalMatrix(normalMatrix);
               point.toArray(target, at);
             } else {
@@ -285,10 +284,11 @@ export class MergedBatch implements ComponentBatch {
         texels.fill(row + texelOffset, v, v + position.count);
         // A mirroring matrix turns the triangles over; restore their winding.
         const mirrored = matrix.determinant() < 0;
+        const indices = index?.array;
         for (let j = 0; j < count; j += 3) {
-          const a = index ? index.getX(j) : j;
-          const b = index ? index.getX(j + 1) : j + 1;
-          const c = index ? index.getX(j + 2) : j + 2;
+          const a = indices ? (indices[j] as number) : j;
+          const b = indices ? (indices[j + 1] as number) : j + 1;
+          const c = indices ? (indices[j + 2] as number) : j + 2;
           this.#allIndex[i + j] = v + a;
           this.#allIndex[i + j + 1] = v + (mirrored ? c : b);
           this.#allIndex[i + j + 2] = v + (mirrored ? b : c);
@@ -388,13 +388,16 @@ export class MergedBatch implements ComponentBatch {
     this.mesh.geometry.dispose();
   }
 
-  /** Bounds of the drawn instances, for frustum culling and the board's bounds. */
+  /**
+   * Bounds of the drawn instances, for frustum culling and the board's bounds: the union of
+   * their bounding boxes, as an instanced mesh computes it.
+   */
   #update(): void {
     const geometry = this.mesh.geometry;
     geometry.boundingBox ??= new Box3();
     const box = geometry.boundingBox.makeEmpty();
     this.#rows.forEach((_, i) => {
-      if (this.#drawn[i]) box.union(this.#boxes[i] as Box3);
+      if (this.#drawn[i]) box.union(this.#bounds[i] as Box3);
     });
     geometry.boundingSphere = box.getBoundingSphere(geometry.boundingSphere ?? new Sphere());
     this.mesh.visible = this.#drawnCount > 0;
@@ -575,6 +578,41 @@ function layout(geometry: BufferGeometry): string {
     .map(([name, attribute]) => `${name}:${attribute.itemSize}`)
     .sort()
     .join(',');
+}
+
+/**
+ * Writes the vertices of `position` moved by an affine `matrix` into `target` from vertex `start`
+ * on, and returns their bounding box (of the float32 values written).
+ */
+function transformPositions(
+  position: BufferAttribute | InterleavedBufferAttribute,
+  matrix: Matrix4,
+  target: Float32Array,
+  start: number,
+): Box3 {
+  const [a, d, g, , b, e, h, , c, f, i, , x0, y0, z0] = matrix.elements;
+  const box = new Box3();
+  const { min, max } = box;
+  for (let j = 0; j < position.count; j++) {
+    const x = position.getX(j);
+    const y = position.getY(j);
+    const z = position.getZ(j);
+    const o = (start + j) * 3;
+    target[o] = a * x + b * y + c * z + x0;
+    target[o + 1] = d * x + e * y + f * z + y0;
+    target[o + 2] = g * x + h * y + i * z + z0;
+    min.set(
+      Math.min(min.x, target[o] as number),
+      Math.min(min.y, target[o + 1] as number),
+      Math.min(min.z, target[o + 2] as number),
+    );
+    max.set(
+      Math.max(max.x, target[o] as number),
+      Math.max(max.y, target[o + 1] as number),
+      Math.max(max.z, target[o + 2] as number),
+    );
+  }
+  return box;
 }
 
 /** A geometry that shares the attributes and index of `geometry`. */
