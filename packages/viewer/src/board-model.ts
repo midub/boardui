@@ -301,6 +301,30 @@ export class BoardModel {
     }
   }
 
+  /**
+   * Bounding box of what is drawn: the features of visible layers and drill layers, and the
+   * components while {@link componentGroup} is visible, leaving out elements that `hidden`
+   * reports. Empty if nothing is drawn. {@link bounds} covers everything, hidden or not.
+   *
+   * @param hidden Whether an element (by state texel) is hidden.
+   */
+  visibleBounds(hidden: (texel: number) => boolean = () => false, target = new Box3()): Box3 {
+    target.makeEmpty();
+    const part = new Box3();
+    for (const layer of this.layers) {
+      if (!layer.group.visible) continue;
+      for (let row = 0; row < layer.table.count; row++) {
+        if (!hidden(layer.stateOffset + row) && layer.ranges.box(row, part)) target.union(part);
+      }
+    }
+    if (this.componentGroup.visible) {
+      this.#componentBounds.forEach((box, row) => {
+        if (!hidden(this.componentOffset + row)) target.union(box);
+      });
+    }
+    return target;
+  }
+
   /** The layer whose feature owns a state texel, or `null` for a component's texel. */
   layerOfTexel(texel: number): LayerModel | null {
     return texel < this.componentOffset ? this.#layerOfTexel(texel)[0] : null;
