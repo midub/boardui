@@ -5,7 +5,7 @@ source: IPC-2581 rev C, step test-3_r2.-17_4, ASSEMBLY
 software: Allegro allegro_17.4S(3/22/2021) (Cadence)
 thickness: 1.6000 mm
 counts: 1685 features, 116410 vertices, 231564 triangles, 261 nets, 42 components, 487 pins (487 checked against pads)
-warnings: 8 from the reader, 1 from the converter
+warnings: 0 from the reader, 1 from the converter
   - zero-width lines are drawn as 0.1 mm hairlines
 layer layer/@assembly-top Assembly Top z 0.8300..0.8400 mm Default synthesized hidden
   90 features {"Marking": 90}, 9652 vertices, 19280 triangles, top area 150.3127 mm²

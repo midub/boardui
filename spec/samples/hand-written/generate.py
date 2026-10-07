@@ -1259,7 +1259,9 @@ def text():
     """`Text` in an embedded font, in the bundled font for an external font and without one,
     rotated, mirrored, too wide for its box, with Latin-1 and unknown characters, on
     copper: cut by a hole, and knocked out of a plane, and in a package's assembly drawing,
-    placed with its rotated part on `@assembly-top` (spec §6.6, §6.13, §8.2)."""
+    placed with its rotated part on `@assembly-top` (spec §6.6, §6.13, §8.2). As KiCad writes
+    it, text drawn as outlines has its string in its set's `TEXT` attribute, which a `Text`
+    in the set overrides."""
     d = Doc()
     d.line_desc("UNDERLINE", 0.3)
     d.line_desc("OUTLINE", 0.1)
@@ -1361,11 +1363,22 @@ def text():
         d, "R90", (0, 0, 14, 2.5),
         xform=f'<Xform xOffset="{d.u(47)}" yOffset="{d.u(14)}" rotation="90"/>',
     )
+    def kicad_text(value):
+        return f'<NonstandardAttribute name="TEXT" value="{value}" type="STRING"/>'
+
+    # Outlined text as KiCad writes it: two strokes of an L, one outline each.
+    outlined = "".join(
+        f'<Outline><Polygon>{d.rect(*r)}</Polygon><LineDescRef id="OUTLINE"/></Outline>'
+        for r in ((2, 10, 2.4, 12.5), (2, 10, 3.6, 10.4))
+    )
     d.step.append(
         '<LayerFeature layerRef="SILK">'
-        + "".join(f"<Set>{features(t)}</Set>" for t in silk)
+        + "".join(f"<Set>{features(t)}</Set>" for t in silk[:3])
+        + f'<Set>{kicad_text("overridden by the Text")}{features(silk[3])}</Set>'
         + f"<Set>{features(mirrored, 14, 14.5)}</Set>"
         + f"<Set>{features(rotated)}</Set>"
+        + f'<Set geometryUsage="TEXT">{kicad_text("L")}'
+        + f"{features(f'<UserSpecial>{outlined}</UserSpecial>')}</Set>"
         + "</LayerFeature>"
     )
     # Copper text with an underline in one feature, cut by a hole through the stem of the N,
@@ -1401,14 +1414,25 @@ def bom_attributes():
     (a range, a unit), a repeated and an empty one; its AVL entry has a qualified part number
     after a distributor's, from a named manufacturer. C1 is not populated, has a characteristic
     named `Description` and a manufacturer without a name. J1 has no BOM entry. A second
-    `Bom` lists R1 again: the first entry counts.
+    `Bom` lists R1 again: the first entry counts. C1 and J1 have `NonstandardAttribute`s, as
+    Allegro writes them: C1's `Value` loses to its BOM's, its `TOLERANCE` is added; J1's are
+    its only attributes, without the empty one.
     """
     d = minimal("MILLIMETER")
     two_pin_package(d, "C0402")
+    def nonstandard(name, value):
+        return f'<NonstandardAttribute name="{name}" value="{value}" type="STRING"/>'
+
+    own = {
+        "C1": nonstandard("Value", "from the component: the BOM wins")
+        + nonstandard("TOLERANCE", "10%"),
+        "J1": nonstandard("VALUE", "CONN-2") + nonstandard("NOTES", " "),
+    }
     for ref, part, y in (("C1", "CAP-100N", 1.2), ("J1", "CONN-2", 4.8)):
         d.step.append(
             f'<Component refDes="{ref}" packageRef="C0402" layerRef="TOP" part="{part}" '
-            f'mountType="SMT" standoff="0" height="{d.u(0.6)}"><Location {d.xy(3, y)}/></Component>'
+            f'mountType="SMT" standoff="0" height="{d.u(0.6)}">{own[ref]}'
+            f"<Location {d.xy(3, y)}/></Component>"
         )
         sets = "".join(
             f'<Set net="{ref}_{n}" padUsage="TERMINATION">{pad(d, 3 + px, y, "PAD", (ref, n))}</Set>'

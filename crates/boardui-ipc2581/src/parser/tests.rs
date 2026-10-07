@@ -348,6 +348,63 @@ mod diagnostics {
     }
 
     #[test]
+    fn data_that_does_not_shape_the_board_is_skipped_silently() {
+        // What KiCad 9 and Allegro write besides the modelled data.
+        let xml = r#"<IPC-2581 revision="C">
+<Content roleRef="Owner"><FunctionMode mode="ASSEMBLY" level="3"/><StepRef name="S"/><BomRef name="B"/><AvlRef name="A"/>
+<DictionaryStandard units="MILLIMETER"><EntryStandard id="C"><Circle diameter="1"/></EntryStandard></DictionaryStandard></Content>
+<Ecad name="e"><CadHeader units="MILLIMETER">
+  <Spec name="CU"><General type="MATERIAL" comment="c"><Property text="COPPER"/></General>
+    <Conductor type="CONDUCTIVITY"><Property unit="SIEMENS/M" value="5.959E7"/></Conductor></Spec>
+  <Spec name="FR4"><Dielectric type="DIELECTRIC_CONSTANT"><Property value="4.50"/></Dielectric>
+    <Dielectric type="LOSS_TANGENT"><Property value="0.020"/></Dielectric></Spec>
+</CadHeader><CadData>
+<Layer name="TOP" layerFunction="CONDUCTOR" side="TOP"/>
+<Stackup name="S" overallThickness="1.6" whereMeasured="MASK" stackupStatus="PROPOSED"/>
+<Step name="S" type="BOARD">
+  <NonstandardAttribute name="FOOTPRINT_COUNT" type="INTEGER" value="1"/>
+  <Package name="P" type="OTHER" pinOne="1" pinOneOrientation="OTHER">
+    <PickupPoint x="0.0" y="0.0"/>
+    <Pin number="1" electricalType="ELECTRICAL" type="SURFACE"><Location x="0" y="0"/><StandardPrimitiveRef id="C"/></Pin>
+  </Package>
+</Step></CadData></Ecad></IPC-2581>"#;
+        let d = parse_bytes(xml.as_bytes()).unwrap();
+        assert_eq!(d.diagnostics, []);
+        assert_eq!(d.ecad.specs.get("CU").unwrap().general.len(), 1);
+    }
+
+    #[test]
+    fn a_nonstandard_attribute_without_a_value_is_a_warning() {
+        let d = step_doc(
+            r#"<LayerFeature layerRef="TOP"><Set><NonstandardAttribute name="TEXT"/></Set></LayerFeature>"#,
+        )
+        .unwrap();
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [&DiagnosticKind::MissingAttribute {
+                element: "NonstandardAttribute".to_owned(),
+                attribute: "value".to_owned(),
+                default: String::new()
+            }]
+        );
+    }
+
+    #[test]
+    fn nonstandard_attributes_elsewhere_are_reported() {
+        let d = step_doc(
+            r#"<PadStackDef name="D"><NonstandardAttribute name="N" value="v" type="STRING"/></PadStackDef>"#,
+        )
+        .unwrap();
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [&DiagnosticKind::UnknownElement {
+                element: "NonstandardAttribute".to_owned(),
+                parent: "PadStackDef".to_owned()
+            }]
+        );
+    }
+
+    #[test]
     fn text_content_is_reported() {
         let d = doc("INCH", "hello", "").unwrap();
         assert_eq!(
@@ -1402,7 +1459,10 @@ mod step {
             r#"{PACKAGE}<Component refDes="U1" packageRef="SOIC8" layerRef="BOTTOM" part="LM358" mountType="SMT" standoff="0.1" height="1.75">
               <Xform rotation="180" mirror="true" xOffset="0.5" yOffset="-0.5" scale="2"/><Location x="10" y="20"/>
             </Component>
-            <Component refDes="J1" packageRef="SOIC8" layerRef="TOP" mountType="THMT"/>"#
+            <Component refDes="J1" packageRef="SOIC8" layerRef="TOP" mountType="THMT">
+              <NonstandardAttribute name="VALUE" value="4.7UF" type="STRING"/><Location x="1" y="2"/>
+              <NonstandardAttribute name="TOLERANCE" value="10%" type="STRING"/>
+            </Component>"#
         ));
         let names: Vec<_> = s.components.iter().map(|(k, _)| k).collect();
         assert_eq!(names, ["U1", "J1"]);
@@ -1432,10 +1492,17 @@ mod step {
                 scale: 2.0
             }
         );
+        assert_eq!(u1.nonstandard_attributes, []);
         let j1 = s.components.get("J1").unwrap();
         assert_eq!(j1.mount_type, Some(MountType::Thmt));
-        assert_eq!(j1.location, Point::default());
+        assert_eq!(j1.location.x, mm(1.0));
         assert_eq!(j1.part, None);
+        let attributes: Vec<_> = j1
+            .nonstandard_attributes
+            .iter()
+            .map(|a| (a.name.as_str(), a.value.as_str()))
+            .collect();
+        assert_eq!(attributes, [("VALUE", "4.7UF"), ("TOLERANCE", "10%")]);
     }
 
     #[test]
@@ -1566,8 +1633,8 @@ mod step_repeat {
 mod features {
     use super::*;
     use crate::{
-        Feature, FeatureElement, FiducialKind, LineEnd, PadUsage, PinRef, PlatingStatus, Point,
-        Polarity, PolyStep, PrimitiveKind, Shape,
+        Feature, FeatureElement, FiducialKind, LineEnd, NonstandardAttribute, PadUsage, PinRef,
+        PlatingStatus, Point, Polarity, PolyStep, PrimitiveKind, Shape,
     };
 
     /// Features of one set on layer `TOP`, in a step with component `U1` (package `P`, pin 1).
@@ -1605,7 +1672,9 @@ mod features {
         let s = step(
             r#"<Package name="P"/><Component refDes="U1" packageRef="P" layerRef="TOP"/>
             <LayerFeature layerRef="TOP">
-              <Set net="GND" polarity="NEGATIVE" padUsage="TERMINATION" testPoint="true" geometry="PAD1" geometryUsage="TEXT" plate="true" componentRef="U1"/>
+              <Set net="GND" polarity="NEGATIVE" padUsage="TERMINATION" testPoint="true" geometry="PAD1" geometryUsage="TEXT" plate="true" componentRef="U1">
+                <NonstandardAttribute name="TEXT" value="R1" type="STRING"/>
+              </Set>
               <Set/>
             </LayerFeature>"#,
         );
@@ -1619,6 +1688,14 @@ mod features {
         assert_eq!(set.geometry_usage.as_deref(), Some("TEXT"));
         assert!(set.plate);
         assert_eq!(set.component_ref.as_deref(), Some("U1"));
+        assert_eq!(
+            set.nonstandard_attributes,
+            [NonstandardAttribute {
+                name: "TEXT".to_owned(),
+                value: "R1".to_owned()
+            }]
+        );
+        assert!(set.features.is_empty());
         let empty = &lf.sets[1];
         assert_eq!(empty.polarity, Polarity::Positive);
         assert!(!empty.test_point && !empty.plate);
@@ -2277,13 +2354,8 @@ mod specs {
                <Spec name="TERM"><General type="MATERIAL"><ColorTerm name="OTHER" comment="Matte Black"/></General></Spec>"#,
             "",
         );
-        assert_eq!(
-            kinds(&d.diagnostics),
-            [&DiagnosticKind::UnknownElement {
-                element: "Dielectric".to_owned(),
-                parent: "Spec".to_owned()
-            }]
-        );
+        // The dielectric constant is skipped silently.
+        assert_eq!(d.diagnostics, []);
         let names: Vec<_> = d.ecad.specs.iter().map(|(k, _)| k).collect();
         assert_eq!(names, ["MASK", "RGB", "REF", "TERM"]);
         let mask = &d.ecad.specs.get("MASK").unwrap().general[0];

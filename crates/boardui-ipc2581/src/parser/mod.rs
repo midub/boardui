@@ -4,6 +4,12 @@
 //! the attributes it models, then consumes the element's children through
 //! [`Parser::children`]. The model under construction lives in the parser so that references
 //! can be checked as soon as their targets are known.
+//!
+//! Elements and attributes the reader does not model are skipped with a warning, except data
+//! that exporters commonly write and that neither shapes the board nor describes its parts:
+//! administrative data (roles, statuses, comments, counts), electrical properties of the
+//! stack-up materials, and assembly hints (pick-up points, pin types). These are skipped
+//! silently where they occur.
 
 mod bom;
 mod content;
@@ -219,6 +225,8 @@ impl<R: BufRead> Parser<R> {
                 general.push(p.read_spec_general()?);
                 Ok(())
             }
+            // Electrical properties: conductivity, dielectric constant, loss tangent.
+            "Conductor" | "Dielectric" => p.skip(),
             _ => p.unknown("Spec"),
         })?;
         Ok(Spec { name, general })
@@ -226,6 +234,7 @@ impl<R: BufRead> Parser<R> {
 
     fn read_spec_general(&mut self) -> Result<SpecGeneral, Error> {
         let general_type = self.opt_str("type").unwrap_or_default();
+        self.ignore_attributes(&["comment"]);
         let mut properties = Vec::new();
         let mut color = None;
         self.children("General", |p| {
@@ -357,6 +366,8 @@ impl<R: BufRead> Parser<R> {
             where_measured: self.opt_enum("whereMeasured")?,
             groups: Vec::new(),
         };
+        // `PROPOSED`, `APPROVED`, …: the stack-up's approval status.
+        self.ignore_attributes(&["stackupStatus"]);
         self.children("Stackup", |p| match p.tag.name() {
             "StackupGroup" => {
                 let group = p.read_stackup_group()?;

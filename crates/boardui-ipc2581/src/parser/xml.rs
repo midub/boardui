@@ -203,6 +203,13 @@ impl<R: BufRead> Parser<R> {
         self.skip()
     }
 
+    /// Marks attributes as read without modelling them: no warning.
+    pub(super) fn ignore_attributes(&mut self, attributes: &[&str]) {
+        for attribute in attributes {
+            self.tag.take(attribute);
+        }
+    }
+
     /// Records a warning at the current element.
     pub(super) fn warn(&mut self, kind: DiagnosticKind) {
         self.diagnostics.warn(kind, self.tag.position);

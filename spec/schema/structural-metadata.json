@@ -2,7 +2,7 @@
   "id": "boardui",
   "name": "boardui PCB metadata",
   "description": "EXT_structural_metadata schema embedded in every boardui asset. See spec/README.md §8.2. References between tables are UINT32 row indices; 4294967295 means none.",
-  "version": "0.8",
+  "version": "0.9",
   "enums": {
     "FeatureKind": {
       "valueType": "UINT8",
@@ -80,7 +80,7 @@
       }
     },
     "attribute": {
-      "description": "A BOM attribute of a component (spec §8.2): rows in component order, names unique per component, values not empty.",
+      "description": "An attribute of a component, from its BOM item or (since 0.9) its NonstandardAttributes (spec §8.2): rows in component order, names unique per component, values not empty.",
       "properties": {
         "component": { "type": "SCALAR", "componentType": "UINT32", "required": true },
         "name": { "type": "STRING", "required": true },
@@ -115,7 +115,7 @@
           "noData": "NONE"
         },
         "text": {
-          "description": "The textString of the Text elements the feature draws, in document order, joined by line feeds. Omitted from tables without text.",
+          "description": "The textString of the Text elements the feature draws, in document order, joined by line feeds; without them, the value of its Set's NonstandardAttribute named TEXT (since 0.9). Omitted from tables without text.",
           "type": "STRING",
           "noData": ""
         },

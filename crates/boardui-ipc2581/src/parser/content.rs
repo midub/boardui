@@ -7,9 +7,13 @@ use crate::{Color, Content, Error, RefKind, Table, Units};
 
 impl<R: BufRead> Parser<R> {
     pub(super) fn read_content(&mut self) -> Result<(), Error> {
+        // The `LogisticHeader` role that owns the content.
+        self.ignore_attributes(&["roleRef"]);
         self.children("Content", |p| match p.tag.name() {
             "FunctionMode" if p.content.function_mode.is_none() => {
                 let mode = p.req_str("mode")?;
+                // The level of detail (1–3) the file claims for its mode.
+                p.ignore_attributes(&["level"]);
                 p.leaf("FunctionMode")?;
                 p.content.function_mode = Some(mode);
                 Ok(())
@@ -25,6 +29,8 @@ impl<R: BufRead> Parser<R> {
                 p.content.layer_refs.push(name);
                 Ok(())
             }
+            // Every `Bom` and `Avl` is read, in document order, whether referenced or not.
+            "BomRef" | "AvlRef" => p.skip(),
             "DictionaryStandard" => p.read_dictionary(
                 (
                     "DictionaryStandard",

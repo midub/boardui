@@ -5,8 +5,7 @@ source: IPC-2581 rev B, step rt-bbv, ASSEMBLY
 software: KiCad 9.0.9 (KiCad EDA)
 thickness: 2.4200 mm
 counts: 166 features, 13388 vertices, 26716 triangles, 1 nets, 2 components, 4 pins (4 checked against pads)
-warnings: 10 from the reader, 1 from the converter
-  - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
+warnings: 0 from the reader, 0 from the converter
 layer layer/F.Courtyard Courtyard Top z 1.3200..1.3300 mm Default hidden
   4 features {"Marking": 4}, 144 vertices, 240 triangles, top area 0.5353 mm²
 layer layer/F.Fab Assembly Top z 1.3100..1.3200 mm Default hidden

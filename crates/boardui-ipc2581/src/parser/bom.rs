@@ -13,13 +13,6 @@ use crate::{
 };
 
 impl<R: BufRead> Parser<R> {
-    /// Marks attributes as read without modelling them.
-    fn ignore_attributes(&mut self, attributes: &[&str]) {
-        for attribute in attributes {
-            self.tag.take(attribute);
-        }
-    }
-
     pub(super) fn read_logistic_header(&mut self) -> Result<(), Error> {
         self.children("LogisticHeader", |p| match p.tag.name() {
             "Enterprise" => {

@@ -632,6 +632,75 @@ fn package_marking_text_is_drawn() {
     assert!(areas.get(&1).is_some_and(|&a| a > 0.01e-6), "{areas:?}");
 }
 
+/// Spec §8.2 (0.9): text drawn as outlines takes its string from its set's `TEXT` attribute,
+/// unless the set draws a `Text`.
+#[test]
+fn outlined_text_takes_its_string_from_the_set() {
+    let (_, path) = samples()
+        .into_iter()
+        .find(|(n, _)| n == "text")
+        .expect("text");
+    let conversion = run(&path);
+    let (root, bin) = glb::read(&conversion.glb).expect("GLB");
+    let board: Board =
+        serde_json::from_value(root.extensions.board.clone().expect("board")).expect("board");
+    let entry = board
+        .layers
+        .iter()
+        .find(|l| l.name == "SILK")
+        .expect("SILK");
+    let texts = strings(&root, bin, entry.feature_table, "text");
+    assert_eq!(
+        texts,
+        [
+            "BOARD Ø2",
+            "External font: Arial",
+            "Ærøskøbing µ±0.1° Ω",
+            "Too wide for its box",
+            "Mirror",
+            "R90",
+            "L"
+        ]
+    );
+}
+
+/// Spec §8.2 (0.9): a component's own `NonstandardAttribute`s follow its BOM attributes, and
+/// a name the BOM gives keeps the BOM's value.
+#[test]
+fn own_attributes_follow_the_bom() {
+    let (_, path) = samples()
+        .into_iter()
+        .find(|(n, _)| n == "bom-attributes")
+        .expect("bom-attributes");
+    let conversion = run(&path);
+    let (root, bin) = glb::read(&conversion.glb).expect("GLB");
+    let board: Board =
+        serde_json::from_value(root.extensions.board.clone().expect("board")).expect("board");
+    let ref_des = strings(&root, bin, board.tables.components, "refDes");
+    let table = board.tables.attributes;
+    let rows: Vec<(String, String, String)> = column(&root, bin, table, "component")
+        .into_iter()
+        .zip(strings(&root, bin, table, "name"))
+        .zip(strings(&root, bin, table, "value"))
+        .map(|((c, n), v)| (ref_des[c as usize].clone(), n, v))
+        .filter(|(c, _, _)| c != "R1")
+        .collect();
+    let rows: Vec<(&str, &str, &str)> = rows
+        .iter()
+        .map(|(c, n, v)| (c.as_str(), n.as_str(), v.as_str()))
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            ("C1", "Value", "100nF"),
+            ("C1", "Description", "from a characteristic: it wins"),
+            ("C1", "MPN", "GRM155R71C104KA88D"),
+            ("C1", "TOLERANCE", "10%"),
+            ("J1", "VALUE", "CONN-2"),
+        ]
+    );
+}
+
 /// A `UINT32` or `ENUM` (`UINT8`) column of a property table. Missing columns read as
 /// `NO_ROW`.
 fn column(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<u32> {

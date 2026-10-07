@@ -5,8 +5,7 @@ source: IPC-2581 rev C, step egg250-panel, ASSEMBLY
 software: KiCad 9.0.9 (KiCad EDA)
 thickness: 1.5800 mm
 counts: 663 features, 64986 vertices, 126544 triangles, 20 nets, 101 components, 157 pins (106 checked against pads)
-warnings: 11 from the reader, 2 from the converter
-  - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
+warnings: 0 from the reader, 1 from the converter
   - the profile of step `egg250-panel` has no cutouts; the closed contours inside it were cut out: 3 on layer `Edge.Cuts`
 layer layer/F.Courtyard Courtyard Top z 0.9000..0.9100 mm Default hidden
   99 features {"Marking": 99}, 3970 vertices, 6756 triangles, top area 32.4492 mm²

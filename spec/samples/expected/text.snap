@@ -3,7 +3,7 @@ source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step board, FABRICATION
 thickness: 1.6000 mm
-counts: 17 features, 7368 vertices, 14560 triangles, 3 nets, 1 components, 2 pins (2 checked against pads)
+counts: 18 features, 7410 vertices, 14640 triangles, 3 nets, 1 components, 2 pins (2 checked against pads)
 warnings: 0 from the reader, 4 from the converter
   - embedded font `plotter` lacks some characters; they are drawn with the bundled font
   - external font `Arial` is not available; its text is drawn with the bundled font
@@ -14,13 +14,14 @@ layer layer/@assembly-top Assembly Top z 0.8300..0.8400 mm Default synthesized h
     row 0: Marking net - area 0.6371 mm²
     row 1: Marking net - area 0.1357 mm² text "U1"
 layer layer/SILK Silkscreen Top z 0.8200..0.8300 mm Default
-  6 features {"Marking": 6}, 6442 vertices, 12724 triangles, top area 92.2948 mm²
+  7 features {"Marking": 7}, 6484 vertices, 12804 triangles, top area 94.1912 mm²
     row 0: Marking net - area 26.2756 mm² text "BOARD Ø2"
     row 1: Marking net - area 22.4747 mm² text "External font: Arial"
     row 2: Marking net - area 26.9017 mm² text "Ærøskøbing µ±0.1° Ω"
     row 3: Marking net - area 7.1719 mm² text "Too wide for its box"
     row 4: Marking net - area 5.0898 mm² text "Mirror"
     row 5: Marking net - area 4.3811 mm² text "R90"
+    row 6: Marking net - area 1.8964 mm² text "L"
 layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
   1 features {"Sheet": 1}, 60 vertices, 128 triangles, top area 1697.5631 mm²
     row 0: Sheet net - area 1697.5631 mm²

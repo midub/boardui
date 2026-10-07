@@ -173,7 +173,12 @@ pub(crate) fn build(
                 body,
                 instance: part.instance,
                 populate: None,
-                attributes: Vec::new(),
+                // The BOM's attributes go first (spec §8.2); `bom::Bom::annotate` adds them.
+                attributes: c
+                    .nonstandard_attributes
+                    .iter()
+                    .map(|a| (a.name.clone(), a.value.clone()))
+                    .collect(),
             });
         }
     }

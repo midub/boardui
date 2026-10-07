@@ -1,6 +1,6 @@
 # boardui glTF profile
 
-**Version 0.8 — draft**
+**Version 0.9 — draft**
 
 This document specifies how boardui represents a printed circuit board as a glTF 2.0 asset. The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
@@ -272,7 +272,7 @@ Notes:
 - Layers with `layerFunction` `COURTYARD`, `ASSEMBLY` or `DOCUMENT` are drawings, with roles `COURTYARD`, `ASSEMBLY` and `DOCUMENTATION`. A drawing layer with `side="BOTTOM"` is on the bottom side, any other (`TOP`, `NONE`, `ALL`, …) on the top side.
 - Each drawing layer is a sheet 10 µm thick, whatever the stack-up says. A side's drawing layers are stacked outward from the side's outer face (the outermost face of its other layers, paste included): first the assembly layers, then courtyard, then documentation, each group in document order. No drawing shares a Z range with another layer, so none z-fights with silkscreen, mask, paste or another drawing.
 - Features are drawn as on silkscreen (§6.1), have kind `MARKING` and reference the component and net of their `Set` (§8.2). Drawings are not material: they are neither cut by holes nor clipped by mask openings.
-- Paste and drawing layers without features in the converted step are omitted. Layers with other functions that are not part of the board's appearance (`GLUE`, `PROBE`, `VCUT`, `SCORE`, `BOARD_OUTLINE`, coatings, …) are not converted, and the converter reports them.
+- Paste and drawing layers without features in the converted step are omitted. Layers with other functions that are not part of the board's appearance (`GLUE`, `PROBE`, `VCUT`, `SCORE`, coatings, …) are not converted, and the converter reports them. A `BOARD_OUTLINE` layer is not converted either, but not reported: it draws the outline, which the step's profile and its cut-outs give (§6.7).
 - Drawing layers are hidden by default (§8.3).
 
 ### 6.13 Package drawings
@@ -352,7 +352,7 @@ Feature IDs are row indices into the layer's feature table:
 | `components` | `component` | placed component |
 | `pins` | `pin` | component pin referenced by any feature |
 | `instances` | `instance` | instance of a step in a panel (§6.14) |
-| `attributes` | `attribute` | BOM attribute of a component (since 0.8) |
+| `attributes` | `attribute` | attribute of a component (since 0.8) |
 | `<layer ID>` | `feature` | source feature of that layer (or drill layer) |
 
 - Feature tables are named by their layer ID.
@@ -362,15 +362,16 @@ Feature IDs are row indices into the layer's feature table:
 - **Linking features to pins and components.** A feature gets `pin` from the `PinRef` of its `Pad`, `component` from that `PinRef@componentRef` or else from its `Set@componentRef`, and `net` from its `Set@net`. A feature from a package drawing gets the component it was placed for (§6.13).
 - **Pins.** A pin's `name` is the package `Pin@name`, else the `PinRef@title`. Its `net` is the net of the first feature that references it.
 - **Fiducials.** A `FIDUCIAL` feature's `fiducial` is its IPC-2581 element: `GLOBAL`, `LOCAL`, `BAD_BOARD` or `GOOD_PANEL`. Other features have `NONE`, and a table without fiducials omits the property.
-- **Text.** A feature's `text` is the `textString` of the `Text` elements its shape draws (directly, inside a `UserSpecial` or through a `UserPrimitiveRef`), in document order, joined by line feeds (U+000A). Other features have the empty string, and a table without text omits the property.
-- **BOM data** (since 0.8). A component takes its BOM data from the first `Bom/BomItem/RefDes`, over all `Bom`s in document order, whose `name` is the component's `refDes`; a component of an instance (§6.14) uses its own `refDes`. Without one it has no attributes and an `UNKNOWN` `populate`.
+- **Text.** A feature's `text` is the `textString` of the `Text` elements its shape draws (directly, inside a `UserSpecial` or through a `UserPrimitiveRef`), in document order, joined by line feeds (U+000A). A feature that draws no `Text` has the `value` of the first `NonstandardAttribute` named `TEXT` of its `Set`, as written (since 0.9): KiCad draws text as outlines and keeps its string there, with its markup (`~{RST}` for an overbar). Other features have the empty string, and a table without text omits the property.
+- **BOM data** (since 0.8). A component takes its BOM data from the first `Bom/BomItem/RefDes`, over all `Bom`s in document order, whose `name` is the component's `refDes`; a component of an instance (§6.14) uses its own `refDes`. Without one it has an `UNKNOWN` `populate` and only its own attributes (item 4 below).
   - **Populate.** A component's `populate` is that `RefDes@populate`: `YES` or `NO` (KiCad writes `false` for parts not to be populated and for parts excluded from the BOM, such as mounting holes and logos), `UNKNOWN` without a BOM entry or the attribute. A `components` table without BOM entries omits the property. The geometry does not depend on it: unpopulated parts keep their bodies.
-  - **Attributes.** The `attributes` table holds the named string values of the components' BOM items: rows `component` (a row in `components`), `name` and `value`, in component order, and in the order below within a component. A component's attributes are, in this order:
+  - **Attributes.** The `attributes` table holds the named string values of the components, from their BOM items and (since 0.9) the components themselves: rows `component` (a row in `components`), `name` and `value`, in component order, and in the order below within a component. A component's attributes are, in this order:
     1. its `BomItem`'s `Characteristics` children (`Textual`, `Enumerated`, `Measured`, `Ranged`) in document order, named by their `…CharacteristicName` as written (case and spaces kept, for example KiCad's `Value` and `LCSC`, Allegro's `VALUE`). The value is the `…CharacteristicValue` as written; a `Ranged` value is `<lower>..<upper>`, with a missing bound left empty. When `engineeringUnitOfMeasure` is given, a space and the unit follow, as written (`0.1 W`, `-40..85 CEL`). Tolerances and `definitionSource` are not kept;
     2. `Description`: `BomItem@description`;
     3. `MPN` and `Manufacturer`, from the `Avl/AvlItem` whose `OEMDesignNumber` is the `BomItem@OEMDesignNumberRef`: of its `AvlVmpn`s with an `AvlMpn`, the one with `chosen="true"`, else `qualified="true"`, else the lowest `AvlMpn@rank` (unranked last), else the first. `MPN` is its `AvlMpn@name`, `Manufacturer` the `name` of the `LogisticHeader/Enterprise` its `AvlVendor@enterpriseRef` names. (KiCad writes the manufacturer's part number first and a distributor's second, neither chosen nor ranked.)
+    4. its own (since 0.9): the `Component`'s `NonstandardAttribute`s in document order, named by `name`, with the `value` as written; `type` is not kept. Allegro writes a part's `VALUE` and `TOLERANCE` there.
 
-    A name that a component already has keeps its first value: characteristics win over the names of items 2 and 3, and a repeated characteristic keeps its first value. Names compare exactly. Attributes with an empty name or value (empty or only white space) are left out, so a component has an attribute only if it has a value. The table is omitted when no component has attributes. It is authoritative; component `extras` repeat it (§8.4).
+    A name that a component already has keeps its first value: the BOM wins over the component's own, characteristics win over the names of items 2 and 3, and a repeated characteristic keeps its first value. Names compare exactly. Attributes with an empty name or value (empty or only white space) are left out, so a component has an attribute only if it has a value. The table is omitted when no component has attributes. It is authoritative; component `extras` repeat it (§8.4).
 
     `EXT_structural_metadata` has no map type, and the class schema is fixed, so the attribute names, which vary per file, cannot be properties of `component`. A table of name–value rows keeps the `components` table fixed, needs no array support, and gives each component a contiguous range of rows.
 - **Instances.** Nets, components and features of an instance reference it with `instance`; the converted step's own have none, and a table without instance references omits the property. An instance row has the instance `id`, its `step`, the `parent` instance whose step placed it (none for copies placed by the converted step), and its placement: it maps a point `(u, v)` of its step to the board point `(x, y) + R(angle) · F · (u, v)` (IPC-2581 axes, metres, degrees counter-clockwise; `F` mirrors `u` when `side` is `BOTTOM`, a flipped copy).
@@ -381,7 +382,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 
 ```json
 "BOARDUI_board": {
-  "profileVersion": "0.8",
+  "profileVersion": "0.9",
   "source": {
     "format": "IPC-2581",
     "revision": "C",

@@ -220,6 +220,8 @@ describe('text', () => {
     expect(model.describe('feat/SILK/2')?.properties).toMatchObject({
       text: 'Ærøskøbing µ±0.1° Ω',
     });
+    // Outlined text as KiCad writes it: the string is its set's `TEXT` attribute (0.9).
+    expect(model.describe('feat/SILK/6')?.properties).toMatchObject({ kind: 'MARKING', text: 'L' });
     expect(model.describe('feat/TOP/0')?.properties).toMatchObject({ kind: 'TRACE', text: 'GND' });
     expect(model.describe('feat/TOP/1')?.properties).toMatchObject({ kind: 'FILL', text: null });
     // A package assembly drawing's Text marking (spec §6.13).
@@ -258,17 +260,18 @@ describe('BOM attributes (spec §8.2–§8.4)', () => {
       'MPN',
       'Manufacturer',
     ]);
-    expect(model.describe('cmp/C1')?.properties).toMatchObject({
-      populate: 'NO',
-      attributes: {
-        Value: '100nF',
-        Description: 'from a characteristic: it wins',
-        MPN: 'GRM155R71C104KA88D',
-      },
+    // C1's own `NonstandardAttribute`s follow its BOM's; its `Value` loses (profile 0.9).
+    const c1 = model.describe('cmp/C1')?.properties;
+    expect(c1).toMatchObject({ populate: 'NO' });
+    expect(c1?.attributes).toEqual({
+      Value: '100nF',
+      Description: 'from a characteristic: it wins',
+      MPN: 'GRM155R71C104KA88D',
+      TOLERANCE: '10%',
     });
+    // J1 has no BOM entry: only its own attributes.
     const j1 = model.describe('cmp/J1')?.properties;
-    expect(j1).toMatchObject({ populate: null });
-    expect(j1).not.toHaveProperty('attributes');
+    expect(j1).toMatchObject({ populate: null, attributes: { VALUE: 'CONN-2' } });
   });
 
   it('names the exporting software in the board summary', async () => {

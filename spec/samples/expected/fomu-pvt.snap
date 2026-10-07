@@ -5,8 +5,7 @@ source: IPC-2581 rev C, step fomu-pvt, ASSEMBLY
 software: KiCad 9.0.9 (KiCad EDA)
 thickness: 0.5800 mm
 counts: 1649 features, 145988 vertices, 286820 triangles, 31 nets, 55 components, 218 pins (144 checked against pads)
-warnings: 11 from the reader, 19 from the converter
-  - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
+warnings: 0 from the reader, 18 from the converter
   - the profile of step `fomu-pvt` has no cutouts; the closed contours inside it were cut out: 1 on layer `Edge.Cuts`
   - 30 of 30 pins of component `U5` are not on their pads
   - 2 of 2 pins of component `D5_1` are not on their pads
@@ -18,6 +17,7 @@ warnings: 11 from the reader, 19 from the converter
   - 4 of 5 pins of component `U3` are not on their pads
   - 2 of 2 pins of component `C28` are not on their pads
   - 4 of 5 pins of component `U2` are not on their pads
+  - 2 of 2 pins of component `C11` are not on their pads
 layer layer/Eco1.User Documentation Top z 0.4200..0.4300 mm Default hidden
   1 features {"Marking": 1}, 8358 vertices, 16484 triangles, top area 125.7314 mm²
 layer layer/Cmts.User Documentation Top z 0.4100..0.4200 mm Default hidden

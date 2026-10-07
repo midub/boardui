@@ -57,10 +57,10 @@ pub use model::{
     Avl, AvlItem, AvlMpn, AvlVmpn, Bom, BomItem, BomRefDes, Characteristic, CharacteristicValue,
     Component, Content, Document, Ecad, Enterprise, Feature, FeatureElement, Features, Fiducial,
     FiducialKind, HistoryRecord, Hole, Layer, LayerFeature, LayerHole, LayerPad, Marking,
-    MountType, Package, PackageDrawing, Pad, PadStack, PadUsage, PadUse, PadstackDef, PadstackPad,
-    Pin, PinRef, PlatingStatus, Polarity, Set, Side, SlotCavity, SoftwarePackage, Span, Spec,
-    SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup, StackupLayer, Step, StepRepeat,
-    Units, WhereMeasured,
+    MountType, NonstandardAttribute, Package, PackageDrawing, Pad, PadStack, PadUsage, PadUse,
+    PadstackDef, PadstackPad, Pin, PinRef, PlatingStatus, Polarity, Set, Side, SlotCavity,
+    SoftwarePackage, Span, Spec, SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup,
+    StackupLayer, Step, StepRepeat, Units, WhereMeasured,
 };
 pub use shape::{
     Arc, ButterflyShape, Color, Contour, Corners, EmbeddedFont, FillDesc, FillProperty, FillStyle,
