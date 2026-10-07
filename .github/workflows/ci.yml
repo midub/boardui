@@ -61,20 +61,26 @@ jobs:
       # Rust, wasm-bindgen, wasm-opt, pnpm, Node, `pnpm install` (shared with pages.yml).
       - uses: ./.github/actions/setup-web
       - run: pnpm lint
-      # Also checks that the demo's dist/ contains no IPC consortium test data.
+      # Also checks that the demos' dist/ contain no IPC consortium test data.
       - run: pnpm build
       - run: pnpm test
+      # The Pages site (site/: every demo app and the redirect of /boardui/), as pages.yml deploys
+      # it, checked again for IPC consortium test data.
+      - run: pnpm site
       - uses: actions/upload-artifact@v7
         with:
-          name: demo-dist
-          path: packages/demo/dist
+          name: demo-site
+          # The site, and the e2e suite's static server (packages/demo-shared/dist/build).
+          path: |
+            site
+            packages/demo-shared/dist
           retention-days: 3
 
   e2e:
-    name: Demo (Playwright)
+    name: Demos (Playwright)
     needs: web
     runs-on: ubuntu-latest
-    # The screenshots in packages/demo/e2e/*-snapshots are made in this image.
+    # The screenshots in packages/demo-shared/e2e/*-snapshots are made in this image.
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
       options: --ipc=host
@@ -88,16 +94,17 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v8
         with:
-          name: demo-dist
-          path: packages/demo/dist
-      # Converts every sample in the browser (WASM in a worker), plus smoke and screenshot
-      # tests, in Chromium with software rendering.
-      - run: pnpm --filter @boardui/demo e2e
+          name: demo-site
+          path: .
+      # For every demo app (a Playwright project each): converts every sample in the browser
+      # (WASM in a worker), plus smoke and screenshot tests, in Chromium with software rendering;
+      # and the redirect of /boardui/. The site is served as GitHub Pages serves it.
+      - run: pnpm e2e
         env:
           HOME: /root
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: e2e-results
-          path: packages/demo/test-results
+          path: packages/demo-shared/test-results
           retention-days: 7

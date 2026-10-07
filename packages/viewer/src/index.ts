@@ -1,6 +1,7 @@
 /**
  * @boardui/viewer: the `<board-viewer>` web component, which shows boardui glTF boards
- * (spec/README.md) in 3D. Importing this module defines the element.
+ * (spec/README.md) in 3D. Importing this module defines the element (in a browser; in Node, e.g.
+ * for server-side rendering, the import is safe but defines nothing).
  *
  * @example
  * ```html
@@ -30,7 +31,8 @@ export type { BoardSource } from './load.js';
 export type { RenderStats } from './renderer.js';
 export type { WidgetAnchor, WidgetOcclusion, WidgetOptions } from './widgets.js';
 
-if (!customElements.get('board-viewer')) {
+// Not defined where there is no DOM (server-side rendering), so importing the module is safe there.
+if (globalThis.customElements && !customElements.get('board-viewer')) {
   customElements.define('board-viewer', BoardViewerElement);
 }
 

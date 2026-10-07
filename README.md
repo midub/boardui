@@ -78,6 +78,16 @@ The GLB opens in any glTF viewer. The samples in [`spec/samples`](spec/samples/R
 </script>
 ```
 
+In React, [`@boardui/react`](packages/react/README.md) wraps the element: props for its settings, typed event handlers, `ref` to the element for its methods, and `<Widget>` to render React children as widgets that follow board elements:
+
+```tsx
+import { BoardViewer, type BoardViewerElement } from '@boardui/react';
+
+const viewer = useRef<BoardViewerElement>(null);
+<BoardViewer ref={viewer} src="board.glb" style={{ height: 600 }} onSelect={(e) => console.log(e.detail)} />;
+// await viewer.current.loadIpc2581(file);
+```
+
 v1 publishes nothing to npm, so build the packages from this repository and install them as tarballs:
 
 ```sh
@@ -89,7 +99,9 @@ cd ../my-app
 npm install three ../boardui-packages/boardui-converter-1.1.1.tgz ../boardui-packages/boardui-viewer-1.1.1.tgz
 ```
 
-`three` (`^0.186`) is a peer dependency. The packages are ES modules for a bundler such as Vite; the converter's WebAssembly module and worker are referenced with `new URL(…, import.meta.url)`, which Vite and other modern bundlers pick up. [`packages/demo`](packages/demo/README.md) is a complete example.
+For React, also pack `@boardui/react` (`--filter @boardui/react`) and install its tarball.
+
+`three` (`^0.186`) is a peer dependency. The packages are ES modules for a bundler such as Vite; the converter's WebAssembly module and worker are referenced with `new URL(…, import.meta.url)`, which Vite and other modern bundlers pick up. The demo, [`packages/demo-react`](packages/demo-react/README.md), is a complete example in React.
 
 ## Profile spec
 
@@ -116,7 +128,9 @@ How a board is represented in glTF, which metadata it carries and how element ID
 | `crates/boardui-wasm` | WebAssembly bindings |
 | `packages/converter` | `@boardui/converter`: converter in a Web Worker |
 | `packages/viewer` | `@boardui/viewer`: `<board-viewer>` |
-| `packages/demo` | demo app, deployed to GitHub Pages |
+| `packages/react` | `@boardui/react`: React wrapper of `<board-viewer>` |
+| `packages/demo-react` | demo app in React, deployed to GitHub Pages |
+| `packages/demo-shared` | the demos' framework-independent code, build helpers and e2e tests |
 | `spec/` | profile spec, JSON schemas, sample boards |
 
 ## Building from source
@@ -136,12 +150,13 @@ pnpm install
 pnpm lint
 pnpm build
 pnpm test
-pnpm --filter @boardui/demo e2e                # Playwright tests of the demo (see packages/demo)
+pnpm site                                       # the Pages site in site/: the demos and the redirect
+pnpm e2e                                        # Playwright tests of the demos (see packages/demo-shared)
 ```
 
-The demo runs locally with `pnpm build && pnpm --filter @boardui/demo preview` at <http://127.0.0.1:4173/boardui/>.
+The demo runs locally with `pnpm build && pnpm --filter @boardui/demo-react preview` at <http://127.0.0.1:4173/boardui/react/>.
 
-CI (`.github/workflows/ci.yml`) runs all of the above plus the conformance suite. Pushes to `master` deploy the demo to GitHub Pages (`pages.yml`), and `v*` tags build the release binaries (`release.yml`).
+CI (`.github/workflows/ci.yml`) runs all of the above plus the conformance suite. Pushes to `master` deploy the demos to GitHub Pages (`pages.yml`; <https://midub.github.io/boardui/> redirects to the React demo at `/boardui/react/`), and `v*` tags build the release binaries (`release.yml`).
 
 ## License
 
