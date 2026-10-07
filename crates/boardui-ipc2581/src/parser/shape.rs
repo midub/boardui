@@ -348,6 +348,7 @@ impl<R: BufRead> Parser<R> {
             "Contour" => {
                 return Ok(StandardPrimitive {
                     kind: PrimitiveKind::Contour(Box::new(self.read_contour("Contour")?)),
+                    xform: Xform::default(),
                     line: None,
                     fill: None,
                 });
@@ -357,20 +358,33 @@ impl<R: BufRead> Parser<R> {
                     kind: PrimitiveKind::Unsupported {
                         element: self.unsupported()?,
                     },
+                    xform: Xform::default(),
                     line: None,
                     fill: None,
                 });
             }
         };
-        let (mut line, mut fill) = (None, None);
+        let (mut xform, mut line, mut fill) = (None, None, None);
         self.children(element, |p| {
             if p.line_style(element, &mut line)? || p.fill_style(element, &mut fill)? {
-                Ok(())
-            } else {
-                p.unknown(element)
+                return Ok(());
+            }
+            match p.tag.name() {
+                // Rev B's `Xform` of a standard primitive (see `StandardPrimitive::xform`).
+                "Xform" if xform.is_some() => p.duplicate(element),
+                "Xform" => {
+                    xform = Some(p.read_xform()?);
+                    Ok(())
+                }
+                _ => p.unknown(element),
             }
         })?;
-        Ok(StandardPrimitive { kind, line, fill })
+        Ok(StandardPrimitive {
+            kind,
+            xform: xform.unwrap_or_default(),
+            line,
+            fill,
+        })
     }
 
     /// Corner flags of `RectRound` and `RectCham`; absent flags are `true`.

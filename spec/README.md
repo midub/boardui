@@ -102,6 +102,7 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
   - The font's cell, from the lowest `lowerLeftY` to the highest `upperRightY` of its glyphs (for the bundled font, from the descenders to the top of the capitals), is scaled to the height of the `BoundingBox`. The string starts at the box's left edge, and each glyph advances by the width of its cell. Text that would be wider than the box is scaled down to its width, centred vertically, with a warning.
   - The `Text`'s `Xform` places the box in the coordinates of the shape. `fontSize` and colours are not used.
 - Shapes are placed with their `Location` and `Xform`: scaled, rotated and mirrored (in the file's mirror order, §6.8), then offset by `xOffset`/`yOffset` and moved to the location.
+  - A standard primitive may carry its own `Xform` (revision B allows it on all of them but `Contour` and `Moire`; revision C dropped it, but Allegro 17.4 still writes it). It is part of the primitive's definition and turns the shape in the primitive's own frame first; the referencing element's `Xform` and `Location` (and its pad's or component's placement) then place the result.
 - Normals SHOULD be omitted. glTF clients then compute flat normals, which suit prisms and save roughly 45 % of vertex data.
 
 ### 6.2 Copper layers: features never overlap

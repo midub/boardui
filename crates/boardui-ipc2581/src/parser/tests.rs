@@ -411,7 +411,7 @@ mod dictionaries {
     use super::*;
     use crate::{
         ButterflyShape, Color, Corners, FillDesc, FillProperty, FillStyle, LineDesc, LineEnd,
-        LineProperty, LineStyle, Moire, Point, PrimitiveKind, RingShape, Shape,
+        LineProperty, LineStyle, Moire, Point, PrimitiveKind, RingShape, Shape, Xform,
     };
 
     fn standard(entries: &str) -> Document {
@@ -666,6 +666,59 @@ mod dictionaries {
         assert_eq!(
             d.content.line_desc(&LineStyle::Ref("nope".to_owned())),
             None
+        );
+    }
+
+    #[test]
+    fn primitives_carry_an_xform() {
+        // Rev B allows an `Xform` in a standard primitive; Allegro 17.4 writes it in rev C
+        // files. Its offset is in the dictionary's units.
+        let d = doc(
+            "INCH",
+            &format!(
+                r#"{DICTIONARIES}<DictionaryStandard units="MILLIMETER">
+                <EntryStandard id="R"><RectCenter width="2" height="1"><Xform rotation="90"/><FillDescRef id="F"/></RectCenter></EntryStandard>
+                <EntryStandard id="O"><Oval width="2" height="1"><LineDescRef id="L"/><Xform rotation="270" mirror="true" xOffset="0.5" yOffset="-0.25" scale="2"/></Oval></EntryStandard>
+                <EntryStandard id="D"><Diamond width="2" height="1"><Xform rotation="45"/><Xform rotation="90"/></Diamond></EntryStandard>
+                <EntryStandard id="P"><Circle diameter="1"/></EntryStandard>
+                </DictionaryStandard>"#
+            ),
+            "",
+        )
+        .unwrap();
+        let get = |id: &str| d.content.standard_primitives.get(id).unwrap();
+        let r = get("R");
+        assert_eq!(
+            r.xform,
+            Xform {
+                rotation: 90.0,
+                ..Xform::default()
+            }
+        );
+        assert_eq!(r.fill, Some(FillStyle::Ref("F".to_owned())));
+        let o = get("O");
+        assert_eq!(
+            o.xform,
+            Xform {
+                offset: Point {
+                    x: mm(0.5),
+                    y: -mm(0.25)
+                },
+                rotation: 270.0,
+                mirror: true,
+                scale: 2.0,
+            }
+        );
+        assert_eq!(o.line, Some(LineStyle::Ref("L".to_owned())));
+        // The first of two `Xform`s counts.
+        assert_eq!(get("D").xform.rotation, 45.0);
+        assert_eq!(get("P").xform, Xform::default());
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [&DiagnosticKind::DuplicateElement {
+                element: "Xform".to_owned(),
+                parent: "Diamond".to_owned()
+            }]
         );
     }
 

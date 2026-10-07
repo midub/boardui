@@ -684,6 +684,12 @@ impl<'a> ShapeConverter<'a> {
         at: DAffine2,
         mode: Mode,
     ) -> Option<Shape> {
+        // A primitive's own `Xform` (rev B, written by Allegro 17.4 into rev C files too) is
+        // part of its definition, next to its size: it turns the shape in the primitive's own
+        // frame, so it applies first. The referencing element's `Xform` and `Location`, then
+        // its pad's or component's placement, place the turned shape (`at`), the way a
+        // `Text`'s `Xform` nests inside its shape's placement.
+        let at = at * self.placement(ipc::Point::default(), &primitive.xform);
         let fill = match (&primitive.fill, mode) {
             (_, Mode::Filled) | (None, _) => Fill::Solid,
             (Some(style), Mode::Area) => self.fill(style),
@@ -1258,8 +1264,14 @@ mod tests {
     }
 
     fn std(kind: PrimitiveKind) -> ipc::Shape {
+        transformed(kind, ipc::Xform::default())
+    }
+
+    /// A standard primitive with its own `Xform`.
+    fn transformed(kind: PrimitiveKind, xform: ipc::Xform) -> ipc::Shape {
         ipc::Shape::Standard(ipc::StandardPrimitive {
             kind,
+            xform,
             line: None,
             fill: None,
         })
@@ -1295,6 +1307,71 @@ mod tests {
         let (min, max) = bounds(&s);
         close_to(min.x, 0.5e-3, 1e-9);
         close_to(max.y, 3e-3, 1e-9);
+    }
+
+    #[test]
+    fn primitive_xforms_apply_before_the_placement() {
+        let c = content();
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
+        // A 2 × 1 mm rectangle turned upright and moved 0.5 mm right by its own `Xform`
+        // (x 0..1, y −1..1), then turned by the pad's 90° (x −1..1, y 0..1) and moved to it.
+        let rect = transformed(
+            PrimitiveKind::RectCenter {
+                width: 2e-3,
+                height: 1e-3,
+            },
+            ipc::Xform {
+                offset: ipc::Point { x: 0.5e-3, y: 0.0 },
+                rotation: 90.0,
+                ..ipc::Xform::default()
+            },
+        );
+        let pad = ipc::Xform {
+            rotation: 90.0,
+            ..ipc::Xform::default()
+        };
+        let at = placement(
+            ipc::Point { x: 10e-3, y: 0.0 },
+            &pad,
+            MirrorOrder::MirrorThenRotate,
+        );
+        let (min, max) = bounds(&conv.area(&rect, at).unwrap());
+        close_to(min.x, 9e-3, 1e-9);
+        close_to(max.x, 11e-3, 1e-9);
+        close_to(min.y, 0.0, 1e-9);
+        close_to(max.y, 1e-3, 1e-9);
+        // Mirrored and scaled in its frame: a corner rectangle right of the origin goes left.
+        let corner = transformed(
+            PrimitiveKind::RectCorner {
+                lower_left: ipc::Point { x: 0.0, y: 0.0 },
+                upper_right: ipc::Point { x: 2e-3, y: 1e-3 },
+            },
+            ipc::Xform {
+                mirror: true,
+                scale: 0.5,
+                ..ipc::Xform::default()
+            },
+        );
+        let s = conv.area(&corner, DAffine2::IDENTITY).unwrap();
+        close_to(area(&s), 0.5e-6, 1e-15);
+        let (min, max) = bounds(&s);
+        close_to(min.x, -1e-3, 1e-9);
+        close_to(max.x, 0.0, 1e-9);
+        close_to(max.y, 0.5e-3, 1e-9);
+        // A circle's own offset moves its centre.
+        let circle = transformed(
+            PrimitiveKind::Circle { diameter: 1e-3 },
+            ipc::Xform {
+                offset: ipc::Point { x: 0.0, y: 2e-3 },
+                ..ipc::Xform::default()
+            },
+        );
+        let Some(Shape::Circle { center, radius }) = conv.area(&circle, at) else {
+            panic!("not a circle");
+        };
+        close_to(center.x, 8e-3, 1e-12);
+        close_to(center.y, 0.0, 1e-12);
+        close_to(radius, 0.5e-3, 1e-12);
     }
 
     #[test]
