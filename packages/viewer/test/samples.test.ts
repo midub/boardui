@@ -166,6 +166,19 @@ describe('panels (spec §6.14)', () => {
       net: 'net/board-1/GND',
       instance: 'inst/board-1',
     });
+    // The board's silkscreen text; the flipped board has it on the bottom.
+    expect(model.describe('feat/board-1/TOP_SILK/2')?.properties).toMatchObject({
+      text: 'REV A',
+      instance: 'inst/board-1',
+    });
+    expect(model.describe('feat/board-6/BOT_SILK/2')?.properties).toMatchObject({
+      text: 'REV A',
+      instance: 'inst/board-6',
+    });
+    expect(model.describe('feat/board-6/@assembly-top/2')?.properties).toMatchObject({
+      text: '1',
+      component: 'cmp/board-6/C1',
+    });
     expect(model.resolve('feat/board-9/TOP/0')).toBeNull();
     expect(model.resolve('feat/TOP/99')).toBeNull();
   });

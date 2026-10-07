@@ -3,7 +3,7 @@ source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step panel, FABRICATION
 thickness: 1.6000 mm
-counts: 175 features, 8744 vertices, 17488 triangles, 12 nets, 12 components, 24 pins (24 checked against pads)
+counts: 193 features, 10832 vertices, 21568 triangles, 12 nets, 12 components, 24 pins (24 checked against pads)
 warnings: 0 from the reader, 0 from the converter
 instances: 8
   inst/strip-1 of step strip in the converted step at (5.0000, 5.0000) mm, 0.0000°, Top
@@ -15,19 +15,25 @@ instances: 8
   inst/board-5 of step board in the converted step at (74.0000, 13.0000) mm, 90.0000°, Top
   inst/board-6 of step board in the converted step at (93.0000, 33.0000) mm, 90.0000°, Bottom
 layer layer/@assembly-top Assembly Top z 0.9000..0.9100 mm Default synthesized hidden
-  12 features {"Marking": 12}, 444 vertices, 864 triangles, top area 4.4582 mm²
+  18 features {"Marking": 18}, 804 vertices, 1560 triangles, top area 4.9523 mm²
     row 0: Marking net - instance 1 area 0.6371 mm²
     row 1: Marking net - instance 1 area 0.1059 mm²
-    row 2: Marking net - instance 2 area 0.6371 mm²
-    row 3: Marking net - instance 2 area 0.1059 mm²
-    row 4: Marking net - instance 4 area 0.6371 mm²
-    row 5: Marking net - instance 4 area 0.1059 mm²
-    row 6: Marking net - instance 5 area 0.6371 mm²
-    row 7: Marking net - instance 5 area 0.1059 mm²
-    row 8: Marking net - instance 6 area 0.6371 mm²
-    row 9: Marking net - instance 6 area 0.1059 mm²
-    row 10: Marking net - instance 7 area 0.6371 mm²
-    row 11: Marking net - instance 7 area 0.1059 mm²
+    row 2: Marking net - instance 1 area 0.0823 mm² text "1"
+    row 3: Marking net - instance 2 area 0.6371 mm²
+    row 4: Marking net - instance 2 area 0.1059 mm²
+    row 5: Marking net - instance 2 area 0.0823 mm² text "1"
+    row 6: Marking net - instance 4 area 0.6371 mm²
+    row 7: Marking net - instance 4 area 0.1059 mm²
+    row 8: Marking net - instance 4 area 0.0823 mm² text "1"
+    row 9: Marking net - instance 5 area 0.6371 mm²
+    row 10: Marking net - instance 5 area 0.1059 mm²
+    row 11: Marking net - instance 5 area 0.0823 mm² text "1"
+    row 12: Marking net - instance 6 area 0.6371 mm²
+    row 13: Marking net - instance 6 area 0.1059 mm²
+    row 14: Marking net - instance 6 area 0.0823 mm² text "1"
+    row 15: Marking net - instance 7 area 0.6371 mm²
+    row 16: Marking net - instance 7 area 0.1059 mm²
+    row 17: Marking net - instance 7 area 0.0823 mm² text "1"
 layer layer/TOP_PASTE Paste Top z 0.8000..0.9000 mm Default hidden
   12 features {"Pad": 12}, 96 vertices, 144 triangles, top area 9.6000 mm²
     row 0: Pad net - instance 1 area 0.8000 mm²
@@ -43,18 +49,23 @@ layer layer/TOP_PASTE Paste Top z 0.8000..0.9000 mm Default hidden
     row 10: Pad net - instance 7 area 0.8000 mm²
     row 11: Pad net - instance 7 area 0.8000 mm²
 layer layer/TOP_SILK Silkscreen Top z 0.8200..0.8300 mm Default
-  11 features {"Marking": 11}, 410 vertices, 820 triangles, top area 14.4563 mm²
+  16 features {"Marking": 16}, 1550 vertices, 3060 triangles, top area 23.8996 mm²
     row 0: Marking net - instance 1 area 1.6739 mm²
     row 1: Marking net - instance 1 area 0.8826 mm²
-    row 2: Marking net - instance 2 area 1.6739 mm²
-    row 3: Marking net - instance 2 area 0.8826 mm²
-    row 4: Marking net - instance 4 area 1.6739 mm²
-    row 5: Marking net - instance 4 area 0.8826 mm²
-    row 6: Marking net - instance 5 area 1.6739 mm²
-    row 7: Marking net - instance 5 area 0.8826 mm²
-    row 8: Marking net - instance 6 area 1.6739 mm²
-    row 9: Marking net - instance 6 area 0.8826 mm²
-    row 10: Marking net - instance 7 area 1.6739 mm²
+    row 2: Marking net - instance 1 area 1.8887 mm² text "REV A"
+    row 3: Marking net - instance 2 area 1.6739 mm²
+    row 4: Marking net - instance 2 area 0.8826 mm²
+    row 5: Marking net - instance 2 area 1.8887 mm² text "REV A"
+    row 6: Marking net - instance 4 area 1.6739 mm²
+    row 7: Marking net - instance 4 area 0.8826 mm²
+    row 8: Marking net - instance 4 area 1.8887 mm² text "REV A"
+    row 9: Marking net - instance 5 area 1.6739 mm²
+    row 10: Marking net - instance 5 area 0.8826 mm²
+    row 11: Marking net - instance 5 area 1.8887 mm² text "REV A"
+    row 12: Marking net - instance 6 area 1.6739 mm²
+    row 13: Marking net - instance 6 area 0.8826 mm²
+    row 14: Marking net - instance 6 area 1.8887 mm² text "REV A"
+    row 15: Marking net - instance 7 area 1.6739 mm²
 layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
   1 features {"Sheet": 1}, 1282 vertices, 2712 triangles, top area 3647.9668 mm²
     row 0: Sheet net - area 3647.9668 mm²
@@ -154,7 +165,7 @@ layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default s
   1 features {"Sheet": 1}, 1144 vertices, 2424 triangles, top area 3650.2938 mm²
     row 0: Sheet net - area 3650.2938 mm²
 layer layer/BOT_SILK Silkscreen Bottom z -0.8300..-0.8200 mm Default
-  7 features {"Marking": 7}, 274 vertices, 548 triangles, top area 10.9259 mm²
+  8 features {"Marking": 8}, 502 vertices, 996 triangles, top area 12.8145 mm²
     row 0: Marking net - instance 1 area 1.6739 mm²
     row 1: Marking net - instance 2 area 1.6739 mm²
     row 2: Marking net - instance 4 area 1.6739 mm²
@@ -162,6 +173,7 @@ layer layer/BOT_SILK Silkscreen Bottom z -0.8300..-0.8200 mm Default
     row 4: Marking net - instance 6 area 1.6739 mm²
     row 5: Marking net - instance 7 area 1.6739 mm²
     row 6: Marking net - instance 7 area 0.8826 mm²
+    row 7: Marking net - instance 7 area 1.8887 mm² text "REV A"
 layer layer/BOT_PASTE Paste Bottom z -0.9000..-0.8000 mm Default hidden
   12 features {"Pad": 12}, 96 vertices, 144 triangles, top area 9.6000 mm²
     row 0: Pad net - instance 1 area 0.8000 mm²
@@ -177,19 +189,25 @@ layer layer/BOT_PASTE Paste Bottom z -0.9000..-0.8000 mm Default hidden
     row 10: Pad net - instance 7 area 0.8000 mm²
     row 11: Pad net - instance 7 area 0.8000 mm²
 layer layer/@assembly-bottom Assembly Bottom z -0.9100..-0.9000 mm Default synthesized hidden
-  12 features {"Marking": 12}, 444 vertices, 864 triangles, top area 4.4582 mm²
+  18 features {"Marking": 18}, 804 vertices, 1560 triangles, top area 4.9523 mm²
     row 0: Marking net - instance 1 area 0.6371 mm²
     row 1: Marking net - instance 1 area 0.1059 mm²
-    row 2: Marking net - instance 2 area 0.6371 mm²
-    row 3: Marking net - instance 2 area 0.1059 mm²
-    row 4: Marking net - instance 4 area 0.6371 mm²
-    row 5: Marking net - instance 4 area 0.1059 mm²
-    row 6: Marking net - instance 5 area 0.6371 mm²
-    row 7: Marking net - instance 5 area 0.1059 mm²
-    row 8: Marking net - instance 6 area 0.6371 mm²
-    row 9: Marking net - instance 6 area 0.1059 mm²
-    row 10: Marking net - instance 7 area 0.6371 mm²
-    row 11: Marking net - instance 7 area 0.1059 mm²
+    row 2: Marking net - instance 1 area 0.0823 mm² text "1"
+    row 3: Marking net - instance 2 area 0.6371 mm²
+    row 4: Marking net - instance 2 area 0.1059 mm²
+    row 5: Marking net - instance 2 area 0.0823 mm² text "1"
+    row 6: Marking net - instance 4 area 0.6371 mm²
+    row 7: Marking net - instance 4 area 0.1059 mm²
+    row 8: Marking net - instance 4 area 0.0823 mm² text "1"
+    row 9: Marking net - instance 5 area 0.6371 mm²
+    row 10: Marking net - instance 5 area 0.1059 mm²
+    row 11: Marking net - instance 5 area 0.0823 mm² text "1"
+    row 12: Marking net - instance 6 area 0.6371 mm²
+    row 13: Marking net - instance 6 area 0.1059 mm²
+    row 14: Marking net - instance 6 area 0.0823 mm² text "1"
+    row 15: Marking net - instance 7 area 0.6371 mm²
+    row 16: Marking net - instance 7 area 0.1059 mm²
+    row 17: Marking net - instance 7 area 0.0823 mm² text "1"
 drill layer/DRILL layer/TOP..layer/BOTTOM
   21 features {"Barrel": 12, "Other": 9}, 648 vertices, 1296 triangles, top area 0.3006 mm²
     row 0: Other net - area 0.0000 mm²

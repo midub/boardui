@@ -717,8 +717,8 @@ def panel():
     """A panel: steps placed by StepRepeat, nested, rotated and flipped (spec §6.14).
 
     Step `board` (20 × 12 mm with a notch, datum in its centre) has a part on each side,
-    two nets, traces, vias, a mounting hole, silkscreen, paste and package assembly
-    drawings. Step `strip` repeats it twice along X in a frame with a local fiducial. Step
+    two nets, traces, vias, a mounting hole, silkscreen with a `Text`, paste and package
+    assembly drawings with a `Text` marking. Step `strip` repeats it twice along X in a frame with a local fiducial. Step
     `panel` repeats the strip twice along Y and places two more boards, rotated by 90°, one
     of them flipped (`mirror`), and has rails with global fiducials and tooling holes.
     `Content` lists the board first: the panel converts because no step repeats it.
@@ -761,7 +761,9 @@ def panel():
         f'<AssemblyDrawing><Outline><Polygon>{d.rect(-1.0, -0.6, 1.0, 0.6)}</Polygon>'
         f'<LineDescRef id="OUTLINE"/></Outline>'
         f'<Marking markingUsage="NONE"><Polyline>{d.polygon([(0.2, 0.3), (0.6, 0.0), (0.2, -0.3)], close=False)}'
-        f'<LineDescRef id="OUTLINE"/></Polyline></Marking></AssemblyDrawing>'
+        f'<LineDescRef id="OUTLINE"/></Polyline></Marking>'
+        f'<Marking markingUsage="PIN_ONE">{text_element(d, "1", (-0.9, -0.35, -0.3, 0.35))}</Marking>'
+        "</AssemblyDrawing>"
     )
     main_step, d.step = d.step, board
     two_pin_package(d, "R0805", drawing)
@@ -799,6 +801,7 @@ def panel():
         '<LayerFeature layerRef="TOP_SILK">'
         + silk([(3.2, 5.0), (6.8, 5.0), (6.8, 7.0), (3.2, 7.0), (3.2, 5.0)], "R1")
         + silk([(1, 10), (3, 10), (1, 11.5), (1, 10)])
+        + f"<Set><Features><Location {d.xy(0, 0)}/>{text_element(d, 'REV A', (5, 10, 13, 11.5))}</Features></Set>"
         + "</LayerFeature>"
     )
     board.append(

@@ -172,7 +172,10 @@ samples! {
 }
 
 /// Spec §5, §6.14: an instance's IDs are those of its step converted alone, with the
-/// instance segment; a flipped instance has its features on the counterpart layers.
+/// instance segment; a flipped instance has its features on the counterpart layers. An
+/// instance's features keep their `text`, and a text's top face is the one of the step alone
+/// under the instance's placement: a flipped copy's text is turned over with the board, so
+/// it reads correctly from its new side.
 #[test]
 fn panel_instances_keep_their_steps_ids() {
     let path = samples_dir().join("hand-written/panel/panel.xml");
@@ -184,50 +187,16 @@ fn panel_instances_keep_their_steps_ids() {
         };
         convert(&xml, &options).expect("conversion").glb
     };
-    let panel = convert_step(None);
-    let board = convert_step(Some("board"));
-    /// The IDs of a converted file's components, nets, pins and features.
-    fn ids(glb: &[u8]) -> Vec<String> {
-        let (root, bin) = glb::read(glb).expect("GLB");
-        let board: Board =
-            serde_json::from_value(root.extensions.board.clone().expect("board")).expect("board");
-        let t = &board.tables;
-        let mut ids = Vec::new();
-        for table in [t.components, t.nets, t.pins] {
-            ids.extend(strings(&root, bin, table, "id"));
-        }
-        let scopes: Vec<String> = match t.instances {
-            Some(table) => strings(&root, bin, Some(table), "id")
-                .iter()
-                .map(|id| format!("{}/", &id["inst/".len()..]))
-                .collect(),
-            None => Vec::new(),
-        };
-        let layers = board.layers.iter().map(|l| (&l.id, l.feature_table));
-        let drills = board.drills.iter().map(|d| (&d.id, d.feature_table));
-        for (layer, table) in layers.chain(drills) {
-            let sources = column(&root, bin, table, "source");
-            let instances = column(&root, bin, table, "instance");
-            for (source, instance) in sources.iter().zip(instances) {
-                let scope = scopes.get(instance as usize).map_or("", String::as_str);
-                ids.push(format!("feat/{scope}{}/{source}", &layer["layer/".len()..]));
-            }
-        }
-        ids
-    }
-    let panel = ids(&panel);
-    let mut alone = ids(&board);
+    let (panel, frames) = elements(&convert_step(None));
+    let (mut alone, _) = elements(&convert_step(Some("board")));
     // The sheets are the panel's.
-    alone.retain(|id| !id.contains("/@core/") && !id.contains("/@soldermask-"));
-    for id in &alone {
+    alone.retain(|id, _| !id.contains("/@core/") && !id.contains("/@soldermask-"));
+    /// An ID in an instance: board-6 is flipped, so its features are on the counterpart
+    /// layers.
+    fn scoped(id: &str, instance: &str) -> String {
         let (kind, rest) = id.split_once('/').expect("ID");
-        for instance in ["board-1", "board-5"] {
-            let scoped = format!("{kind}/{instance}/{rest}");
-            assert!(panel.contains(&scoped), "{scoped} is missing");
-        }
-        // board-6 is flipped: its features are on the counterpart layers.
-        let flipped = match rest.split_once('/') {
-            Some((layer, n)) if kind == "feat" => {
+        let rest = match rest.split_once('/') {
+            Some((layer, n)) if kind == "feat" && instance == "board-6" => {
                 let layer = match layer {
                     "TOP" => "BOTTOM",
                     "BOTTOM" => "TOP",
@@ -243,16 +212,159 @@ fn panel_instances_keep_their_steps_ids() {
             }
             _ => rest.to_owned(),
         };
-        let scoped = format!("{kind}/board-6/{flipped}");
-        assert!(panel.contains(&scoped), "{scoped} is missing");
+        format!("{kind}/{instance}/{rest}")
     }
-    let count = |instance: &str| panel.iter().filter(|id| id.contains(instance)).count();
+    let mut texts = 0;
+    for (id, (text, face)) in &alone {
+        for instance in ["board-1", "board-5", "board-6"] {
+            let scoped = scoped(id, instance);
+            let Some((copy_text, copy_face)) = panel.get(&scoped) else {
+                panic!("{scoped} is missing");
+            };
+            assert_eq!(copy_text, text, "{scoped}");
+            if text.is_empty() {
+                continue;
+            }
+            let (Some(face), Some(copy)) = (face, copy_face) else {
+                panic!("{id} or {scoped} draws nothing");
+            };
+            let (x, y, angle, flipped) = frames[instance];
+            let (sin, cos) = angle.to_radians().sin_cos();
+            let place = |[u, v]: [f64; 2]| {
+                let u = if flipped { -u } else { u };
+                [x + cos * u - sin * v, y + sin * u + cos * v]
+            };
+            let corners = [
+                [face.min[0], face.min[1]],
+                [face.min[0], face.max[1]],
+                [face.max[0], face.min[1]],
+                [face.max[0], face.max[1]],
+            ]
+            .map(place);
+            let min = corners
+                .iter()
+                .fold([f64::INFINITY; 2], |m, c| [m[0].min(c[0]), m[1].min(c[1])]);
+            let max = corners.iter().fold([f64::NEG_INFINITY; 2], |m, c| {
+                [m[0].max(c[0]), m[1].max(c[1])]
+            });
+            // Arcs are flattened after placement, within the tolerance.
+            let tolerance = Options::default().tolerance;
+            let close = |a: [f64; 2], b: [f64; 2]| (0..2).all(|k| (a[k] - b[k]).abs() <= tolerance);
+            assert!(
+                (copy.area - face.area).abs() <= 1e-4 * face.area,
+                "{scoped}: area {} vs {}",
+                copy.area,
+                face.area
+            );
+            assert!(
+                close(copy.min, min) && close(copy.max, max),
+                "{scoped}: bounds {:?}..{:?} vs {min:?}..{max:?}",
+                copy.min,
+                copy.max
+            );
+            // The centroid tells a turned-over text from a mirror-reversed one in its box.
+            assert!(
+                close(copy.centroid, place(face.centroid)),
+                "{scoped}: centroid {:?} vs {:?}",
+                copy.centroid,
+                place(face.centroid)
+            );
+        }
+        texts += usize::from(!text.is_empty());
+    }
+    // The silkscreen `REV A` and the `1` of R1's and C1's assembly drawings.
+    assert_eq!(texts, 3, "texts of the board alone");
+    let count = |instance: &str| panel.keys().filter(|id| id.contains(instance)).count();
     assert_eq!(count("/board-6/"), count("/board-1/"));
-    assert!(panel.contains(&"net/board-6/GND".to_owned()));
+    assert!(panel.contains_key("net/board-6/GND"));
     assert!(
-        panel.contains(&"feat/TOP/0".to_owned()),
+        panel.contains_key("feat/TOP/0"),
         "the panel's own IDs have no instance"
     );
+}
+
+/// Spec §6.14: a layer without a counterpart is reported once per step, however many flipped
+/// copies of the step the panel has.
+#[test]
+fn unpaired_layers_are_reported_once_per_step() {
+    let xml = std::fs::read_to_string(samples_dir().join("hand-written/panel/panel.xml"))
+        .expect("sample");
+    // Flip the strips too, for five flipped boards, and drop the bottom paste layer.
+    let strips = r#"dy="18" angle="0" mirror="false""#;
+    assert!(xml.contains(strips), "the strips' StepRepeat");
+    let xml = xml
+        .replace(strips, r#"dy="18" angle="0" mirror="true""#)
+        .lines()
+        .filter(|l| !l.contains("BOT_PASTE"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let conversion = convert(xml.as_bytes(), &Options::default()).expect("conversion");
+    let unpaired: Vec<_> = conversion
+        .warnings
+        .iter()
+        .filter(|w| w.message.contains("no counterpart"))
+        .collect();
+    assert_eq!(unpaired.len(), 1, "{unpaired:?}");
+    let w = unpaired[0];
+    assert!(
+        w.message.starts_with("layer `TOP_PASTE`")
+            && w.message.ends_with("step `board` were skipped"),
+        "{w:?}"
+    );
+    assert_eq!(w.occurrences, 1, "{w:?}");
+}
+
+/// A converted file's elements by ID: its components, nets and pins, and its features with
+/// their `text` and top face.
+type Elements = BTreeMap<String, (String, Option<Face>)>;
+
+/// The elements of a converted file, and the placement `(x, y, angle, flipped)` of each of
+/// its instances by name (spec §8.2).
+fn elements(glb: &[u8]) -> (Elements, BTreeMap<String, (f64, f64, f64, bool)>) {
+    let (root, bin) = glb::read(glb).expect("GLB");
+    let board: Board =
+        serde_json::from_value(root.extensions.board.clone().expect("board")).expect("board");
+    let t = &board.tables;
+    let mut elements = Elements::new();
+    for table in [t.components, t.nets, t.pins] {
+        for id in strings(&root, bin, table, "id") {
+            elements.insert(id, (String::new(), None));
+        }
+    }
+    let mut frames = BTreeMap::new();
+    let mut names = Vec::new();
+    if let Some(table) = t.instances {
+        let [x, y, angle] = ["x", "y", "angle"].map(|c| floats(&root, bin, Some(table), c));
+        let sides = column(&root, bin, Some(table), "side");
+        for (row, id) in strings(&root, bin, Some(table), "id").iter().enumerate() {
+            let name = id["inst/".len()..].to_owned();
+            let flipped = Side::from_value(sides[row] as u8) == Some(Side::Bottom);
+            frames.insert(name.clone(), (x[row], y[row], angle[row], flipped));
+            names.push(name);
+        }
+    }
+    let layers = board
+        .layers
+        .iter()
+        .map(|l| (&l.id, l.node, l.feature_table));
+    let drills = board
+        .drills
+        .iter()
+        .map(|d| (&d.id, d.node, d.feature_table));
+    for (layer, node, table) in layers.chain(drills) {
+        let sources = column(&root, bin, table, "source");
+        let instances = column(&root, bin, table, "instance");
+        let texts = strings(&root, bin, table, "text");
+        let mut faces = feature_faces(&root, bin, node);
+        for (row, (source, text)) in sources.iter().zip(texts).enumerate() {
+            let scope = names
+                .get(instances[row] as usize)
+                .map_or_else(String::new, |n| format!("{n}/"));
+            let id = format!("feat/{scope}{}/{source}", &layer["layer/".len()..]);
+            elements.insert(id, (text, faces.remove(&(row as u32))));
+        }
+    }
+    (elements, frames)
 }
 
 /// Spec §3: the same board in inches, millimetres and microns gives the same geometry.
@@ -670,9 +782,27 @@ fn mesh_size(root: &Root, node: u32) -> (u64, u64) {
 
 /// Area of each feature's upward-facing triangles at the top of the mesh, in m².
 fn feature_areas(root: &Root, bin: &[u8], node: u32) -> BTreeMap<u32, f64> {
-    let mut areas = BTreeMap::new();
+    feature_faces(root, bin, node)
+        .into_iter()
+        .map(|(row, face)| (row, face.area))
+        .collect()
+}
+
+/// A feature's upward-facing triangles at the top of the mesh: area (m²), centroid and
+/// bounds in board coordinates (m).
+#[derive(Debug)]
+struct Face {
+    area: f64,
+    centroid: [f64; 2],
+    min: [f64; 2],
+    max: [f64; 2],
+}
+
+/// The top face of each feature of a node's mesh, by feature-table row.
+fn feature_faces(root: &Root, bin: &[u8], node: u32) -> BTreeMap<u32, Face> {
+    let mut faces: BTreeMap<u32, Face> = BTreeMap::new();
     let Some(mesh) = root.nodes[node as usize].mesh else {
-        return areas;
+        return faces;
     };
     for p in &root.meshes[mesh as usize].primitives {
         let positions = read_vec3(root, bin, p.attributes["POSITION"]).expect("positions");
@@ -685,14 +815,27 @@ fn feature_areas(root: &Root, bin: &[u8], node: u32) -> BTreeMap<u32, f64> {
                 continue;
             }
             // Board coordinates (x, -z); counter-clockwise from above is positive.
-            let (ax, ay) = (f64::from(a[0]), -f64::from(a[2]));
-            let (bx, by) = (f64::from(b[0]), -f64::from(b[2]));
-            let (cx, cy) = (f64::from(c[0]), -f64::from(c[2]));
-            let twice = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
+            let [a, b, c] = [a, b, c].map(|p| [f64::from(p[0]), -f64::from(p[2])]);
+            let twice = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
             if twice > 0.0 {
-                *areas.entry(ids[t[0] as usize]).or_default() += twice / 2.0;
+                let face = faces.entry(ids[t[0] as usize]).or_insert(Face {
+                    area: 0.0,
+                    centroid: [0.0; 2],
+                    min: [f64::INFINITY; 2],
+                    max: [f64::NEG_INFINITY; 2],
+                });
+                face.area += twice / 2.0;
+                for k in 0..2 {
+                    // The first moment; divided by the area below.
+                    face.centroid[k] += twice / 2.0 * (a[k] + b[k] + c[k]) / 3.0;
+                    face.min[k] = face.min[k].min(a[k]).min(b[k]).min(c[k]);
+                    face.max[k] = face.max[k].max(a[k]).max(b[k]).max(c[k]);
+                }
             }
         }
     }
-    areas
+    for face in faces.values_mut() {
+        face.centroid = face.centroid.map(|m| m / face.area);
+    }
+    faces
 }

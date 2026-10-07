@@ -177,6 +177,8 @@ pub(crate) fn run(
     }
     ctx.package_drawings(&stack, &mut layer_features);
     let mut skipped = Vec::new();
+    // Layers without a counterpart, reported once per (layer, step).
+    let mut unpaired = HashSet::new();
     for part in &parts {
         for (name, lf) in part.step.layer_features.iter() {
             if lf.feature_count() == 0 {
@@ -193,10 +195,12 @@ pub(crate) fn run(
                 Some(_) => Some(name),
             };
             let Some(target) = target else {
-                ctx.warnings.push(format!(
-                    "layer `{name}` has no counterpart on the other side; its features in flipped copies of step `{}` were skipped",
-                    part.step.name
-                ));
+                if unpaired.insert((name, &part.step.name)) {
+                    ctx.warnings.push(format!(
+                        "layer `{name}` has no counterpart on the other side; its features in flipped copies of step `{}` were skipped",
+                        part.step.name
+                    ));
+                }
                 continue;
             };
             // Optional layers that were left out have been reported already.
@@ -1015,6 +1019,8 @@ impl<'a> Context<'a> {
             let mut rows = Vec::new();
             let mut holes = Vec::new();
             let mut found = false;
+            // Steps whose flipped copies were reported, once per step.
+            let mut unpaired = HashSet::new();
             for k in 0..self.parts.len() {
                 self.part = k;
                 let part = &self.parts[k];
@@ -1027,7 +1033,11 @@ impl<'a> Context<'a> {
                     continue;
                 };
                 found = true;
-                if part.flipped && !self.flip.has_drill(source) && lf.feature_count() > 0 {
+                if part.flipped
+                    && !self.flip.has_drill(source)
+                    && lf.feature_count() > 0
+                    && unpaired.insert(&part.step.name)
+                {
                     self.warnings.push(format!(
                         "drill layer `{source}` has no counterpart with the mirrored span; flipped copies of step `{}` keep its span",
                         part.step.name
