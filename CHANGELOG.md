@@ -5,6 +5,12 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-07
+
+Board colours, the missing shapes, text, optional layers and panels. The glTF profile goes from
+0.1 to 0.6 and is still a draft ([spec §11](spec/README.md#11-versioning)); minor versions
+only add optional data, so 1.0.0 files still load.
+
 - Eight more conformance samples from other exporters: Allegro rigid-flex, Polar Speedstack,
   Altium (revision A, `.cvg`), KiCad 9 (blind, buried and micro vias, castellations, inches,
   revision B, a KiKit panel) and KiCad 10. A `Stackup` without `name` (Polar, Altium) is now a
@@ -70,4 +76,6 @@ available at the [`v1-angular`](https://github.com/midub/boardui/tree/v1-angular
 - Nothing is published to npm or crates.io; the viewer and converter packages are used from this
   repository.
 
+[Unreleased]: https://github.com/midub/boardui/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/midub/boardui/releases/tag/v1.1.0
 [1.0.0]: https://github.com/midub/boardui/releases/tag/v1.0.0
