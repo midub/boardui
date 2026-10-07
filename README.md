@@ -37,7 +37,7 @@ Prebuilt binaries are attached to every [release](https://github.com/midub/board
 Each archive holds the `boardui` binary, `LICENSE` and this README; `SHA256SUMS` lists their checksums. For example, on Linux:
 
 ```sh
-v=1.0.0 t=x86_64-unknown-linux-musl
+v=1.1.0 t=x86_64-unknown-linux-musl
 curl -LO https://github.com/midub/boardui/releases/download/v$v/boardui-$v-$t.tar.gz
 curl -LO https://github.com/midub/boardui/releases/download/v$v/SHA256SUMS
 sha256sum --check --ignore-missing SHA256SUMS
@@ -86,7 +86,7 @@ pnpm install && pnpm build          # needs Rust and wasm-bindgen-cli, see below
 pnpm --filter @boardui/converter --filter @boardui/viewer pack --pack-destination ../boardui-packages
 
 cd ../my-app
-npm install three ../boardui-packages/boardui-converter-1.0.0.tgz ../boardui-packages/boardui-viewer-1.0.0.tgz
+npm install three ../boardui-packages/boardui-converter-1.1.0.tgz ../boardui-packages/boardui-viewer-1.1.0.tgz
 ```
 
 `three` (`^0.186`) is a peer dependency. The packages are ES modules for a bundler such as Vite; the converter's WebAssembly module and worker are referenced with `new URL(…, import.meta.url)`, which Vite and other modern bundlers pick up. [`packages/demo`](packages/demo/README.md) is a complete example.

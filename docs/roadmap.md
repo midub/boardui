@@ -27,6 +27,10 @@ These are goals to measure against, not promises:
 
 Measured in M5 on a VM without a GPU: a 238k-feature board converts in 3.7 s natively and in about 10 s as WebAssembly in Chromium. The frame rate on a GPU is still to be measured: open <https://midub.github.io/boardui/?sample=royalblue54l-feather&stats&spin>, or open `?stats&spin` and drop `testcase1`.
 
+## v1.1
+
+Released as v1.1.0 (profile 0.6, still a draft): board colours from the file, the missing shapes (fiducials, `Hexagon`, `Moire`, hatched fills, dashed lines), `Text`, optional layers (paste, courtyard, assembly, documentation), panels (`StepRepeat`), and more samples from other exporters. See [CHANGELOG.md](../CHANGELOG.md).
+
 ## v2 backlog
 
 - Exploded layer view, cross-section (clipping plane), measuring
