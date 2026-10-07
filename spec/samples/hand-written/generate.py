@@ -492,6 +492,53 @@ def primitive_xform():
     return d
 
 
+def polygon_xform():
+    """Polygons and cutouts with their own `Xform` (rev B and C): it turns the polygon in its
+    own frame, before the element that holds it is placed (spec §6.1).
+
+    Top row: pads of an arrow contour (1.5 mm long, pointing +X as written) whose polygon is
+    turned 90°, mirrored or moved (0.5, 0.25) mm by its own `Xform`, each in a pad at 0° and
+    90°. Bottom left: a copper fill whose 4 × 2 mm polygon is turned upright and moved 2 mm by
+    its `Xform`, with a 1 mm square cutout mirrored and moved by its own `Xform`. The profile's
+    polygon is written around the origin and moved onto the board by its `Xform`; its cutout,
+    a 2 × 1 mm slot written at the origin, is turned upright and moved by its own.
+    """
+    d = Doc()
+    arrow = [(0, -0.5), (1, -0.5), (1.5, 0), (1, 0.5), (0, 0.5)]
+    for name, xform in (
+        ("ARROW_R90", '<Xform rotation="90"/>'),
+        ("ARROW_MIRROR", '<Xform mirror="true"/>'),
+        ("ARROW_OFFSET", f'<Xform xOffset="{d.u(0.5)}" yOffset="{d.u(0.25)}"/>'),
+    ):
+        d.primitive(name, f"<Contour><Polygon>{d.polygon(arrow)}{xform}</Polygon></Contour>")
+    two_layers(d, drill=False)
+    d.step.append(
+        f"<Profile><Polygon>{d.rect(-10, -5.5, 10, 5.5)}"
+        f'<Xform xOffset="{d.u(10)}" yOffset="{d.u(5.5)}"/></Polygon>'
+        f"<Cutout>{d.rect(-1, -0.5, 1, 0.5)}"
+        f'<Xform rotation="90" xOffset="{d.u(15)}" yOffset="{d.u(3)}"/></Cutout></Profile>'
+    )
+    sets = []
+    for shape, x, rot in (
+        ("ARROW_R90", 2, 0),
+        ("ARROW_R90", 5, 90),
+        ("ARROW_MIRROR", 8, 0),
+        ("ARROW_MIRROR", 11, 90),
+        ("ARROW_OFFSET", 14, 0),
+        ("ARROW_OFFSET", 17, 90),
+    ):
+        sets.append(f'<Set padUsage="TERMINATION">{pad(d, x, 8, shape, rotation=rot)}</Set>')
+    sets.append(
+        f'<Set net="GND"><Features><Location {d.xy(3, 1)}/><Contour>'
+        f'<Polygon>{d.rect(0, 0, 4, 2)}<Xform rotation="90" xOffset="{d.u(2)}"/></Polygon>'
+        f"<Cutout>{d.rect(0, 0, 1, 1)}"
+        f'<Xform mirror="true" xOffset="{d.u(1.5)}" yOffset="{d.u(2.5)}"/></Cutout>'
+        "</Contour></Features></Set>"
+    )
+    d.step.append(f'<LayerFeature layerRef="TOP">{"".join(sets)}</LayerFeature>')
+    return d
+
+
 def hatch_fill():
     """HATCH and MESH fills are lines clipped to the area, plus the outline (spec §6.1)."""
     d = Doc()
@@ -1444,6 +1491,7 @@ def main():
         "fiducials": fiducials(),
         "hexagon-moire": hexagon_moire(),
         "primitive-xform": primitive_xform(),
+        "polygon-xform": polygon_xform(),
         "hatch-fill": hatch_fill(),
         "line-styles": line_styles(),
         "slots": slots(),

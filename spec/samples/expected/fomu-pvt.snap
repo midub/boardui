@@ -4,7 +4,7 @@ source: crates/boardui-convert/tests/conformance.rs
 source: IPC-2581 rev C, step fomu-pvt, ASSEMBLY
 thickness: 0.5800 mm
 counts: 1649 features, 145988 vertices, 286820 triangles, 31 nets, 55 components, 218 pins (144 checked against pads)
-warnings: 16 from the reader, 19 from the converter
+warnings: 15 from the reader, 19 from the converter
   - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
   - the profile of step `fomu-pvt` has no cutouts; the closed contours inside it were cut out: 1 on layer `Edge.Cuts`
   - 30 of 30 pins of component `U5` are not on their pads

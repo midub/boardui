@@ -11,6 +11,9 @@ use crate::{
     Table,
 };
 
+/// The `pinOne` KiCad writes for a package whose pin 1 it can't tell.
+const UNKNOWN_PIN_ONE: &str = "UNKNOWN";
+
 impl<R: BufRead> Parser<R> {
     pub(super) fn read_step(&mut self) -> Result<(), Error> {
         let position = self.tag.position;
@@ -270,8 +273,15 @@ impl<R: BufRead> Parser<R> {
             }
             _ => p.unknown("Package"),
         })?;
-        // A package without pins (a logo, a placeholder) has no pin 1 to point at; KiCad
-        // writes `pinOne="UNKNOWN"` for it.
+        // KiCad writes `pinOne="UNKNOWN"` when no pad has one of the numbers it takes for pin 1
+        // (`1`, `A1`, `A`, `a`, `a1`, `Anode`, `ANODE`): pin 1 is not given. A pin that is
+        // really numbered `UNKNOWN` is still pin 1.
+        if package.pin_one.as_deref() == Some(UNKNOWN_PIN_ONE)
+            && package.pins.get(UNKNOWN_PIN_ONE).is_none()
+        {
+            package.pin_one = None;
+        }
+        // A package without pins (a logo, a placeholder) has no pin 1 to point at.
         if let Some(pin_one) = &package.pin_one
             && !package.pins.is_empty()
             && package.pins.get(pin_one).is_none()

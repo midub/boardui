@@ -103,6 +103,7 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
   - The `Text`'s `Xform` places the box in the coordinates of the shape. `fontSize` and colours are not used.
 - Shapes are placed with their `Location` and `Xform`: scaled, rotated and mirrored (in the file's mirror order, §6.8), then offset by `xOffset`/`yOffset` and moved to the location.
   - A standard primitive may carry its own `Xform` (revision B allows it on all of them but `Contour` and `Moire`; revision C dropped it, but Allegro 17.4 still writes it). It is part of the primitive's definition and turns the shape in the primitive's own frame first; the referencing element's `Xform` and `Location` (and its pad's or component's placement) then place the result.
+  - A `Polygon` or `Cutout` may carry its own `Xform` too (revisions B and C). It turns that path in its own frame first, together with the polygon's own stroke and fill; the element that holds it (a `Contour`, a step `Profile`, an `Outline`, a feature) and its placements come after. A `Contour`'s polygon and each of its cutouts have their own.
 - Normals SHOULD be omitted. glTF clients then compute flat normals, which suit prisms and save roughly 45 % of vertex data.
 
 ### 6.2 Copper layers: features never overlap
