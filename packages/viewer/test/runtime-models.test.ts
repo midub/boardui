@@ -196,7 +196,7 @@ describe('runtime models', () => {
       MPN: 'RC0603FR-0710KL',
       LCSC: 'C25744',
     });
-    expect(boards.at(-1)?.profileVersion).toBe('0.9');
+    expect(boards.at(-1)?.profileVersion).toBe('0.10');
   });
 
   it('replace placeholder bodies and pin-1 markers on the same state texels, and revert', async () => {

@@ -289,3 +289,25 @@ describe('BOM attributes (spec §8.2–§8.4)', () => {
     expect(model.describe('board')?.properties.source).not.toHaveProperty('software');
   });
 });
+
+describe('repeated sheets (spec §4)', () => {
+  it('draws a sheet that shares a mesh at its own heights', async () => {
+    const model = await load('stacked-sheets');
+    for (const name of ['PREPREG_1', 'CORE', 'PREPREG_2']) {
+      const layer = model.layer(`layer/${name}`);
+      if (!layer) throw new Error(`layer/${name} is missing`);
+      const { zMin, zMax } = layer.info as BoardLayerJson;
+      const geometry = layer.meshes[0]?.geometry;
+      expect(geometry?.boundingBox?.min.y).toBeCloseTo(zMin, 8);
+      expect(geometry?.boundingBox?.max.y).toBeCloseTo(zMax, 8);
+      const box = model.resolve(`feat/${name}/0`)?.box;
+      expect(box?.min.y).toBeCloseTo(zMin, 8);
+      expect(box?.max.y).toBeCloseTo(zMax, 8);
+      expect(model.describe(`feat/${name}/0`)?.properties).toMatchObject({ kind: 'SHEET' });
+    }
+    // The prepreg shares the core's mesh and feature table; the upper prepreg has its own.
+    const table = (name: string) => model.layer(`layer/${name}`)?.table;
+    expect(table('PREPREG_2')).toBe(table('CORE'));
+    expect(table('PREPREG_1')).not.toBe(table('CORE'));
+  });
+});
