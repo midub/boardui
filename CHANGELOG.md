@@ -28,6 +28,12 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
 - **Framing by what is shown:** the initial view, `setView` and the new `frame()` frame the
   visible layers and components only, so drawings on a hidden layer (e.g. fomu-pvt's `Eco1.User`
   documentation layer) no longer widen the view.
+- **IPC consortium test cases:** the repository no longer hosts the IPC-2581 Consortium's test
+  cases, which come without a licence; it links to them.
+  `python3 spec/samples/ipc-testcases/fetch.py` fetches them from the consortium's archives
+  (checked against the SHA-256s in `spec/samples/ipc-testcases/sources.json`), and the tests that
+  read them are skipped without them (CI fetches them and requires them). The demo's test case
+  cards link to the consortium's archives and name the file to open.
 
 ## [1.1.1] - 2026-10-07
 

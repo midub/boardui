@@ -1,0 +1,17 @@
+name: Fetch the IPC consortium test cases
+description: >-
+  The IPC-2581 Consortium's test cases in spec/samples/ipc-testcases, which the repository only
+  links to (spec/samples/ipc-testcases/README.md): restored from the Actions cache, keyed on the
+  hash of their manifest (sources.json), or fetched from ipc2581.com by fetch.py. The jobs that
+  use it set BOARDUI_REQUIRE_IPC_TESTCASES, so their tests fail instead of skipping a missing file.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v6
+      with:
+        path: spec/samples/ipc-testcases/*.xml
+        key: ipc-testcases-${{ hashFiles('spec/samples/ipc-testcases/sources.json') }}
+    # Fetches what the cache doesn't have and checks every file's SHA-256 against the manifest.
+    - run: python3 spec/samples/ipc-testcases/fetch.py
+      shell: bash

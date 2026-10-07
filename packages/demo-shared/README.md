@@ -91,10 +91,12 @@ self-contained: it works offline and in CI without another host, and the samples
 demo's version. GitHub Pages compresses XML, so the KiCad board (9.4 MB) is about 0.8 MB on the
 wire.
 
-The IPC consortium test cases are test data only (`spec/samples/README.md`, "Rules"), so the
-demos don't ship or load them. They link to the files in this repository at the release tag
-(`TEST_CASES_REF` in `src/samples.ts`); the user downloads one and opens it. The dist check
-(`src/build/check-dist.ts`) fails a demo's build, and `pnpm site`, if a file is one of them.
+The IPC consortium test cases are test data only, and the repository doesn't host them
+(`spec/samples/README.md`, "Rules"), so the demos don't ship or load them. They link to the
+consortium's archives (`TEST_CASES` in `src/samples.ts`) and name the file to open from each; the
+user downloads one and opens the file. The dist check (`src/build/check-dist.ts`) fails a demo's
+build, and `pnpm site`, if a file has the name or the content (the SHA-256 in
+`spec/samples/ipc-testcases/sources.json`) of one of them.
 
 ## Limits
 
@@ -109,9 +111,10 @@ opens the GLB it writes.
   site (`pnpm build && pnpm site`; `SITE_DIR=<dir>` for another one) in Chromium with software
   rendering (SwiftShader), as CI runs them in `mcr.microsoft.com/playwright:v1.63.0-noble`. Every
   app is a project (`--project react`, `--project angular`) and runs the same tests: every sample
-  converts in the browser (the IPC consortium test cases opened through the file input), opening
-  files and GLBs, models, errors, hover, selection, tags, layers, nets, x-ray, the stats overlay,
-  the links between the apps, and screenshots. The apps look the same, so they share the screenshots
+  converts in the browser (the IPC consortium test cases opened through the file input; skipped
+  unless fetched, see `spec/samples/ipc-testcases/README.md`), opening files and GLBs, models,
+  errors, hover, selection, tags, layers, nets, x-ray, the stats overlay, the links between the
+  apps, and screenshots. The apps look the same, so they share the screenshots
   (`e2e/*-snapshots/`, made in that image); the switch, which marks each app's own framework, is
   masked in them. Project `site` tests the redirect of `/boardui/`.
 - `REVIEW_OUT=<dir> [PERF_XML=<file>] pnpm e2e --project react e2e/review.spec.ts`: review images

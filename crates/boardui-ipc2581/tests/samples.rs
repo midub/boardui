@@ -2,11 +2,15 @@
 //!
 //! The expected counts were derived from the XML independently of this crate, with `grep -c`
 //! and a Python `xml.etree` script (see the M1 pull request).
+//!
+//! The repository only links to the test cases: `python3 spec/samples/ipc-testcases/fetch.py`
+//! fetches them. A test whose file is missing is skipped with a message, or fails if
+//! `BOARDUI_REQUIRE_IPC_TESTCASES` is set (CI sets it).
 
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Write as _};
 use std::path::Path;
 
 use boardui_ipc2581::{Document, FeatureElement, PlatingStatus, PrimitiveKind, Shape, Step};
@@ -89,16 +93,26 @@ const TESTCASE1: Expected = Expected {
     profile_cutouts: 0,
 };
 
-fn parse(file: &str) -> Document {
+/// The parsed test case `file`, or `None` if it isn't fetched (see the module docs).
+fn parse(file: &str) -> Option<Document> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../spec/samples/ipc-testcases")
         .join(file);
+    if !path.exists() {
+        let message =
+            format!("{file} is not fetched: run `python3 spec/samples/ipc-testcases/fetch.py`");
+        let required = std::env::var_os("BOARDUI_REQUIRE_IPC_TESTCASES");
+        assert!(required.is_none_or(|v| v.is_empty()), "{message}");
+        // Not `eprintln!`: the test harness hides what that prints in a passing test.
+        writeln!(std::io::stderr(), "skipped: {message}").expect("stderr");
+        return None;
+    }
     let reader = BufReader::new(File::open(&path).expect("sample exists"));
-    boardui_ipc2581::parse(reader).unwrap_or_else(|e| panic!("{file}: {e}"))
+    Some(boardui_ipc2581::parse(reader).unwrap_or_else(|e| panic!("{file}: {e}")))
 }
 
-fn check(expected: &Expected) -> Document {
-    let doc = parse(expected.file);
+fn check(expected: &Expected) -> Option<Document> {
+    let doc = parse(expected.file)?;
     assert_eq!(doc.revision, "C");
     assert_eq!(doc.content.function_mode.as_deref(), Some("ASSEMBLY"));
     assert_eq!(doc.ecad.layers.len(), expected.layers);
@@ -143,7 +157,7 @@ fn check(expected: &Expected) -> Document {
             lf.layer_ref
         );
     }
-    doc
+    Some(doc)
 }
 
 fn holes_by_plating(step: &Step) -> [usize; 3] {
@@ -233,18 +247,21 @@ fn summary(doc: &Document) -> String {
 
 #[test]
 fn testcase3() {
-    let doc = check(&TESTCASE3);
-    insta::assert_snapshot!(summary(&doc));
+    if let Some(doc) = check(&TESTCASE3) {
+        insta::assert_snapshot!(summary(&doc));
+    }
 }
 
 #[test]
 fn testcase10() {
-    let doc = check(&TESTCASE10);
-    insta::assert_snapshot!(summary(&doc));
+    if let Some(doc) = check(&TESTCASE10) {
+        insta::assert_snapshot!(summary(&doc));
+    }
 }
 
 #[test]
 fn testcase1() {
-    let doc = check(&TESTCASE1);
-    insta::assert_snapshot!(summary(&doc));
+    if let Some(doc) = check(&TESTCASE1) {
+        insta::assert_snapshot!(summary(&doc));
+    }
 }

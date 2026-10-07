@@ -3,16 +3,55 @@
  * copied to `<out>/samples/…`, or served from `spec/samples` by a dev server, and their sizes
  * (including the IPC consortium test cases, which are only linked to) are known at build time.
  */
-import { cpSync, createReadStream, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  createReadStream,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { dirname, join } from 'node:path';
 import { sampleFiles, TEST_CASES, testCasePath } from '../samples.js';
 import { SAMPLES_DIR } from './paths.js';
 
-/** Sizes in bytes of the sample files and the test cases, by path relative to `spec/samples/`. */
+/**
+ * An IPC consortium test case in `spec/samples/ipc-testcases/sources.json`, the manifest of
+ * `fetch.py` there: the repository doesn't host the test cases.
+ */
+export interface TestCaseSource {
+  file: string;
+  /** The consortium's ZIP archive. */
+  url: string;
+  /** The file's path in the archive. */
+  member: string;
+  normalize: 'crlf-to-lf' | 'none';
+  /** Size in bytes and SHA-256 (hex) of the file as fetched. */
+  size: number;
+  sha256: string;
+}
+
+/** The IPC consortium test cases, from their manifest. */
+export function testCaseSources(): TestCaseSource[] {
+  return JSON.parse(readFileSync(`${SAMPLES_DIR}ipc-testcases/sources.json`, 'utf8')).files;
+}
+
+/**
+ * Sizes in bytes of the sample files and the test cases (from their manifest), by path relative
+ * to `spec/samples/`.
+ */
 export function sampleSizes(): Record<string, number> {
-  const files = [...sampleFiles(), ...TEST_CASES.map(testCasePath)];
-  return Object.fromEntries(files.map((f) => [f, statSync(SAMPLES_DIR + f).size]));
+  const sources = testCaseSources();
+  const testCaseSize = (file: string) => {
+    const source = sources.find((s) => s.file === file);
+    if (!source) throw new Error(`${file} is not in spec/samples/ipc-testcases/sources.json`);
+    return source.size;
+  };
+  return Object.fromEntries([
+    ...sampleFiles().map((f) => [f, statSync(SAMPLES_DIR + f).size]),
+    ...TEST_CASES.map((t) => [testCasePath(t), testCaseSize(t.file)]),
+  ]);
 }
 
 /** Copies the sample files to `<outDir>/samples/`. */

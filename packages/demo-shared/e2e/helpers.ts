@@ -1,4 +1,6 @@
-import { expect, type Page } from '@playwright/test';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { expect, type Page, test } from '@playwright/test';
 
 /** `globalThis` of a demo page (`exposeDemo`, `src/session.ts`), as far as the tests use it. */
 export interface DemoGlobal {
@@ -8,6 +10,24 @@ export interface DemoGlobal {
       ids(kind: string): string[];
     };
   };
+}
+
+/**
+ * The path of an IPC consortium test case (`file` in `spec/samples/ipc-testcases/`), for a test
+ * that opens it. The repository only links to the test cases: if the file isn't fetched, the test
+ * is skipped with a message, or fails if `BOARDUI_REQUIRE_IPC_TESTCASES` is set (CI sets it).
+ */
+export function testCaseFile(file: string): string {
+  const path = fileURLToPath(
+    new URL(`../../../spec/samples/ipc-testcases/${file}`, import.meta.url),
+  );
+  if (!existsSync(path)) {
+    const message = `${file} is not fetched: run \`python3 spec/samples/ipc-testcases/fetch.py\``;
+    if (process.env.BOARDUI_REQUIRE_IPC_TESTCASES) throw new Error(message);
+    console.warn(`skipped: ${message}`);
+    test.skip(true, message);
+  }
+  return path;
 }
 
 /** Console errors and uncaught exceptions of a page. */

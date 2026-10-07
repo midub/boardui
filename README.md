@@ -181,4 +181,4 @@ CI (`.github/workflows/ci.yml`) runs all of the above plus the conformance suite
 [MIT](LICENSE), except the sample boards in `spec/samples` that say otherwise:
 
 - [`kicad-royalblue54l-feather`](spec/samples/kicad-royalblue54l-feather/README.md): CERN-OHL-P v2, see its `LICENSE`.
-- [`ipc-testcases`](spec/samples/README.md): the IPC-2581 Consortium's test cases, used as test data only. They are not part of the demo or the release archives; the demo links to them.
+- [`ipc-testcases`](spec/samples/ipc-testcases/README.md): the IPC-2581 Consortium's test cases are not in the repository, the demo or the release archives; the repository and the demo link to them on <https://www.ipc2581.com>. `python3 spec/samples/ipc-testcases/fetch.py` fetches them as test data.

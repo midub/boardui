@@ -8,3 +8,6 @@ dist/
 test-results/
 .angular/
 /packages/demo-angular/.generated/
+# The IPC consortium test cases are fetched, not hosted (spec/samples/ipc-testcases/README.md).
+/spec/samples/ipc-testcases/*.xml
+/spec/samples/ipc-testcases/*.part

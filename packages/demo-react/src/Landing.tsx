@@ -5,6 +5,7 @@ import {
   type Sample,
   sampleLabel,
   TEST_CASES,
+  TEST_CASES_PAGE,
   testCasePath,
   testCaseUrl,
 } from '@boardui/demo-shared';
@@ -100,27 +101,33 @@ export function Landing({
           {SAMPLES.filter((s) => s.group === 'Hand-written').map(card)}
         </div>
       </div>
-      {/* The IPC consortium test cases aren't part of the demo: links to the files in the
-          repository, which the user downloads and then drops here. */}
+      {/* The IPC consortium test cases aren't part of the demo: links to the consortium's
+          archives; the user downloads one and drops the named file from it here. */}
       <div className="samples">
         <h2>IPC consortium test data</h2>
-        <p className="samples-hint">Download a file, then drop it here.</p>
+        <p className="samples-hint">
+          Download an archive from the <a href={TEST_CASES_PAGE}>IPC-2581 Consortium</a>, then drop
+          the file named on its card here.
+        </p>
         <div id="test-case-links" className="sample-cards">
           {TEST_CASES.map((testCase) => (
             <a
               key={testCase.id}
               className="sample-card"
               href={testCaseUrl(testCase)}
-              download={testCase.file}
               target="_blank"
               rel="noopener"
-              title={`Download ${testCase.file}`}
+              title={`Download the archive with ${testCase.file} from the IPC-2581 Consortium`}
               data-test-case={testCase.id}
             >
               <span className="sample-group">IPC consortium</span>
               <span className="sample-name">{testCase.name}</span>
-              <span className="sample-desc">{testCase.description}</span>
-              <span className="sample-size">{`${size(testCasePath(testCase))} ↓`}</span>
+              <span className="sample-desc">
+                {testCase.description}
+                <br />
+                Open <code>{testCase.file}</code> ({size(testCasePath(testCase))})
+              </span>
+              <span className="sample-size">ZIP ↓</span>
             </a>
           ))}
         </div>

@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page, test } from '@playwright/test';
 import { DEMOS } from '../src/frameworks.js';
-import { TEST_CASES_REF } from '../src/samples.js';
 import { collectErrors, openBoard, screenPoint, settle, viewerCall } from './helpers.js';
 
 const sample = (path: string) =>
@@ -20,13 +19,14 @@ test('shows the landing page', async ({ page }) => {
   await page.goto('./');
   await expect(page.locator('#empty')).toBeVisible();
   await expect(page.locator('#sample-cards .sample-card')).toHaveCount(1);
-  // The IPC consortium test cases are links to the repository at the release tag.
+  // The IPC consortium test cases are links to the consortium's archives, naming the file to open.
   const testCases = page.locator('#test-case-links a');
   await expect(testCases).toHaveCount(3);
   await expect(testCases.first()).toHaveAttribute(
     'href',
-    `https://github.com/midub/boardui/raw/${TEST_CASES_REF}/spec/samples/ipc-testcases/testcase1-RevC-Assembly.xml`,
+    'https://www.ipc2581.com/wp-content/uploads/2021/03/Testcase1-RevC-March2021.zip',
   );
+  await expect(testCases.first()).toContainText('testcase1-RevC-Assembly.xml (16 MB)');
   await expect(page).toHaveScreenshot('empty.png', shared(page));
   expect(errors).toEqual([]);
 });

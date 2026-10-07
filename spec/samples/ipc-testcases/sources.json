@@ -1,0 +1,49 @@
+{
+  "description": "Where the IPC-2581 Consortium publishes the test cases in this directory. fetch.py downloads each archive, extracts the member, applies `normalize` and checks `size` and `sha256` (of the written file). See README.md.",
+  "pages": [
+    "https://www.ipc2581.com/ipc-2581-revc-test-cases/",
+    "https://www.ipc2581.com/b-test-cases/"
+  ],
+  "files": [
+    {
+      "file": "testcase1-RevC-Assembly.xml",
+      "url": "https://www.ipc2581.com/wp-content/uploads/2021/03/Testcase1-RevC-March2021.zip",
+      "member": "Testcase1-RevC/testcase1-RevC-Assembly.xml",
+      "normalize": "crlf-to-lf",
+      "size": 16356331,
+      "sha256": "16cd06e29c02f9c98df513f7a08dd28cb00991d3398c6b282252353b0205633a"
+    },
+    {
+      "file": "testcase3-RevC-Assembly.xml",
+      "url": "https://www.ipc2581.com/wp-content/uploads/2021/03/Testcase3_RevC-March2021.zip",
+      "member": "testcase3_2581REVC/testcase3-RevC-Assembly.xml",
+      "normalize": "crlf-to-lf",
+      "size": 823280,
+      "sha256": "d7c9af63d893decf42eb9c28f9fa18e7b135bf05b1c88cc7073ab85883be95d1"
+    },
+    {
+      "file": "testcase10-RevC-Assembly.xml",
+      "url": "https://www.ipc2581.com/wp-content/uploads/2021/08/CDNS_testcase10-Rev-C-data.zip",
+      "member": "testcase10-Rev C data/testcase10-RevC-Assembly.xml",
+      "normalize": "crlf-to-lf",
+      "size": 3645964,
+      "sha256": "3a34f2988bf7fb9bbd610d09af04ae8129c84e400035d3721997356cc4a43dd9"
+    },
+    {
+      "file": "testcase11-rdgflx-RevC-full.xml",
+      "url": "https://www.ipc2581.com/wp-content/uploads/2021/08/CDNS_testcase11-RevC.zip",
+      "member": "testcase11-RevC/testcase11-rdgflx-RevC-full.xml",
+      "normalize": "none",
+      "size": 1963892,
+      "sha256": "8d45fc79d5fef18c0bede8b2d244ab9de3c7326168b1a0b965ec0a237279f02d"
+    },
+    {
+      "file": "IPC-2581-8-Layer-Design.xml",
+      "url": "https://www.ipc2581.com/wp-content/uploads/2017/12/IPC-2581_Stack-ups_Sample.zip",
+      "member": "stack-ups/IPC-2581-8-Layer-Design.xml",
+      "normalize": "none",
+      "size": 21087,
+      "sha256": "d3a02730df9ce8a0332fbeea53343f892767de49eeb74a307713918e767a74b8"
+    }
+  ]
+}

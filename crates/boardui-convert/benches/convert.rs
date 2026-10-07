@@ -23,7 +23,13 @@ fn bench(c: &mut Criterion) {
             "kicad-royalblue54l-feather/royalblue54l-feather.xml",
         ),
     ] {
-        let xml = std::fs::read(samples.join(file)).expect("sample");
+        let path = samples.join(file);
+        if file.starts_with("ipc-testcases/") && !path.exists() {
+            // The repository only links to the IPC consortium test cases.
+            eprintln!("skipped {name}: run `python3 spec/samples/ipc-testcases/fetch.py`");
+            continue;
+        }
+        let xml = std::fs::read(path).expect("sample");
         group.bench_function(name, |b| {
             b.iter(|| convert(&xml, &Options::default()).expect("converts"));
         });

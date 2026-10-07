@@ -3,14 +3,14 @@
  * files listed in `SAMPLES` into the build (`samples/…`, next to the app; `src/build/samples.ts`)
  * and serve them in dev, so the demos need no other host and the samples match their version.
  *
- * The IPC consortium test cases are test data only and not part of the demo
- * (`spec/samples/README.md`): `TEST_CASES` only links to them in the repository.
+ * The IPC consortium test cases are test data only, and the repository doesn't host them
+ * (`spec/samples/README.md`): `TEST_CASES` links to the consortium's archives.
  */
 
 import { formatBytes } from './format.js';
 
-/** The git tag that the test case links point at. */
-export const TEST_CASES_REF = 'v1.1.1';
+/** The IPC-2581 Consortium's page with the RevC test cases. */
+export const TEST_CASES_PAGE = 'https://www.ipc2581.com/ipc-2581-revc-test-cases/';
 
 /** A sample board. Paths are relative to `spec/samples/`. */
 export interface Sample {
@@ -66,13 +66,18 @@ export function sampleFiles(): string[] {
   ]);
 }
 
-/** An IPC consortium test case in `spec/samples/ipc-testcases/`, offered as a download link. */
+/**
+ * An IPC consortium test case, offered as a link to the consortium's archive that contains it
+ * (`spec/samples/ipc-testcases/sources.json`).
+ */
 export interface TestCase {
   id: string;
   name: string;
   description: string;
-  /** File name in `spec/samples/ipc-testcases/`. */
+  /** File name in the archive, and in `spec/samples/ipc-testcases/` once fetched. */
   file: string;
+  /** The consortium's ZIP archive with the file. */
+  archive: string;
 }
 
 export const TEST_CASES: readonly TestCase[] = [
@@ -81,27 +86,29 @@ export const TEST_CASES: readonly TestCase[] = [
     name: 'Test case 1',
     description: 'Large assembly: 36k features, 1,656 components',
     file: 'testcase1-RevC-Assembly.xml',
+    archive: 'https://www.ipc2581.com/wp-content/uploads/2021/03/Testcase1-RevC-March2021.zip',
   },
   {
     id: 'testcase10',
     name: 'Test case 10',
     description: 'Dense assembly board',
     file: 'testcase10-RevC-Assembly.xml',
+    archive: 'https://www.ipc2581.com/wp-content/uploads/2021/08/CDNS_testcase10-Rev-C-data.zip',
   },
   {
     id: 'testcase3',
     name: 'Test case 3',
     description: 'No stack-up or soldermask: default thicknesses, profile cut-outs',
     file: 'testcase3-RevC-Assembly.xml',
+    archive: 'https://www.ipc2581.com/wp-content/uploads/2021/03/Testcase3_RevC-March2021.zip',
   },
 ];
 
 /** A test case's path relative to `spec/samples/`. */
 export const testCasePath = (t: TestCase): string => `ipc-testcases/${t.file}`;
 
-/** Where a test case is downloaded from: the file in the repository at `TEST_CASES_REF`. */
-export const testCaseUrl = (t: TestCase): string =>
-  `https://github.com/midub/boardui/raw/${TEST_CASES_REF}/spec/samples/${testCasePath(t)}`;
+/** Where a test case is downloaded from: the consortium's archive with the file. */
+export const testCaseUrl = (t: TestCase): string => t.archive;
 
 /** A sample's label in the picker: name and size. */
 export function sampleLabel(sample: Sample, sizes: Readonly<Record<string, number>>): string {

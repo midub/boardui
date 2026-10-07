@@ -1,13 +1,14 @@
 /**
  * Checks that a demo build contains no IPC consortium test case: they are test data only
  * (`spec/samples/README.md`), so the demos link to them instead of shipping them. A file fails the
- * check if it has the content of a file in `spec/samples/ipc-testcases/`, or a name that looks
- * like one.
+ * check if it has the content of a test case (its SHA-256 in
+ * `spec/samples/ipc-testcases/sources.json`, so the test cases needn't be fetched), or a name that
+ * looks like one.
  */
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
-import { SAMPLES_DIR } from './paths.js';
+import { type TestCaseSource, testCaseSources } from './samples.js';
 
 const files = (dir: string) =>
   readdirSync(dir, { recursive: true, withFileTypes: true })
@@ -16,15 +17,17 @@ const files = (dir: string) =>
 const sha256 = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex');
 
 /**
- * Checks `dir` (a `dist/` or the Pages site).
+ * Checks `dir` (a `dist/` or the Pages site) for the `testCases` (by default all of them).
  *
  * @returns the number of files checked.
  * @throws an `Error` listing the files that are IPC consortium test data.
  */
-export function checkDist(dir: string): number {
-  const testCases = `${SAMPLES_DIR}ipc-testcases`;
-  const forbidden = new Map(files(testCases).map((f) => [sha256(f), basename(f)]));
-  if (forbidden.size === 0) throw new Error(`no test cases found in ${testCases}`);
+export function checkDist(
+  dir: string,
+  testCases: readonly Pick<TestCaseSource, 'file' | 'sha256'>[] = testCaseSources(),
+): number {
+  const forbidden = new Map(testCases.map((t) => [t.sha256, t.file]));
+  if (forbidden.size === 0) throw new Error('no IPC consortium test cases to check for');
   const names = new Set([...forbidden.values()].map((n) => n.toLowerCase()));
   const found: string[] = [];
   const shipped = files(dir);
