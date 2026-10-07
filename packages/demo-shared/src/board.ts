@@ -144,7 +144,7 @@ export function detailRows(info: ElementInfo): [string, unknown][] {
   const { attributes, ...properties } = info.properties;
   const rows = Object.entries(properties).filter(([, v]) => v !== '' && v !== undefined);
   if (attributes && typeof attributes === 'object') {
-    rows.push(...Object.entries(attributes).filter(([name]) => !(name in properties)));
+    rows.push(...Object.entries(attributes).filter(([name]) => !Object.hasOwn(properties, name)));
   }
   return rows;
 }

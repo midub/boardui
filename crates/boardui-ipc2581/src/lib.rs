@@ -3,9 +3,10 @@
 //! [`parse`] reads an IPC-2581 revision B or C file with a pull parser (no DOM) and returns a
 //! [`Document`]: the content dictionaries, layers, stack-ups and steps, with every length
 //! converted to metres, and the assembly data: the bills of materials with their part
-//! characteristics, the approved vendor list and the software that wrote the file. Shapes are described as written in the file; turning them into
-//! geometry is up to the caller (`boardui-geom`). The `PadStack`s of revision A and B
-//! steps (Altium writes them) are kept as written, in [`Step::pad_stacks`].
+//! characteristics, the approved vendor list and the software that wrote the file. Shapes are
+//! described as written in the file; turning them into geometry is up to the caller
+//! (`boardui-geom`). The `PadStack`s of revision A and B steps (Altium writes them) are kept as
+//! written, in [`Step::pad_stacks`].
 //!
 //! ```
 //! let xml = br#"<IPC-2581 revision="C">

@@ -529,7 +529,6 @@ export class BoardModel {
     return box.isEmpty() ? null : box;
   }
 
-  /** Replaces row references (`net`, `pin`, `component`) by the IDs of the rows. */
   /** A component's attributes by name, in table order, or `undefined` if it has none. */
   #attributes(row: number): Record<string, string> | undefined {
     const rows = this.#attributeRows[row];
@@ -541,6 +540,7 @@ export class BoardModel {
     return result;
   }
 
+  /** Replaces row references (`net`, `pin`, `component`) by the IDs of the rows. */
   #withIds(properties: Record<string, PropertyValue>): Record<string, unknown> {
     const tables: Record<string, PropertyTable> = {
       net: this.nets,
