@@ -1,9 +1,9 @@
 name: Pages
 
 # Builds the demos and deploys them to GitHub Pages, https://midub.github.io/boardui/: each demo app
-# at /boardui/<id>/ (the React demo, packages/demo-react, at /boardui/react/), and /boardui/, which
-# redirects to react/ keeping the query and hash. A demo is added to the site (e.g. angular/) by
-# adding it to DEMOS in packages/demo-shared/src/frameworks.ts.
+# at /boardui/<id>/ (packages/demo-react at /boardui/react/, packages/demo-angular at
+# /boardui/angular/), and /boardui/, which redirects to react/ keeping the query and hash. The apps
+# are the ones in DEMOS (packages/demo-shared/src/frameworks.ts).
 # Pull requests that change this workflow, the shared setup or the site builder only build it.
 on:
   push:
@@ -13,6 +13,7 @@ on:
       - .github/workflows/pages.yml
       - .github/actions/setup-web/**
       - packages/demo-shared/src/build/site.ts
+      - packages/demo-shared/src/frameworks.ts
   workflow_dispatch:
 
 permissions:

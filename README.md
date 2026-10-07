@@ -16,7 +16,7 @@ boardui turns an [IPC-2581](https://www.ipc2581.com) file into a glTF board and 
 
 - **Converter (Rust).** IPC-2581 in, GLB out. Copper, soldermask, silkscreen, dielectric, drills, barrels and slots are extruded from 2D regions; components get placeholder bodies or your own glTF models. It runs as a command-line tool and as WebAssembly in the browser, so boards never have to be uploaded anywhere.
 - **Viewer (TypeScript + three.js).** `<board-viewer>`, a framework-independent web component: orbit, top/bottom/iso views, layer toggles, x-ray, hover and selection, net highlighting, and HTML widgets anchored to board elements.
-- **[Demo](https://midub.github.io/boardui/).** Drop an IPC-2581 file, view it, download the GLB. The conversion runs in your browser.
+- **[Demo](https://midub.github.io/boardui/)**, in [React](https://midub.github.io/boardui/react/) and [Angular](https://midub.github.io/boardui/angular/). Drop an IPC-2581 file, view it, download the GLB. The conversion runs in your browser.
 
 The original Angular/SVG viewer (2023 bachelor thesis) lives at the [`v1-angular`](https://github.com/midub/boardui/tree/v1-angular) tag and branch.
 
@@ -88,6 +88,22 @@ const viewer = useRef<BoardViewerElement>(null);
 // await viewer.current.loadIpc2581(file);
 ```
 
+In Angular, [`@boardui/angular`](packages/angular/README.md) does the same with a standalone component: signal inputs for the settings, typed outputs for the events, `element` for the methods, and `<bui-widget>` for Angular content in widgets:
+
+```ts
+import { BoardViewer, type ElementInfo } from '@boardui/angular';
+
+@Component({
+  imports: [BoardViewer],
+  template: `<bui-board-viewer src="board.glb" style="height: 600px" (select)="selected.set($event)" />`,
+})
+export class Board {
+  readonly selected = signal<ElementInfo | null>(null);
+  readonly viewer = viewChild.required(BoardViewer);
+  // await this.viewer().element.loadIpc2581(file);
+}
+```
+
 v1 publishes nothing to npm, so build the packages from this repository and install them as tarballs:
 
 ```sh
@@ -99,9 +115,9 @@ cd ../my-app
 npm install three ../boardui-packages/boardui-converter-1.1.1.tgz ../boardui-packages/boardui-viewer-1.1.1.tgz
 ```
 
-For React, also pack `@boardui/react` (`--filter @boardui/react`) and install its tarball.
+For React, also pack `@boardui/react` (`--filter @boardui/react`) and install its tarball; for Angular, `@boardui/angular`.
 
-`three` (`^0.186`) is a peer dependency. The packages are ES modules for a bundler such as Vite; the converter's WebAssembly module and worker are referenced with `new URL(…, import.meta.url)`, which Vite and other modern bundlers pick up. The demo, [`packages/demo-react`](packages/demo-react/README.md), is a complete example in React.
+`three` (`^0.186`) is a peer dependency. The packages are ES modules for a bundler such as Vite; the converter's WebAssembly module and worker are referenced with `new URL(…, import.meta.url)`, which Vite and other modern bundlers pick up. The Angular CLI's application builder doesn't, so an Angular app copies them next to its scripts ([how](packages/angular/README.md#the-converters-worker-and-wasm-with-the-angular-cli)). The demos, [`packages/demo-react`](packages/demo-react/README.md) and [`packages/demo-angular`](packages/demo-angular/README.md), are complete examples.
 
 ## Profile spec
 
@@ -129,7 +145,9 @@ How a board is represented in glTF, which metadata it carries and how element ID
 | `packages/converter` | `@boardui/converter`: converter in a Web Worker |
 | `packages/viewer` | `@boardui/viewer`: `<board-viewer>` |
 | `packages/react` | `@boardui/react`: React wrapper of `<board-viewer>` |
+| `packages/angular` | `@boardui/angular`: Angular wrapper of `<board-viewer>` |
 | `packages/demo-react` | demo app in React, deployed to GitHub Pages |
+| `packages/demo-angular` | the same demo app in Angular, deployed to GitHub Pages |
 | `packages/demo-shared` | the demos' framework-independent code, build helpers and e2e tests |
 | `spec/` | profile spec, JSON schemas, sample boards |
 
@@ -154,9 +172,9 @@ pnpm site                                       # the Pages site in site/: the d
 pnpm e2e                                        # Playwright tests of the demos (see packages/demo-shared)
 ```
 
-The demo runs locally with `pnpm build && pnpm --filter @boardui/demo-react preview` at <http://127.0.0.1:4173/boardui/react/>.
+The demos run locally as Pages serves them with `pnpm build && pnpm site && node packages/demo-shared/dist/build/cli.js serve site` at <http://127.0.0.1:4173/boardui/>, or one at a time with `pnpm --filter @boardui/demo-react preview` (after `pnpm build`) and `pnpm --filter @boardui/demo-angular dev`.
 
-CI (`.github/workflows/ci.yml`) runs all of the above plus the conformance suite. Pushes to `master` deploy the demos to GitHub Pages (`pages.yml`; <https://midub.github.io/boardui/> redirects to the React demo at `/boardui/react/`), and `v*` tags build the release binaries (`release.yml`).
+CI (`.github/workflows/ci.yml`) runs all of the above plus the conformance suite. Pushes to `master` deploy the demos to GitHub Pages (`pages.yml`: the React demo at `/boardui/react/`, the Angular demo at `/boardui/angular/`, and <https://midub.github.io/boardui/>, which redirects to the React demo), and `v*` tags build the release binaries (`release.yml`).
 
 ## License
 

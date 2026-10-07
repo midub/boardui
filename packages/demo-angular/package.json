@@ -1,0 +1,33 @@
+{
+  "name": "@boardui/demo-angular",
+  "private": true,
+  "version": "1.1.1",
+  "description": "boardui demo in Angular: drop an IPC-2581 file, convert it locally, view it in 3D.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "assets": "node scripts/assets.mjs .generated",
+    "dev": "pnpm assets && ng serve",
+    "build": "pnpm assets && ng build && node ../demo-shared/dist/build/cli.js check-dist dist"
+  },
+  "dependencies": {
+    "@angular/common": "catalog:",
+    "@angular/core": "catalog:",
+    "@angular/platform-browser": "catalog:",
+    "@boardui/angular": "workspace:*",
+    "@boardui/converter": "workspace:*",
+    "@boardui/demo-shared": "workspace:*",
+    "@boardui/viewer": "workspace:*",
+    "rxjs": "catalog:",
+    "three": "catalog:",
+    "tslib": "catalog:"
+  },
+  "devDependencies": {
+    "@angular/build": "catalog:",
+    "@angular/cli": "catalog:",
+    "@angular/compiler": "catalog:",
+    "@angular/compiler-cli": "catalog:",
+    "esbuild": "catalog:",
+    "typescript": "catalog:angular"
+  }
+}

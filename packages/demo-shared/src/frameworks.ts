@@ -11,7 +11,10 @@ export interface Demo {
 }
 
 /** The demos; the first is the default. A demo shows the switch when there is more than one. */
-export const DEMOS: readonly Demo[] = [{ id: 'react', name: 'React' }];
+export const DEMOS: readonly Demo[] = [
+  { id: 'react', name: 'React' },
+  { id: 'angular', name: 'Angular' },
+];
 
 /** The URL of another demo, relative to the current one, with the current query and hash. */
 export function demoHref(id: string, location: { search: string; hash: string }): string {

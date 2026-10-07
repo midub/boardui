@@ -1,7 +1,22 @@
 packages:
   - packages/*
 
+# Install scripts of the Angular build tools' dependencies: not needed, their native binaries
+# come as optional dependencies.
+allowBuilds:
+  "@parcel/watcher": false
+  esbuild: false
+  lmdb: false
+  msgpackr-extract: false
+
 catalog:
+  "@angular/build": ^22.2.0
+  "@angular/cli": ^22.2.0
+  "@angular/common": ^22.2.0
+  "@angular/compiler": ^22.2.0
+  "@angular/compiler-cli": ^22.2.0
+  "@angular/core": ^22.2.0
+  "@angular/platform-browser": ^22.2.0
   "@playwright/test": 1.63.0
   "@biomejs/biome": 2.5.15
   "@testing-library/dom": ^10.4.0
@@ -12,12 +27,21 @@ catalog:
   "@types/three": ^0.186.0
   "@vitejs/plugin-react": ^6.1.0
   ajv: ^8.20.0
+  esbuild: ^0.28.2
   gltf-validator: 2.0.0-dev.3.10
   jsdom: ^30.1.0
+  ng-packagr: ^22.2.0
   react: ^19.3.0
   react-dom: ^19.3.0
+  rxjs: ^7.8.0
   three: ^0.186.0
   three-mesh-bvh: ^0.9.15
+  tslib: ^2.8.0
   typescript: ^7.0.2
   vite: ^8.3.2
   vitest: ^5.0.3
+
+catalogs:
+  # The Angular compiler (@angular/compiler-cli 22) supports TypeScript 6.0 only.
+  angular:
+    typescript: ~6.0.3

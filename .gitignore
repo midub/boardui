@@ -6,3 +6,5 @@ dist/
 .DS_Store
 /site/
 test-results/
+.angular/
+/packages/demo-angular/.generated/

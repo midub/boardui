@@ -29,8 +29,10 @@ IPC-2581 ──► boardui-ipc2581 ──► boardui-geom ──► boardui-gltf
 │  ├─ converter/         @boardui/converter: WASM + Web Worker wrapper
 │  ├─ viewer/            @boardui/viewer: <board-viewer>
 │  ├─ react/             @boardui/react: React wrapper of <board-viewer>
+│  ├─ angular/           @boardui/angular: Angular wrapper of <board-viewer>
 │  ├─ demo-shared/       the demos' framework-independent code, build helpers, e2e tests
-│  └─ demo-react/        demo app in React (drop a file, convert locally, view, download)
+│  ├─ demo-react/        demo app in React (drop a file, convert locally, view, download)
+│  └─ demo-angular/      the same demo app in Angular
 ├─ spec/                 profile spec, JSON schemas, samples
 ├─ docs/                 this file, roadmap, ADRs
 ├─ Cargo.toml            Cargo workspace
@@ -96,7 +98,7 @@ Files kept on disk or served over the network can be large. A dense board approa
 | 3D engine | three.js | `WebGPURenderer`, which falls back to WebGL2 automatically; shading written in TSL so both backends share one shader path |
 | glTF loading | `GLTFLoader` + `3d-tiles-renderer`'s `EXT_mesh_features` / `EXT_structural_metadata` plugins, `MeshoptDecoder` | |
 | Picking | `three-mesh-bvh` | fast ray casts against large merged meshes |
-| Component | vanilla custom element `<board-viewer>` | no framework dependency; thin wrappers: `@boardui/react` (Angular to follow). Importing it without a DOM (server-side rendering) is safe |
+| Component | vanilla custom element `<board-viewer>` | no framework dependency; thin wrappers: `@boardui/react`, `@boardui/angular`. Importing it without a DOM (server-side rendering) is safe |
 | Build/test | pnpm, Vite, Vitest, Playwright, Biome | |
 
 ### Element state without separate objects
@@ -162,7 +164,7 @@ Nothing leaves the machine. Each conversion gets a fresh worker that is terminat
   - `proptest` property tests on the geometry invariants (no overlap, closed prisms, feature contiguity).
 - **Conformance:** convert every sample in `spec/samples`, then run the Khronos validator and `boardui validate`, then diff against the expected outputs.
 - **WASM:** build the module (`wasm-bindgen`, `wasm-opt`), then run a Node smoke test that converts the minimal sample.
-- **Viewer and wrappers:** Vitest unit tests (the React wrapper with Testing Library in jsdom), plus Playwright smoke and screenshot tests of every demo app against the built Pages site (software rendering with SwiftShader in CI, in the Playwright Docker image), including converting every sample in the browser. The apps run the same suite and share its screenshots (`packages/demo-shared/e2e`).
+- **Viewer and wrappers:** Vitest unit tests (the React wrapper with Testing Library in jsdom, the Angular wrapper with TestBed through the Angular CLI's `unit-test` builder), plus Playwright smoke and screenshot tests of every demo app against the built Pages site (software rendering with SwiftShader in CI, in the Playwright Docker image), including converting every sample in the browser. The apps run the same suite and share its screenshots (`packages/demo-shared/e2e`).
 - **Demo build:** a demo's build, and `pnpm site`, fail if the output contains an IPC consortium test case (`packages/demo-shared/src/build/check-dist.ts`).
 - **Release build:** pull requests that change `release.yml` build, smoke-test and package the CLI for every release target without publishing.
 - **Performance:** a `criterion` benchmark on the largest sample, with results tracked over time.
@@ -175,4 +177,4 @@ Nothing leaves the machine. Each conversion gets a fresh worker that is terminat
   - it smoke-tests each binary (`--version`, then converting and validating `minimal-2layer`);
   - it packs `boardui-<version>-<target>.tar.gz` (`.zip` on Windows) with the binary, `LICENSE` and `README.md`, and writes `SHA256SUMS`;
   - it creates the GitHub release with notes from `scripts/release-notes.sh`, which includes the version's `CHANGELOG.md` section.
-- The demos are hosted on GitHub Pages, deployed from `master` by `.github/workflows/pages.yml`: each app at `/boardui/<framework>/` (<https://midub.github.io/boardui/react/>), and <https://midub.github.io/boardui/>, which redirects to the React demo keeping the query and hash. It builds the demos with the same setup as the CI Web job (`.github/actions/setup-web`) and assembles the site with `pnpm site`. The IPC consortium test cases are test data only, so the demo links to them in the repository instead of shipping them. There is no custom domain: `boardui.com` and the unscoped `boardui` npm package belong to an unrelated project.
+- The demos are hosted on GitHub Pages, deployed from `master` by `.github/workflows/pages.yml`: each app at `/boardui/<framework>/` (<https://midub.github.io/boardui/react/>, <https://midub.github.io/boardui/angular/>), and <https://midub.github.io/boardui/>, which redirects to the React demo keeping the query and hash. It builds the demos with the same setup as the CI Web job (`.github/actions/setup-web`) and assembles the site with `pnpm site`. The IPC consortium test cases are test data only, so the demo links to them in the repository instead of shipping them. There is no custom domain: `boardui.com` and the unscoped `boardui` npm package belong to an unrelated project.
