@@ -11,10 +11,8 @@
     "preview": "vite preview --port 4173 --strictPort"
   },
   "dependencies": {
-    "@boardui/converter": "workspace:*",
     "@boardui/demo-shared": "workspace:*",
     "@boardui/react": "workspace:*",
-    "@boardui/viewer": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
     "three": "catalog:"

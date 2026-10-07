@@ -244,18 +244,12 @@ importers:
 
   packages/demo-react:
     dependencies:
-      '@boardui/converter':
-        specifier: workspace:*
-        version: link:../converter
       '@boardui/demo-shared':
         specifier: workspace:*
         version: link:../demo-shared
       '@boardui/react':
         specifier: workspace:*
         version: link:../react
-      '@boardui/viewer':
-        specifier: workspace:*
-        version: link:../viewer
       react:
         specifier: 'catalog:'
         version: 19.3.0
