@@ -1,4 +1,4 @@
-import { type Material, Vector3 } from 'three';
+import { type Box3, type Material, Vector3 } from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { BoardModel } from '../src/board-model.js';
 import { loadGltf } from '../src/load.js';
@@ -267,5 +267,62 @@ describe('components', () => {
       ['boardui/body', 1, 'J1'],
       ['boardui/pin1', 1, 'J1'],
     ]);
+  });
+});
+
+describe('visible bounds', () => {
+  const expectBox = (actual: Box3, expected: Box3) => {
+    for (const [a, e] of [
+      [actual.min, expected.min],
+      [actual.max, expected.max],
+    ] as const) {
+      for (const axis of ['x', 'y', 'z'] as const) expect(a[axis]).toBeCloseTo(e[axis], 9);
+    }
+  };
+
+  /** Runs `test` with only the given layers (and the components, if listed) visible. */
+  const withVisible = (ids: string[], test: () => void) => {
+    const before = model.layers.map((l) => l.group.visible);
+    const components = model.componentGroup.visible;
+    for (const l of model.layers) l.group.visible = ids.includes(l.id);
+    model.componentGroup.visible = ids.includes('components');
+    try {
+      test();
+    } finally {
+      model.layers.forEach((l, i) => {
+        l.group.visible = before[i] as boolean;
+      });
+      model.componentGroup.visible = components;
+    }
+  };
+
+  it('cover the board as shown by default', () => {
+    // The hidden inner layer lies inside the board, so nothing is left out here.
+    expectBox(model.visibleBounds(), model.bounds);
+  });
+
+  it('leave out hidden layers', () => {
+    const silk = model.resolve('layer/F.SilkS')?.box as Box3;
+    withVisible(['layer/F.SilkS'], () => expectBox(model.visibleBounds(), silk));
+    const copper = model.resolve('layer/B.Cu')?.box as Box3;
+    withVisible(['layer/F.SilkS', 'layer/B.Cu'], () =>
+      expectBox(model.visibleBounds(), silk.clone().union(copper)),
+    );
+  });
+
+  it('leave out hidden components and elements', () => {
+    const r1 = model.resolve('cmp/R1');
+    const texel = r1?.texels[0] as number;
+    const silk = model.resolve('layer/F.SilkS')?.box as Box3;
+    withVisible(['layer/F.SilkS', 'components'], () => {
+      const onlyR1 = (t: number) => t >= model.componentOffset && t !== texel;
+      expectBox(model.visibleBounds(onlyR1), silk.clone().union(r1?.box as Box3));
+      expectBox(
+        model.visibleBounds((t) => t !== texel),
+        r1?.box as Box3,
+      );
+      expect(model.visibleBounds(() => true).isEmpty()).toBe(true);
+    });
+    withVisible([], () => expect(model.visibleBounds().isEmpty()).toBe(true));
   });
 });

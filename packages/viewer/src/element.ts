@@ -51,6 +51,16 @@ export interface BoardViewerEventMap extends HTMLElementEventMap {
   'bui-select': CustomEvent<ElementInfo | null>;
   /** Progress of {@link BoardViewerElement.loadIpc2581}. */
   'bui-progress': CustomEvent<LoadProgress>;
+  /**
+   * A board was loaded (`src`, `load` or `loadIpc2581`) and replaced the previous one; widgets,
+   * highlights and `info()` work on it now. `detail` is `info('board')`.
+   */
+  'bui-load': CustomEvent<ElementInfo>;
+  /**
+   * The loaded board is about to be replaced by another one, which follows with `bui-load`.
+   * The board is still loaded while listeners run. `detail` is `info('board')`.
+   */
+  'bui-unload': CustomEvent<ElementInfo>;
 }
 
 /** Constant depth bias of the soldermask, in units of the depth buffer's resolution. */
@@ -102,6 +112,9 @@ interface Loaded {
  * Attributes: `src` (URL of a GLB to load; failures dispatch an `error` event),
  * `backend="webgl"` (use the WebGL2 backend even where WebGPU is available; read when the
  * element connects).
+ *
+ * Every board that is loaded dispatches `bui-load` once it is in place, and `bui-unload` just
+ * before another board replaces it; a failed load dispatches neither and keeps the current board.
  *
  * The soldermask is translucent (spec §6.5): the pointer picks, and widgets see, through it.
  * Dielectric sheets can't be hovered or selected, but they hide what lies behind the board.
@@ -196,10 +209,13 @@ export class BoardViewerElement extends ElementBase {
 
   /**
    * Loads a boardui asset, replacing the current board. Highlights, hidden elements and the
-   * selection are reset; widgets stay attached.
+   * selection are reset; widgets stay attached. Dispatches `bui-unload` for the current board
+   * just before it is replaced, and `bui-load` once the new one is in place (before the returned
+   * promise resolves). If another load starts first, this one is dropped: it resolves without
+   * events.
    *
    * @param source URL of a GLB, or its bytes.
-   * @throws if the asset can't be loaded or is not a boardui asset.
+   * @throws if the asset can't be loaded or is not a boardui asset; the current board stays.
    */
   async load(source: BoardSource): Promise<void> {
     const token = ++this.#loadToken;
@@ -208,7 +224,6 @@ export class BoardViewerElement extends ElementBase {
       model.dispose();
       return;
     }
-    this.#unload();
     const state = new ElementState(model.stateCount);
     const materials = new BoardMaterials(state);
     const overlays: Loaded['overlays'] = [];
@@ -258,9 +273,19 @@ export class BoardViewerElement extends ElementBase {
       bvhs: null,
       pickable: Promise.resolve(),
     };
+    this.#unload();
     this.#loaded = loaded;
     this.#showLoaded();
     loaded.pickable = this.#prepareBvhs(loaded);
+    this.#dispatch('bui-load', model.describe('board') as ElementInfo);
+  }
+
+  /**
+   * Whether a board is loaded: from its `bui-load` on (methods that need a board work then).
+   * Stays `true` while another board loads, until that one replaces it.
+   */
+  get loaded(): boolean {
+    return this.#loaded !== null;
   }
 
   /**
@@ -280,9 +305,7 @@ export class BoardViewerElement extends ElementBase {
     const { onProgress, ...convertOptions } = options;
     const report = (progress: LoadProgress) => {
       onProgress?.(progress);
-      this.dispatchEvent(
-        new CustomEvent('bui-progress', { detail: progress, bubbles: true, composed: true }),
-      );
+      this.#dispatch('bui-progress', progress);
     };
     report({ stage: 'convert', step: 'start', fraction: 0 });
     const { convertIpc2581 } = await import('@boardui/converter');
@@ -424,9 +447,22 @@ export class BoardViewerElement extends ElementBase {
     if (this.#renderer) this.#renderer.autoRotate = on;
   }
 
-  /** Points the camera from above, from below or obliquely, framing the whole board. */
+  /**
+   * Points the camera from above, from below or obliquely, framing what is shown (see
+   * {@link frame}).
+   */
   setView(view: ViewPreset): void {
-    this.#renderer?.frame(this.#model().bounds, viewDirection(view));
+    this.#renderer?.frame(this.#shownBounds(this.#require()), viewDirection(view));
+  }
+
+  /**
+   * Frames what is shown, keeping the view direction: visible layers and components, without
+   * hidden elements, so that drawings on a hidden layer (e.g. a documentation layer) don't widen
+   * the view. Showing or hiding layers doesn't move the camera; call this or {@link setView} to
+   * frame the new set.
+   */
+  frame(): void {
+    this.#renderer?.frame(this.#shownBounds(this.#require()));
   }
 
   /**
@@ -520,8 +556,10 @@ export class BoardViewerElement extends ElementBase {
     return ids.flatMap((id) => [...(model.resolve(id)?.texels ?? [])]);
   }
 
+  /** Releases the loaded board, after telling listeners (`bui-unload`). */
   #unload(): void {
     if (!this.#loaded) return;
+    this.#dispatch('bui-unload', this.#loaded.model.describe('board') as ElementInfo);
     this.#loaded.bvhs?.dispose();
     this.#widgetBoxes.clear();
     this.#widgetVisibility.clear();
@@ -539,8 +577,15 @@ export class BoardViewerElement extends ElementBase {
     const loaded = this.#loaded;
     if (!renderer || !loaded) return;
     renderer.setContent([loaded.model.root]);
+    // Zoom limits and clipping cover the whole board, hidden layers too.
     renderer.setBounds(loaded.model.bounds);
-    renderer.frame(loaded.model.bounds, viewDirection('iso'), false);
+    renderer.frame(this.#shownBounds(loaded), viewDirection('iso'), false);
+  }
+
+  /** Bounding box of what is shown; the whole board if nothing is. */
+  #shownBounds({ model, state }: Loaded): Box3 {
+    const box = model.visibleBounds((texel) => state.isHidden(texel));
+    return box.isEmpty() ? model.bounds : box;
   }
 
   /**
@@ -642,7 +687,13 @@ export class BoardViewerElement extends ElementBase {
   }
 
   #emit(type: 'bui-hover' | 'bui-select', id: string | null): void {
-    const detail = id ? this.info(id) : null;
+    this.#dispatch(type, id ? this.info(id) : null);
+  }
+
+  #dispatch<K extends 'bui-hover' | 'bui-select' | 'bui-progress' | 'bui-load' | 'bui-unload'>(
+    type: K,
+    detail: BoardViewerEventMap[K]['detail'],
+  ): void {
     this.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
   }
 

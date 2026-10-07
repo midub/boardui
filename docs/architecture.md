@@ -135,6 +135,8 @@ const detach = viewer.attachWidget('cmp/U3', myElement, {
 
 viewer.addEventListener('bui-hover', (e) => e.detail /* { id, kind, properties } | null */);
 viewer.addEventListener('bui-select', (e) => e.detail);
+viewer.addEventListener('bui-load', (e) => e.detail /* info('board'): widgets can attach now */);
+viewer.addEventListener('bui-unload', (e) => e.detail /* the board is about to be replaced */);
 ```
 
 **Widgets** are ordinary HTML elements, from any framework, placed in an overlay above the canvas:

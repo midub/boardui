@@ -24,16 +24,19 @@ import { useEffect, useRef, useState } from 'react';
 
 function Board({ file }: { file: File }) {
   const viewer = useRef<BoardViewerElement>(null);
-  const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<ElementInfo | null>(null);
   useEffect(() => {
-    setLoaded(false);
     // Converts locally, in a Web Worker, then shows the board.
-    viewer.current?.loadIpc2581(file).then(() => setLoaded(true), console.error);
+    viewer.current?.loadIpc2581(file).catch(console.error);
   }, [file]);
   return (
-    <BoardViewer ref={viewer} style={{ height: 600 }} onSelect={(e) => setSelected(e.detail)}>
-      {loaded && selected?.kind === 'component' && (
+    <BoardViewer
+      ref={viewer}
+      style={{ height: 600 }}
+      onLoad={() => setSelected(null)}
+      onSelect={(e) => setSelected(e.detail)}
+    >
+      {selected?.kind === 'component' && (
         <Widget target={selected.id} anchor="top" offset={[0, -6]}>
           <span className="tag">{selected.id}</span>
         </Widget>
@@ -54,6 +57,8 @@ function Board({ file }: { file: File }) {
 | `onHover` | `bui-hover` | `CustomEvent<ElementInfo \| null>` |
 | `onSelect` | `bui-select` | `CustomEvent<ElementInfo \| null>` |
 | `onProgress` | `bui-progress` | `CustomEvent<LoadProgress>` of `loadIpc2581` |
+| `onLoad` | `bui-load` | `CustomEvent<ElementInfo>`: a board was loaded (`src`, `load`, `loadIpc2581`); `detail` is `info('board')` |
+| `onUnload` | `bui-unload` | `CustomEvent<ElementInfo>`: the board is about to be replaced; the next `onLoad` follows at once |
 | `onError` | `error` | `ErrorEvent` |
 | `ref` | the element | `load`, `loadIpc2581`, `highlight`, `hide`, `select`, `focus`, `setView`, `layers`, `info`, `ids`, … |
 
@@ -68,10 +73,11 @@ the widget is ordinary React (state, context, events). `className` goes on that 
 viewer positions and fades. Changing `target`, `anchor`, `offset` or `occlusion` attaches it again;
 unmounting detaches it.
 
-The viewer can only attach widgets to an element of a loaded board, and it has no "loaded" event:
-mount widgets after `load()` or `loadIpc2581()` has resolved, and unmount them before loading
-another board (for example, keep them in state that a new load clears). A widget whose element
-isn't on the board renders nothing.
+Widgets follow the viewer's board on their own, so they can be mounted at any time: a widget
+attaches once a board with its element is loaded (`bui-load`; at once if it already is), detaches
+just before that board is replaced (`bui-unload`), and attaches again if the next board has the
+element too, keeping its children mounted. Without a board, or while the board lacks the
+element, a widget renders nothing.
 
 ## `<board-viewer>` in JSX
 

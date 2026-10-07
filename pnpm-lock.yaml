@@ -374,6 +374,9 @@ importers:
       gltf-validator:
         specifier: 'catalog:'
         version: 2.0.0-dev.3.10
+      jsdom:
+        specifier: 'catalog:'
+        version: 30.1.2
       three:
         specifier: 'catalog:'
         version: 0.186.1
