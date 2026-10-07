@@ -594,7 +594,7 @@ mod dictionaries {
         assert_eq!(contour.polygon.path.steps.len(), 2);
         assert_eq!(contour.cutouts.len(), 1);
         assert_eq!(
-            contour.cutouts[0].start,
+            contour.cutouts[0].path.start,
             Point {
                 x: mm(0.1),
                 y: mm(0.1)
@@ -1068,7 +1068,8 @@ mod layers {
 mod step {
     use super::*;
     use crate::{
-        LineStyle, MountType, PadUse, PlatingStatus, Point, PolyStep, PrimitiveKind, Shape, Xform,
+        FeatureElement, FillStyle, LineStyle, MountType, PadUse, PlatingStatus, Point, PolyStep,
+        PrimitiveKind, Shape, Xform,
     };
 
     #[test]
@@ -1104,6 +1105,78 @@ mod step {
             }
         );
         assert_eq!(profile.cutouts.len(), 2);
+    }
+
+    #[test]
+    fn polygons_carry_an_xform() {
+        // Rev B and C allow an `Xform` after the steps of a `Polygon` and of a `Cutout` (also
+        // a `PolygonType`), wherever they are: a profile, a contour, an outline, a feature.
+        let square = r#"<PolyBegin x="0" y="0"/><PolyStepSegment x="1" y="0"/><PolyStepSegment x="1" y="1"/><PolyStepSegment x="0" y="0"/>"#;
+        let d = step_doc(&format!(
+            r#"<Profile><Polygon>{square}<Xform rotation="90" xOffset="0.5"/><LineDescRef id="L"/></Polygon>
+              <Cutout>{square}<Xform mirror="true" yOffset="-0.25" scale="2"/><FillDescRef id="F"/></Cutout>
+              <Cutout>{square}<Xform rotation="45"/><Xform rotation="90"/></Cutout></Profile>
+            <Package name="P"><Outline><Polygon>{square}<Xform rotation="30"/></Polygon><LineDescRef id="L"/></Outline></Package>
+            <LayerFeature layerRef="TOP"><Set><Features><Polygon>{square}<Xform rotation="270"/></Polygon></Features>
+              <Features><Contour><Polygon>{square}</Polygon><Cutout>{square}<Xform rotation="180"/></Cutout></Contour></Features></Set></LayerFeature>"#
+        ))
+        .unwrap();
+        // The first of two `Xform`s counts.
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [&DiagnosticKind::DuplicateElement {
+                element: "Xform".to_owned(),
+                parent: "Cutout".to_owned()
+            }]
+        );
+        let s = d.ecad.steps.get("S").unwrap();
+        let profile = s.profile.as_ref().unwrap();
+        assert_eq!(
+            profile.polygon.xform,
+            Xform {
+                offset: Point {
+                    x: mm(0.5),
+                    y: 0.0
+                },
+                rotation: 90.0,
+                ..Xform::default()
+            }
+        );
+        assert_eq!(profile.polygon.line, Some(LineStyle::Ref("L".to_owned())));
+        assert_eq!(
+            profile.cutouts[0].xform,
+            Xform {
+                offset: Point {
+                    x: 0.0,
+                    y: -mm(0.25)
+                },
+                mirror: true,
+                scale: 2.0,
+                ..Xform::default()
+            }
+        );
+        // A cutout may have a stroke and a fill like any polygon.
+        assert_eq!(profile.cutouts[0].fill, Some(FillStyle::Ref("F".to_owned())));
+        assert_eq!(profile.cutouts[1].xform.rotation, 45.0);
+        let outline = s.packages.get("P").unwrap().outline.as_ref().unwrap();
+        assert_eq!(outline.polygon.xform.rotation, 30.0);
+        let features = &s.layer_features.get("TOP").unwrap().sets[0].features;
+        let shape = |i: usize| match &features[i].element {
+            FeatureElement::Features(f) => &f.shape,
+            _ => panic!("not Features"),
+        };
+        let Shape::Polygon(polygon) = shape(0) else {
+            panic!("not a polygon")
+        };
+        assert_eq!(polygon.xform.rotation, 270.0);
+        let Shape::Standard(p) = shape(1) else {
+            panic!("not a primitive")
+        };
+        let PrimitiveKind::Contour(contour) = &p.kind else {
+            panic!("not a contour")
+        };
+        assert_eq!(contour.polygon.xform, Xform::default());
+        assert_eq!(contour.cutouts[0].xform.rotation, 180.0);
     }
 
     #[test]
@@ -1301,22 +1374,23 @@ mod step {
     fn checks_pin_one() {
         let d = step_doc(r#"<Package name="P" pinOne="9"><Pin number="1"/></Package>"#).unwrap();
         assert_eq!(kinds(&d.diagnostics), [&dangling(RefKind::Pin, "P/9")]);
-        // KiCad's pin-less footprints (logos, placeholders) say `pinOne="UNKNOWN"`.
-        let d = step_doc(r#"<Package name="LOGO" pinOne="UNKNOWN"/>"#).unwrap();
-        assert!(d.diagnostics.is_empty(), "{:?}", d.diagnostics);
-        assert_eq!(
-            d.ecad
-                .steps
-                .values()
-                .next()
-                .unwrap()
-                .packages
-                .get("LOGO")
-                .unwrap()
-                .pin_one
-                .as_deref(),
-            Some("UNKNOWN")
-        );
+        // KiCad says `pinOne="UNKNOWN"` when no pad is numbered like a pin 1: in pin-less
+        // footprints (logos) and in mounting holes, fiducials, USB-C sockets. Not given, unless
+        // a pin is numbered so. Only KiCad's exact spelling: `unknown` is a pin number.
+        let d = step_doc(
+            r#"<Package name="LOGO" pinOne="UNKNOWN"/>
+            <Package name="NPTH" pinOne="UNKNOWN"><Pin number="NPTH0"/></Package>
+            <Package name="ODD" pinOne="UNKNOWN"><Pin number="UNKNOWN"/><Pin number="2"/></Package>
+            <Package name="LOWER" pinOne="unknown"><Pin number="1"/></Package>"#,
+        )
+        .unwrap();
+        assert_eq!(kinds(&d.diagnostics), [&dangling(RefKind::Pin, "LOWER/unknown")]);
+        let packages = &d.ecad.steps.get("S").unwrap().packages;
+        let pin_one = |name: &str| packages.get(name).unwrap().pin_one.as_deref();
+        assert_eq!(pin_one("LOGO"), None);
+        assert_eq!(pin_one("NPTH"), None);
+        assert_eq!(pin_one("ODD"), Some("UNKNOWN"));
+        assert_eq!(pin_one("LOWER"), Some("unknown"));
     }
 
     #[test]
