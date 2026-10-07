@@ -497,15 +497,19 @@ mod tests {
         ipc::parse_bytes(xml.as_bytes()).unwrap()
     }
 
-    fn outline(d: &ipc::Document, frame: DAffine2) -> (Region, Vec<Warning>) {
+    /// The outline of each part placing step `B` with one of `frames`, as panel instances.
+    fn outlines(d: &ipc::Document, frames: &[DAffine2]) -> (Vec<Region>, Vec<Warning>) {
         let tolerance = Tolerance::DEFAULT;
         let mut shapes = ShapeConverter::new(&d.content, tolerance, MirrorOrder::MirrorThenRotate);
-        let parts = [Part {
-            step: d.ecad.steps.get("B").unwrap(),
-            frame,
-            flipped: false,
-            instance: None,
-        }];
+        let parts: Vec<Part<'_>> = frames
+            .iter()
+            .map(|&frame| Part {
+                step: d.ecad.steps.get("B").unwrap(),
+                frame,
+                flipped: frame.matrix2.determinant() < 0.0,
+                instance: None,
+            })
+            .collect();
         let mut warnings = Warnings::default();
         let cutouts = Cutouts::find(
             &d.ecad,
@@ -515,8 +519,14 @@ mod tests {
             tolerance,
             &mut warnings,
         );
-        let shape = cutouts.profile(&parts[0], &mut shapes).unwrap();
-        (shape.to_region(tolerance).unwrap(), warnings.into_vec())
+        let regions = parts
+            .iter()
+            .map(|p| {
+                let shape = cutouts.profile(p, &mut shapes).unwrap();
+                shape.to_region(tolerance).unwrap()
+            })
+            .collect();
+        (regions, warnings.into_vec())
     }
 
     #[test]
@@ -525,12 +535,18 @@ mod tests {
         let cut = 4.0 + std::f64::consts::PI * (1.0 + 0.25 + 0.25) + 2.0;
         // Arcs are tessellated inside the circle, which cuts about 0.04 mm² less.
         let expected = (200.0 - cut) * 1e-6;
-        let (region, warnings) = outline(&d, DAffine2::IDENTITY);
-        assert!(
-            (region.area() - expected).abs() < 0.1e-6,
-            "{}",
-            region.area()
-        );
+        // The step alone, and a copy turned and flipped as in a panel: found once, cut in both.
+        let flipped = DAffine2::from_translation(DVec2::new(0.05, 0.0))
+            * DAffine2::from_angle(0.5)
+            * DAffine2::from_scale(DVec2::new(-1.0, 1.0));
+        let (regions, warnings) = outlines(&d, &[DAffine2::IDENTITY, flipped]);
+        for region in &regions {
+            assert!(
+                (region.area() - expected).abs() < 0.1e-6,
+                "{}",
+                region.area()
+            );
+        }
         let messages: Vec<_> = warnings.iter().map(|w| w.message.as_str()).collect();
         assert_eq!(
             messages,
@@ -538,14 +554,28 @@ mod tests {
                 "the profile of step `B` has no cutouts; the closed contours inside it were cut out: 4 on layer `Edge.Cuts`"
             ]
         );
-        // Placed mirrored and turned, as a flipped panel instance: the same area.
-        let frame = DAffine2::from_angle(0.5) * DAffine2::from_scale(DVec2::new(-1.0, 1.0));
-        let (region, _) = outline(&d, frame);
+        assert_eq!(warnings[0].occurrences, 1);
+        // The flipped copy's square hole (5..7, 4..6 mm) is where its frame puts it.
+        let placed = |x0: f64, y0: f64, x1: f64, y1: f64| {
+            let p = |x, y| flipped.transform_point2(mm(x, y));
+            let outline = Path::new(p(x0, y0))
+                .line_to(p(x1, y0))
+                .line_to(p(x1, y1))
+                .line_to(p(x0, y1));
+            Shape::Polygon {
+                outline,
+                holes: Vec::new(),
+            }
+            .to_region(Tolerance::DEFAULT)
+            .unwrap()
+        };
         assert!(
-            (region.area() - expected).abs() < 0.1e-6,
-            "{}",
-            region.area()
+            regions[1]
+                .intersection(&placed(5.2, 4.2, 6.8, 5.8))
+                .is_empty()
         );
+        let solid = regions[1].intersection(&placed(2.0, 1.0, 3.0, 2.0)).area();
+        assert!((solid - 1e-6).abs() < 1e-9, "{solid}");
     }
 
     #[test]
@@ -553,7 +583,8 @@ mod tests {
         let d = doc(
             r#"<Cutout><PolyBegin x="1" y="1"/><PolyStepSegment x="2" y="1"/><PolyStepSegment x="2" y="2"/><PolyStepSegment x="1" y="1"/></Cutout>"#,
         );
-        let (region, warnings) = outline(&d, DAffine2::IDENTITY);
+        let (regions, warnings) = outlines(&d, &[DAffine2::IDENTITY]);
+        let region = &regions[0];
         assert!(
             (region.area() - 199.5e-6).abs() < 0.01e-6,
             "{}",
