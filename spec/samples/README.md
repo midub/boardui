@@ -16,6 +16,9 @@ Each sample is an IPC-2581 input plus the expected boardui asset. Together they 
 | [`hatch-fill`](hand-written/hatch-fill/) | hand-written | a `HATCH` polygon with its outline, and a `MESH` circle; §6.1 |
 | [`line-styles`](hand-written/line-styles/) | hand-written | `SOLID`, `DOTTED`, `DASHED`, `CENTER` and `PHANTOM` lines, a dashed arc, a dotted outline, and an `ERASE` line cutting a plane; §6.1 |
 | [`slots`](hand-written/slots/) | hand-written | a plated slot with pads and a non-plated slot; §6.3 |
+| [`pad-stacks`](hand-written/pad-stacks/) | hand-written | `minimal-2layer` as revision B `PadStack`s, plus a mounting hole: pads with their pins, via lands, holes on a synthesized `@drill-TOP-BOTTOM`; §6.3 |
+| [`pad-stacks-drill-layer`](hand-written/pad-stacks-drill-layer/) | hand-written | revision A `PadStack` holes and an Altium-style `Drill Guide` layer: a hole on both is drilled once and takes the padstack's net, a hole only in a `PadStack` is added to the drill layer; §6.3 |
+| [`conductor-core`](hand-written/conductor-core/) | hand-written | Altium's core: a `CONDUCTOR` layer with `side="NONE"` and `materialType="FR-4"` (revision A) is a dielectric; §6.4 |
 | [`bottom-placement`](hand-written/bottom-placement/) | hand-written | an asymmetric package on the bottom side at 0°, 30°, 90° and 270°, and one on top; §6.8 |
 | [`paste-layer`](hand-written/paste-layer/) | hand-written | paste on both sides, one thickness from the stack-up and one by default, standing on the copper through mask and silkscreen; a pasted through-hole land cut by its hole; §6.11 |
 | [`drawing-layers`](hand-written/drawing-layers/) | hand-written | courtyard, assembly and documentation layers stacked outside the board, an empty documentation layer and a glue layer left out, and a package assembly drawing not repeated because the assembly layer has content; §6.12, §6.13 |
@@ -39,7 +42,7 @@ Each sample is an IPC-2581 input plus the expected boardui asset. Together they 
 | [`blind-buried-vias`](kicad-blind-buried-vias/) | `fcad_pcb` test board, KiCad 9 revision B export (MIT) | `--version B`; 24 copper layers; blind and buried drill spans |
 | [`egg-ldo-panel`](kicad-kikit-panel/) | Egg LDO 250 panelized by KiKit, KiCad 9 export (BSD-3-Clause) | a 2 × 2 panel flattened into one step: rails, tabs, mouse bites, fiducials and tooling holes as components |
 | [`antenna`](kicad10-antenna/) | Diode `pcb` test fixture, KiCad 10 export (MIT) | KiCad 10's output |
-| [`LDO-PCB`](altium-ldo-pcb/) | capstone project, Altium Designer revision A export (MIT) | revision A, `.cvg`; Altium's `Step/PadStack` pads and its dielectric written as `CONDUCTOR` |
+| [`LDO-PCB`](altium-ldo-pcb/) | capstone project, Altium Designer revision A export (MIT) | revision A, `.cvg`; Altium's `Step/PadStack` pads and holes next to a `Drill Guide` layer, and its dielectric written as `CONDUCTOR`; §6.3, §6.4 |
 
 ### Coverage of exporters and features
 

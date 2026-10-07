@@ -289,16 +289,44 @@ pub fn add_optional(
     }
 }
 
-/// The thickness of a layer in the first stack-up, if given (and not 0).
-fn stackup_thickness(ecad: &ipc::Ecad, layer: &str) -> Option<f64> {
+/// A layer's entry in the first stack-up, if any.
+fn stackup_layer<'a>(ecad: &'a ipc::Ecad, layer: &str) -> Option<&'a ipc::StackupLayer> {
     ecad.stackups
         .first()?
         .groups
         .iter()
         .flat_map(|g| &g.layers)
-        .find(|l| l.layer_or_group_ref == layer)?
-        .thickness
-        .filter(|&t| t > 0.0)
+        .find(|l| l.layer_or_group_ref == layer)
+}
+
+/// The thickness of a layer in the first stack-up, if given (and not 0).
+fn stackup_thickness(ecad: &ipc::Ecad, layer: &str) -> Option<f64> {
+    stackup_layer(ecad, layer)?.thickness.filter(|&t| t > 0.0)
+}
+
+/// Why a layer with a copper `layerFunction` is a dielectric after all, if it is (spec §6.4):
+/// its `side` is `NONE`, or its stack-up `materialType` (revision A) is not copper. Altium
+/// declares its cores that way. A copper material keeps the layer copper.
+fn not_copper(ecad: &ipc::Ecad, layer: &ipc::Layer) -> Option<String> {
+    let material = stackup_layer(ecad, &layer.name)
+        .and_then(|l| l.material_type.as_deref())
+        .map(str::trim)
+        .filter(|m| !m.is_empty() && !m.eq_ignore_ascii_case("undefined"));
+    let copper = material.map(|m| {
+        let m = m.to_ascii_lowercase();
+        m.contains("copper") || m == "cu"
+    });
+    if copper == Some(true) {
+        return None;
+    }
+    let mut reasons = Vec::new();
+    if layer.side == Some(ipc::Side::None) {
+        reasons.push("its side is `NONE`".to_owned());
+    }
+    if let Some(m) = material {
+        reasons.push(format!("its stack-up material is `{m}`"));
+    }
+    (!reasons.is_empty()).then(|| reasons.join(" and "))
 }
 
 /// An entry while ordering: a source layer or a synthesized one.
@@ -321,13 +349,28 @@ pub fn build(ecad: &ipc::Ecad, warnings: &mut Warnings) -> Result<Stack, String>
         .layers
         .values()
         .filter_map(|layer| match classify(&layer.function) {
-            LayerClass::Layer(role) if !role.is_optional() => Some(Entry {
-                name: layer.name.clone(),
-                role,
-                function: Some(layer.function.clone()),
-                file_side: layer.side,
-                thickness: None,
-            }),
+            LayerClass::Layer(role) if !role.is_optional() => {
+                let reason = (role == Role::Copper)
+                    .then(|| not_copper(ecad, layer))
+                    .flatten();
+                if let Some(reason) = &reason {
+                    warnings.push(format!(
+                        "layer `{}` has `layerFunction` `{}`, but {reason}; it is converted as a dielectric",
+                        layer.name, layer.function
+                    ));
+                }
+                Some(Entry {
+                    name: layer.name.clone(),
+                    role: if reason.is_some() {
+                        Role::Dielectric
+                    } else {
+                        role
+                    },
+                    function: Some(layer.function.clone()),
+                    file_side: layer.side,
+                    thickness: None,
+                })
+            }
             _ => None,
         })
         .collect();
@@ -769,6 +812,74 @@ mod tests {
         assert_eq!(silk.thickness_source, ThicknessSource::Default);
         close(silk.z_max - silk.z_min, DEFAULT_SILKSCREEN);
         close(stack.layers[1].z_max, 0.268e-3 + 10e-6);
+    }
+
+    /// Altium (revision A) declares its core a `CONDUCTOR` with `side="NONE"` and a
+    /// non-copper material.
+    #[test]
+    fn conductors_that_are_not_copper_are_dielectrics() {
+        let d = doc(r#"<Layer name="Top" layerFunction="SIGNAL" side="TOP"/>
+            <Layer name="Core" layerFunction="CONDUCTOR" side="NONE"/>
+            <Layer name="Mid" layerFunction="PLANE" side="INTERNAL"/>
+            <Layer name="Prepreg" layerFunction="CONDUCTOR" side="INTERNAL"/>
+            <Layer name="Bottom" layerFunction="SIGNAL" side="BOTTOM"/>
+            <Stackup><StackupGroup name="G">
+              <StackupLayer layerOrGroupRef="Top" materialType="Copper" thickness="0.035"/>
+              <StackupLayer layerOrGroupRef="Core" materialType="FR-4" thickness="0.3"/>
+              <StackupLayer layerOrGroupRef="Mid" materialType="" thickness="0.035"/>
+              <StackupLayer layerOrGroupRef="Prepreg" materialType="FR-4" thickness="0.2"/>
+              <StackupLayer layerOrGroupRef="Bottom" materialType="Copper" thickness="0.035"/>
+            </StackupGroup></Stackup>"#);
+        let mut w = Warnings::default();
+        let stack = build(&d.ecad, &mut w).unwrap();
+        assert_eq!(
+            names(&stack),
+            [
+                "@soldermask-top",
+                "Top",
+                "Core",
+                "Mid",
+                "Prepreg",
+                "Bottom",
+                "@soldermask-bottom"
+            ]
+        );
+        let roles: Vec<Role> = stack.layers[1..6].iter().map(|l| l.role).collect();
+        assert_eq!(
+            roles,
+            [
+                Role::Copper,
+                Role::Dielectric,
+                Role::Copper,
+                Role::Dielectric,
+                Role::Copper
+            ]
+        );
+        assert_eq!(stack.layers[2].ipc_function.as_deref(), Some("CONDUCTOR"));
+        close(stack.thickness, 3.0 * 0.035e-3 + 0.5e-3);
+        let messages: Vec<String> = w.into_vec().into_iter().map(|w| w.message).collect();
+        assert_eq!(
+            messages,
+            [
+                "layer `Core` has `layerFunction` `CONDUCTOR`, but its side is `NONE` and its stack-up material is `FR-4`; it is converted as a dielectric",
+                "layer `Prepreg` has `layerFunction` `CONDUCTOR`, but its stack-up material is `FR-4`; it is converted as a dielectric",
+            ]
+        );
+    }
+
+    /// A copper material keeps a layer copper, whatever its side says.
+    #[test]
+    fn a_copper_material_keeps_a_conductor() {
+        let d = doc(r#"<Layer name="Top" layerFunction="SIGNAL" side="TOP"/>
+            <Layer name="Bottom" layerFunction="CONDUCTOR" side="NONE"/>
+            <Stackup><StackupGroup name="G">
+              <StackupLayer layerOrGroupRef="Top" materialType="Copper"/>
+              <StackupLayer layerOrGroupRef="Bottom" materialType="copper"/>
+            </StackupGroup></Stackup>"#);
+        let mut w = Warnings::default();
+        let stack = build(&d.ecad, &mut w).unwrap();
+        assert_eq!(stack.copper().len(), 2);
+        assert!(w.is_empty());
     }
 
     #[test]

@@ -235,6 +235,8 @@ pub struct LayerAsset {
 pub struct DrillAsset {
     /// Drill layer name.
     pub name: String,
+    /// Whether the converter synthesized the drill layer; its name starts with `@`.
+    pub synthesized: bool,
     /// Name of the span's upper copper layer.
     pub from: String,
     /// Name of the span's lower copper layer.
@@ -456,7 +458,7 @@ impl Writer {
         }
         let mut board_drills = Vec::new();
         for drill in &asset.drills {
-            let id = layer_id(&drill.name, false);
+            let id = layer_id(&drill.name, drill.synthesized);
             let table = self.feature_table(&id, &drill.features);
             let material = self.material(BuiltinMaterial::Copper);
             let node = self.layer_node(&id, &drill.mesh, material, table, drill.features.len());

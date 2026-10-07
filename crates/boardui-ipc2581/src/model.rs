@@ -215,6 +215,8 @@ pub struct StackupLayer {
     pub tol_minus: Option<f64>,
     /// `sequence`: position in the stack, top first, if given.
     pub sequence: Option<u32>,
+    /// `materialType` (revision A), for example `Copper` or `FR-4`, if given.
+    pub material_type: Option<String>,
     /// `SpecRef@id` values in document order.
     pub spec_refs: Vec<String>,
 }
@@ -279,6 +281,8 @@ pub struct Step {
     /// `StepRepeat`s in document order: copies of other steps placed in this one, for a panel
     /// or array.
     pub step_repeats: Vec<StepRepeat>,
+    /// `PadStack`s in document order (revisions A and B; revision C has none).
+    pub pad_stacks: Vec<PadStack>,
     /// `PadStackDef`s, by name.
     pub padstack_defs: Table<PadstackDef>,
     /// `Package`s, by name.
@@ -326,6 +330,42 @@ impl Step {
             .filter(|net| seen.insert(*net))
             .collect()
     }
+}
+
+/// `PadStack` (revisions A and B): a placed padstack, with its hole and its pad on each layer.
+/// Revision C has no such element; its pads and holes are `LayerFeature` features.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PadStack {
+    /// `net`, if given.
+    pub net: Option<String>,
+    /// `LayerHole`, if the padstack is drilled.
+    pub hole: Option<LayerHole>,
+    /// `LayerPad`s in document order.
+    pub pads: Vec<LayerPad>,
+}
+
+/// `LayerHole`: the hole of a [`PadStack`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct LayerHole {
+    /// The hole: `name`, `diameter`, `platingStatus`, tolerances and centre.
+    pub hole: Hole,
+    /// `Span`: the copper layers the hole runs between, if given.
+    pub span: Option<Span>,
+}
+
+/// `LayerPad`: the pad of a [`PadStack`] on one layer.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LayerPad {
+    /// `layerRef`.
+    pub layer_ref: String,
+    /// `Location`. Absent: the origin.
+    pub location: Point,
+    /// `Xform`. Absent: identity.
+    pub xform: Xform,
+    /// The pad shape.
+    pub shape: Shape,
+    /// `PinRef`, if the pad belongs to a component pin.
+    pub pin_ref: Option<PinRef>,
 }
 
 /// `PadStackDef`: a padstack definition.

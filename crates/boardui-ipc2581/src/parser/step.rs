@@ -6,8 +6,9 @@ use std::mem::take;
 use super::{Parser, insert, missing_element};
 use crate::{
     Component, DiagnosticKind, Error, Feature, FeatureElement, Features, Fiducial, FiducialKind,
-    Hole, LayerFeature, Marking, Package, PackageDrawing, Pad, PadUsage, PadstackDef, PadstackPad,
-    Pin, PinRef, RefKind, Set, SlotCavity, Step, StepRepeat, Table,
+    Hole, LayerFeature, LayerHole, LayerPad, Marking, Package, PackageDrawing, Pad, PadStack,
+    PadUsage, PadstackDef, PadstackPad, Pin, PinRef, RefKind, Set, SlotCavity, Step, StepRepeat,
+    Table,
 };
 
 impl<R: BufRead> Parser<R> {
@@ -30,6 +31,11 @@ impl<R: BufRead> Parser<R> {
             "StepRepeat" => {
                 let repeat = p.read_step_repeat()?;
                 p.step.step_repeats.push(repeat);
+                Ok(())
+            }
+            "PadStack" => {
+                let pad_stack = p.read_pad_stack()?;
+                p.step.pad_stacks.push(pad_stack);
                 Ok(())
             }
             "PadStackDef" => {
@@ -107,6 +113,75 @@ impl<R: BufRead> Parser<R> {
         };
         self.leaf("StepRepeat")?;
         Ok(repeat)
+    }
+
+    fn read_pad_stack(&mut self) -> Result<PadStack, Error> {
+        let mut pad_stack = PadStack {
+            net: self.opt_str("net"),
+            hole: None,
+            pads: Vec::new(),
+        };
+        self.children("PadStack", |p| match p.tag.name() {
+            "LayerHole" if pad_stack.hole.is_some() => p.duplicate("PadStack"),
+            "LayerHole" => {
+                pad_stack.hole = Some(p.read_layer_hole()?);
+                Ok(())
+            }
+            "LayerPad" => {
+                pad_stack.pads.push(p.read_layer_pad()?);
+                Ok(())
+            }
+            _ => p.unknown("PadStack"),
+        })?;
+        Ok(pad_stack)
+    }
+
+    fn read_layer_hole(&mut self) -> Result<LayerHole, Error> {
+        let hole = Hole {
+            name: self.req_str("name")?,
+            diameter: self.req_len("diameter")?,
+            plating: self.req_enum("platingStatus")?,
+            plus_tol: self.req_len("plusTol")?,
+            minus_tol: self.req_len("minusTol")?,
+            position: self.point("x", "y")?,
+        };
+        let mut span = None;
+        self.children("LayerHole", |p| match p.tag.name() {
+            "Span" if span.is_none() => {
+                span = Some(p.read_span()?);
+                Ok(())
+            }
+            "Span" => p.duplicate("LayerHole"),
+            _ => p.unknown("LayerHole"),
+        })?;
+        Ok(LayerHole { hole, span })
+    }
+
+    fn read_layer_pad(&mut self) -> Result<LayerPad, Error> {
+        let position = self.tag.position;
+        let layer_ref = self.req_ref("layerRef")?;
+        self.check_ref(RefKind::Layer, &layer_ref);
+        let (mut location, mut xform, mut shape, mut pin_ref) = (None, None, None, None);
+        self.children("LayerPad", |p| {
+            if p.placement("LayerPad", &mut location, &mut xform)? {
+                Ok(())
+            } else if p.tag.name() == "PinRef" {
+                if pin_ref.is_some() {
+                    return p.duplicate("LayerPad");
+                }
+                pin_ref = Some(p.read_pin_ref()?);
+                Ok(())
+            } else {
+                p.shape_slot("LayerPad", &mut shape)
+            }
+        })?;
+        Ok(LayerPad {
+            layer_ref,
+            location: location.unwrap_or_default(),
+            xform: xform.unwrap_or_default(),
+            shape: shape.ok_or_else(|| missing_element("LayerPad", "a shape", position))?,
+            pin_ref,
+        })
     }
 
     fn read_padstack_def(&mut self) -> Result<PadstackDef, Error> {
