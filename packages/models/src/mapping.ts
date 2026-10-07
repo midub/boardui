@@ -96,6 +96,8 @@ export function mappingSource(
           })()) as MappingFile);
       return orderRules(checkMapping(file));
     });
+  /** A run's failed read of the mapping, so that its other components don't read it again. */
+  const failures = new WeakMap<AbortSignal, unknown>();
   const name =
     options.name ??
     (isFile ? 'Models' : decodeURIComponent(base.split(/[?#]/)[0]?.split('/').pop() || 'Models'));
@@ -103,7 +105,15 @@ export function mappingSource(
     name,
     ...(options.attribution ? { attribution: options.attribution } : {}),
     async resolve(component, _board, signal) {
-      for (const rule of await load(signal)) {
+      if (failures.has(signal)) throw failures.get(signal);
+      let loaded: MappingRule[];
+      try {
+        loaded = await load(signal);
+      } catch (error) {
+        if (!signal.aborted) failures.set(signal, error);
+        throw error;
+      }
+      for (const rule of loaded) {
         if (!matches(rule.match, component)) continue;
         const file = expand(rule.file, component);
         if (file === null) continue;

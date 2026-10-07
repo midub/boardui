@@ -102,7 +102,7 @@ describe('mappingSource', () => {
     expect(requests).toEqual(['https://models.example/lib/models.json']);
   });
 
-  it('rejects a malformed mapping, and tries again later', async () => {
+  it('rejects a malformed mapping once per run, and tries again in the next run', async () => {
     let calls = 0;
     const fetch = (async () => {
       calls++;
@@ -110,7 +110,11 @@ describe('mappingSource', () => {
     }) as unknown as typeof globalThis.fetch;
     const source = mappingSource('https://models.example/models.json', { fetch });
     await expect(source.resolve(component(), board, signal)).rejects.toThrow(/mapping/);
-    expect(await source.resolve(component(), board, signal)).not.toBeNull();
+    await expect(source.resolve(component(), board, signal)).rejects.toThrow(/mapping/);
+    expect(calls).toBe(1);
+    const next = new AbortController().signal;
+    expect(await source.resolve(component(), board, next)).not.toBeNull();
+    expect(calls).toBe(2);
   });
 
   it('loads the mapping again when the run that started the load is cancelled', async () => {
