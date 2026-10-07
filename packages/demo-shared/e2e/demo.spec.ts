@@ -1,13 +1,19 @@
 // Smoke and screenshot tests of the demo's features on small samples.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { DEMOS } from '../src/frameworks.js';
 import { TEST_CASES_REF } from '../src/samples.js';
 import { collectErrors, openBoard, screenPoint, settle, viewerCall } from './helpers.js';
 
 const sample = (path: string) =>
   fileURLToPath(new URL(`../../../spec/samples/${path}`, import.meta.url));
+
+/**
+ * The demos share the screenshots. They differ only in the switch, which marks the demo's own
+ * framework: it is masked (and tested by 'links the other demos').
+ */
+const shared = (page: Page) => ({ mask: [page.locator('.demo-switch')] });
 
 test('shows the landing page', async ({ page }) => {
   const errors = collectErrors(page);
@@ -21,7 +27,7 @@ test('shows the landing page', async ({ page }) => {
     'href',
     `https://github.com/midub/boardui/raw/${TEST_CASES_REF}/spec/samples/ipc-testcases/testcase1-RevC-Assembly.xml`,
   );
-  await expect(page).toHaveScreenshot('empty.png');
+  await expect(page).toHaveScreenshot('empty.png', shared(page));
   expect(errors).toEqual([]);
 });
 
@@ -31,6 +37,13 @@ test('links the other demos with the same sample', async ({ page }) => {
   const links = page.locator('.demo-switch a:not([aria-current])');
   // With one demo there is no switch.
   await expect(links).toHaveCount(others.length);
+  const current = page.locator('.demo-switch a[aria-current="page"]');
+  await expect(current).toHaveCount(others.length ? 1 : 0);
+  if (others.length) {
+    const own = DEMOS.find((demo) => demo.id === test.info().project.name);
+    await expect(current).toHaveText(own?.name ?? '');
+    await expect(current).toHaveAttribute('href', './');
+  }
   for (const [i, demo] of others.entries()) {
     await expect(links.nth(i)).toHaveAttribute('href', `../${demo.id}/?sample=minimal-2layer`);
   }
@@ -118,7 +131,7 @@ test('hover, selection, tags, nets, layers and views', async ({ page }) => {
   expect(after && before && Math.hypot(after.x - before.x, after.y - before.y)).toBeGreaterThan(5);
   await page.getByRole('button', { name: 'Top', exact: true }).click();
   await settle(page);
-  await expect(page).toHaveScreenshot('minimal-selected.png');
+  await expect(page).toHaveScreenshot('minimal-selected.png', shared(page));
 
   // Pinned tags stay when the selection changes; unpinned ones go.
   await page.getByRole('button', { name: 'Pin tag' }).click();
@@ -153,7 +166,7 @@ test('bottom view of bottom-side parts', async ({ page }) => {
   await openBoard(page, 'sample=bottom-placement');
   await viewerCall(page, 'setView', 'bottom');
   await settle(page);
-  await expect(page).toHaveScreenshot('bottom-placement-bottom.png');
+  await expect(page).toHaveScreenshot('bottom-placement-bottom.png', shared(page));
 });
 
 test('stats overlay', async ({ page }) => {
