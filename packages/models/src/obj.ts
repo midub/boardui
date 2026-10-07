@@ -3,18 +3,21 @@
  */
 import { flatten, type ModelLoader } from '@boardui/viewer';
 import { LoaderUtils } from 'three';
-import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 /**
  * Loads OBJ files with their materials: those of the `mtllib` files they name (fetched next to
  * the OBJ's URL) and `newmtl` definitions inside the OBJ itself (as EasyEDA writes them). OBJ
  * has no units: the model is taken as it is, Y up in metres; correct it with the reference's
- * transform (e.g. `scale: 0.001` for millimetres).
+ * transform (e.g. `scale: 0.001` for millimetres). three's OBJ and MTL loaders are imported with
+ * the first OBJ file.
  */
 export function objLoader(): ModelLoader {
   return {
     async load(data, { ref, signal }) {
+      const [{ OBJLoader }, { MTLLoader }] = await Promise.all([
+        import('three/addons/loaders/OBJLoader.js'),
+        import('three/addons/loaders/MTLLoader.js'),
+      ]);
       const text = new TextDecoder().decode(data);
       const loader = new OBJLoader();
       const mtl = [...inlineMaterials(text)];
