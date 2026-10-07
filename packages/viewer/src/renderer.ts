@@ -186,11 +186,11 @@ export class BoardRenderer {
   }
 
   /**
-   * Compiles what the scene would draw now (node materials and pipelines) without drawing it,
-   * a little at a time; resolves when done.
+   * Compiles what the scene, or `object` in it, would draw now (node materials and pipelines)
+   * without drawing it; resolves when done.
    */
-  compile(): Promise<void> {
-    return this.renderer.compileAsync(this.scene, this.camera);
+  compile(object: Object3D = this.scene): Promise<void> {
+    return this.renderer.compileAsync(object, this.camera, this.scene);
   }
 
   /** Schedules a frame. */

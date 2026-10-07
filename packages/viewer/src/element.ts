@@ -81,9 +81,11 @@ const MASK_DEPTH_BIAS = 4;
 /** Share of {@link LoadProgress.fraction} taken by the conversion; loading takes the rest. */
 const CONVERT_SHARE = 0.9;
 
-/** Runs `callback` when the browser is idle (or soon, where it can't tell). */
-function idle(callback: () => void): void {
-  if (globalThis.requestIdleCallback) globalThis.requestIdleCallback(() => callback());
+/**
+ * Runs `callback` when the browser is idle (or soon, where it can't tell, without a deadline).
+ */
+function idle(callback: (deadline?: IdleDeadline) => void): void {
+  if (globalThis.requestIdleCallback) globalThis.requestIdleCallback(callback);
   else setTimeout(callback, 50);
 }
 
@@ -92,6 +94,9 @@ function afterFrame(callback: () => void): void {
   if (globalThis.requestAnimationFrame) globalThis.requestAnimationFrame(() => callback());
   else setTimeout(callback, 16);
 }
+
+/** Idle time (ms) left in which `#preparePass` still compiles another mesh (≈ one build). */
+const PREPARE_SLICE_MS = 10;
 
 /** Pointer travel (CSS px) below which a press and release count as a click. */
 const CLICK_SLOP = 4;
@@ -128,9 +133,9 @@ interface Loaded {
   bvhs: BvhBuilder | null;
   /** Resolves when every pickable layer has its BVH. */
   pickable: Promise<void>;
-  /** Settles when three has compiled the materials of the other x-ray mode (see `#prepare`). */
+  /** Resolves when the last `#prepare` pass has handed every mesh to three. */
   prepared: Promise<void>;
-  /** Whether a `#prepare` run is scheduled. */
+  /** Whether a `#prepare` pass is scheduled. */
   prepareQueued: boolean;
 }
 
@@ -660,22 +665,55 @@ export class BoardViewerElement extends ElementBase {
   }
 
   /**
-   * Has three compile the materials of the other x-ray mode in idle time after the next frame,
-   * so that toggling doesn't stall. three compiles the scene as it is when `compile` is called,
-   * so the meshes get their other variants for just that call.
+   * Has three compile the materials of the other x-ray mode for the meshes drawn now, in idle
+   * time after the next frame, so that toggling doesn't stall.
    */
   #prepare(loaded: Loaded): void {
     if (loaded.prepareQueued) return;
     loaded.prepareQueued = true;
-    const run = () => {
-      loaded.prepareQueued = false;
-      const renderer = this.#renderer;
-      if (this.#loaded !== loaded || !renderer) return;
-      loaded.materials.setXray(!this.#xray);
-      loaded.prepared = renderer.compile().catch(() => {});
-      loaded.materials.setXray(this.#xray);
-    };
-    void loaded.prepared.then(() => afterFrame(() => idle(run)));
+    void loaded.prepared.then(() =>
+      afterFrame(() =>
+        idle(() => {
+          loaded.prepareQueued = false;
+          loaded.prepared = this.#preparePass(loaded);
+        }),
+      ),
+    );
+  }
+
+  /**
+   * Compiles the other variant of each drawn mesh in idle callbacks, a mesh at a time: three
+   * builds its node material at once and creates its pipeline in the background, so that slow
+   * pipelines don't hold up the rest. three compiles a mesh as it is when `compile` is called,
+   * so the mesh has its other variant for just that call.
+   */
+  #preparePass(loaded: Loaded): Promise<void> {
+    const meshes: Mesh[] = [];
+    loaded.model.root.traverseVisible((object) => {
+      if ((object as Mesh).isMesh) meshes.push(object as Mesh);
+    });
+    return new Promise((resolve) => {
+      const next = (deadline?: IdleDeadline) => {
+        do {
+          const renderer = this.#renderer;
+          const mesh = meshes.shift();
+          if (!mesh || !renderer || this.#loaded !== loaded) {
+            resolve();
+            return;
+          }
+          const variants = loaded.materials.variants(mesh);
+          const other = this.#xray ? variants?.normal : variants?.xray;
+          const current = mesh.material;
+          if (other && other !== current) {
+            mesh.material = other;
+            renderer.compile(mesh).catch(() => {});
+            mesh.material = current;
+          }
+        } while ((deadline?.timeRemaining() ?? 0) > PREPARE_SLICE_MS);
+        idle(next);
+      };
+      next();
+    });
   }
 
   /**
