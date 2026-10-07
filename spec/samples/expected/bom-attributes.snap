@@ -1,0 +1,38 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step board, FABRICATION
+software: generate.py 1.0 (boardui)
+thickness: 1.6000 mm
+counts: 13 features, 400 vertices, 796 triangles, 6 nets, 3 components, 6 pins (6 checked against pads)
+warnings: 0 from the reader, 0 from the converter
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 84 vertices, 192 triangles, top area 54.5070 mm²
+    row 0: Sheet net - area 54.5070 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  8 features {"Pad": 6, "Trace": 1, "Via": 1}, 126 vertices, 224 triangles, top area 6.1995 mm²
+    row 0: Pad net 0 area 0.9000 mm²
+    row 1: Pad net 1 area 0.9000 mm²
+    row 2: Trace net 1 area 0.6155 mm²
+    row 3: Via net 1 area 0.1840 mm²
+    row 4: Pad net 2 area 0.9000 mm²
+    row 5: Pad net 3 area 0.9000 mm²
+    row 6: Pad net 4 area 0.9000 mm²
+    row 7: Pad net 5 area 0.9000 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 36 vertices, 72 triangles, top area 59.9070 mm²
+    row 0: Sheet net - area 59.9070 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  1 features {"Via": 1}, 64 vertices, 128 triangles, top area 0.1840 mm²
+    row 0: Via net 1 area 0.1840 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 36 vertices, 72 triangles, top area 59.9070 mm²
+    row 0: Sheet net - area 59.9070 mm²
+drill layer/DRILL layer/TOP..layer/BOTTOM
+  1 features {"Barrel": 1}, 54 vertices, 108 triangles, top area 0.0250 mm²
+    row 0: Barrel net 1 area 0.0250 mm²
+components: 3
+bom: 2 with attributes, populate {None: 1, Some(false): 1, Some(true): 1}, names {"Description": 2, "LCSC": 1, "MPN": 2, "Manufacturer": 1, "Power": 1, "Temperature": 1, "Tolerance": 1, "Value": 2}
+  R1 at (3.0000, 0.8000, -3.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0603, populate Some(true), attributes {"Description": "Resistor, 10 kOhm", "LCSC": "C25744", "MPN": "RC0603FR-0710KL", "Manufacturer": "Yageo", "Power": "0.1 W", "Temperature": "-55..155 CEL", "Tolerance": "1%", "Value": "10k"}
+  C1 at (3.0000, 0.8000, -1.2000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder C0402, populate Some(false), attributes {"Description": "from a characteristic: it wins", "MPN": "GRM155R71C104KA88D", "Value": "100nF"}
+  J1 at (3.0000, 0.8000, -4.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder C0402

@@ -4,7 +4,7 @@ source: crates/boardui-convert/tests/conformance.rs
 source: IPC-2581 rev A, step LDO-PCB, FULL
 thickness: 0.3912 mm
 counts: 72 features, 9060 vertices, 17924 triangles, 4 nets, 5 components, 17 pins (17 checked against pads)
-warnings: 6 from the reader, 2 from the converter
+warnings: 5 from the reader, 2 from the converter
   - layer `Dielectric 1` has `layerFunction` `CONDUCTOR`, but its side is `NONE` and its stack-up material is `FR-4`; it is converted as a dielectric
   - layers outside the profile's scope were not converted: BoardShape_LDO-PCB (BOARD_OUTLINE)
 layer layer/Drill%20Drawing%20(Top%20Layer%20-%20Bottom%20Layer) Documentation Top z 0.3356..0.3456 mm Default hidden
@@ -36,8 +36,9 @@ layer layer/Bottom%20Overlay Silkscreen Bottom z -0.2157..-0.2057 mm Default
 drill layer/Drill%20Guide%20(Top%20Layer%20-%20Bottom%20Layer) layer/Top%20Layer..layer/Bottom%20Layer
   5 features {"Barrel": 5}, 390 vertices, 780 triangles, top area 0.2879 mm²
 components: 5
-  U1 at (152.9080, 0.1956, -42.2910) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder FP-SOT23-5LD-PL-1-MFG
-  J2 at (162.4330, 0.1956, -42.1640) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder FP-SM02B-GHS-TB_LF_SN-MFG
-  J1 at (143.3830, 0.1956, -42.0370) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder FP-SM02B-GHS-TB_LF_SN-MFG
-  C2 at (156.4640, 0.1956, -42.2910) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder FP-CC0805-0_85-MFG
-  C1 at (148.9710, 0.1956, -42.3270) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder FP-CC0805-0_85-MFG
+bom: 5 with attributes, populate {None: 5}, names {"Description": 5}
+  U1 at (152.9080, 0.1956, -42.2910) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder FP-SOT23-5LD-PL-1-MFG, populate None, attributes {"Description": "IC REG LINEAR 3.3V 150MA SOT23-5"}
+  J2 at (162.4330, 0.1956, -42.1640) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder FP-SM02B-GHS-TB_LF_SN-MFG, populate None, attributes {"Description": "CONN HEADER SMD R/A 2POS 1.25MM"}
+  J1 at (143.3830, 0.1956, -42.0370) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder FP-SM02B-GHS-TB_LF_SN-MFG, populate None, attributes {"Description": "CONN HEADER SMD R/A 2POS 1.25MM"}
+  C2 at (156.4640, 0.1956, -42.2910) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder FP-CC0805-0_85-MFG, populate None, attributes {"Description": "CAP CER 1UF 10V X7R 0805"}
+  C1 at (148.9710, 0.1956, -42.3270) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder FP-CC0805-0_85-MFG, populate None, attributes {"Description": "CAP CER 1UF 10V X7R 0805"}

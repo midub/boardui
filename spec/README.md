@@ -1,6 +1,6 @@
 # boardui glTF profile
 
-**Version 0.7 — draft**
+**Version 0.8 — draft**
 
 This document specifies how boardui represents a printed circuit board as a glTF 2.0 asset. The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
@@ -340,6 +340,7 @@ Feature IDs are row indices into the layer's feature table:
 | `components` | `component` | placed component |
 | `pins` | `pin` | component pin referenced by any feature |
 | `instances` | `instance` | instance of a step in a panel (§6.14) |
+| `attributes` | `attribute` | BOM attribute of a component (since 0.8) |
 | `<layer ID>` | `feature` | source feature of that layer (or drill layer) |
 
 - Feature tables are named by their layer ID.
@@ -350,6 +351,16 @@ Feature IDs are row indices into the layer's feature table:
 - **Pins.** A pin's `name` is the package `Pin@name`, else the `PinRef@title`. Its `net` is the net of the first feature that references it.
 - **Fiducials.** A `FIDUCIAL` feature's `fiducial` is its IPC-2581 element: `GLOBAL`, `LOCAL`, `BAD_BOARD` or `GOOD_PANEL`. Other features have `NONE`, and a table without fiducials omits the property.
 - **Text.** A feature's `text` is the `textString` of the `Text` elements its shape draws (directly, inside a `UserSpecial` or through a `UserPrimitiveRef`), in document order, joined by line feeds (U+000A). Other features have the empty string, and a table without text omits the property.
+- **BOM data** (since 0.8). A component takes its BOM data from the first `Bom/BomItem/RefDes`, over all `Bom`s in document order, whose `name` is the component's `refDes`; a component of an instance (§6.14) uses its own `refDes`. Without one it has no attributes and an `UNKNOWN` `populate`.
+  - **Populate.** A component's `populate` is that `RefDes@populate`: `YES` or `NO` (KiCad writes `false` for parts not to be populated and for parts excluded from the BOM, such as mounting holes and logos), `UNKNOWN` without a BOM entry or the attribute. A `components` table without BOM entries omits the property. The geometry does not depend on it: unpopulated parts keep their bodies.
+  - **Attributes.** The `attributes` table holds the named string values of the components' BOM items: rows `component` (a row in `components`), `name` and `value`, in component order, and in the order below within a component. A component's attributes are, in this order:
+    1. its `BomItem`'s `Characteristics` children (`Textual`, `Enumerated`, `Measured`, `Ranged`) in document order, named by their `…CharacteristicName` as written (case and spaces kept, for example KiCad's `Value` and `LCSC`, Allegro's `VALUE`). The value is the `…CharacteristicValue` as written; a `Ranged` value is `<lower>..<upper>`, with a missing bound left empty. When `engineeringUnitOfMeasure` is given, a space and the unit follow, as written (`0.1 W`, `-40..85 CEL`). Tolerances and `definitionSource` are not kept;
+    2. `Description`: `BomItem@description`;
+    3. `MPN` and `Manufacturer`, from the `Avl/AvlItem` whose `OEMDesignNumber` is the `BomItem@OEMDesignNumberRef`: of its `AvlVmpn`s with an `AvlMpn`, the one with `chosen="true"`, else `qualified="true"`, else the lowest `AvlMpn@rank` (unranked last), else the first. `MPN` is its `AvlMpn@name`, `Manufacturer` the `name` of the `LogisticHeader/Enterprise` its `AvlVendor@enterpriseRef` names. (KiCad writes the manufacturer's part number first and a distributor's second, neither chosen nor ranked.)
+
+    A name that a component already has keeps its first value: characteristics win over the names of items 2 and 3, and a repeated characteristic keeps its first value. Names compare exactly. Attributes with an empty name or value (empty or only white space) are left out, so a component has an attribute only if it has a value. The table is omitted when no component has attributes. It is authoritative; component `extras` repeat it (§8.4).
+
+    `EXT_structural_metadata` has no map type, and the class schema is fixed, so the attribute names, which vary per file, cannot be properties of `component`. A table of name–value rows keeps the `components` table fixed, needs no array support, and gives each component a contiguous range of rows.
 - **Instances.** Nets, components and features of an instance reference it with `instance`; the converted step's own have none, and a table without instance references omits the property. An instance row has the instance `id`, its `step`, the `parent` instance whose step placed it (none for copies placed by the converted step), and its placement: it maps a point `(u, v)` of its step to the board point `(x, y) + R(angle) · F · (u, v)` (IPC-2581 axes, metres, degrees counter-clockwise; `F` mirrors `u` when `side` is `BOTTOM`, a flipped copy).
 
 ### 8.3 `BOARDUI_board`
@@ -358,13 +369,14 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 
 ```json
 "BOARDUI_board": {
-  "profileVersion": "0.7",
+  "profileVersion": "0.8",
   "source": {
     "format": "IPC-2581",
     "revision": "C",
     "step": "testcase1-v174-RevC",
     "functionMode": "ASSEMBLY",
-    "sha256": "<hex>"
+    "sha256": "<hex>",
+    "software": { "name": "Allegro", "revision": "allegro_17.4S015(2/23/2021)", "vendor": "Cadence" }
   },
   "tolerance": 5e-6,
   "platingThickness": 2.5e-5,
@@ -385,12 +397,13 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
       "node": 9, "featureTable": 6
     }
   ],
-  "tables": { "nets": 0, "components": 1, "pins": 2 }
+  "tables": { "nets": 0, "components": 1, "pins": 2, "attributes": 3 }
 }
 ```
 
 - `layers` is ordered top to bottom. `thickness` is the copper-to-copper thickness.
 - `tables.*` and `featureTable` are absent for tables without rows (§8.2). `tables.instances` is present only for panels (§6.14).
+- `source.software` (since 0.8) is the software that wrote the source file: the `name`, `revision` and `vendor` of `HistoryRecord/FileRevision/SoftwarePackage`, as written. `revision` and `vendor` are absent when empty, and `software` when the file has no `SoftwarePackage`.
 - `role` is one of `COPPER`, `DIELECTRIC`, `SOLDERMASK`, `SILKSCREEN`, `PASTE`, `COURTYARD`, `ASSEMBLY`, `DOCUMENTATION`. `ipcFunction` keeps the source `layerFunction`, and is absent for synthesized layers.
 - `visible` is the suggested default visibility. Inner copper layers and the optional layers (paste and drawings, §6.11, §6.12) default to `false`, all other layers to `true`. Dielectric layers stay visible so that the board is opaque like a real one: with them hidden, the translucent soldermask (§7) would show the other side's copper and components through the board.
 
@@ -403,13 +416,16 @@ Component nodes carry `extras.boardui` ([`schema/component-extras.schema.json`](
   "boardui": {
     "id": "cmp/C12", "row": 11,
     "refDes": "C12", "part": "GRM155R71C104KA88",
-    "package": "C0402", "side": "TOP", "mount": "SMT"
+    "package": "C0402", "side": "TOP", "mount": "SMT", "populate": true,
+    "attributes": { "Value": "100nF", "LCSC": "C307331", "Description": "Unpolarized capacitor" }
   }
 }
 ```
 
 - `row` is the component's row in the `components` table, which is authoritative.
 - `instance` is the ID of the component's instance (§6.14), absent for the converted step's own components.
+- `populate` (since 0.8) is `true` for `YES`, `false` for `NO`, and absent for `UNKNOWN` (§8.2).
+- `attributes` (since 0.8) maps the component's attribute names to their values (the rows of the `attributes` table that reference it, §8.2); it is absent when the component has none.
 - The other fields duplicate it so that generic tools (Blender custom properties, three.js `userData`) can show them. They MUST match the table.
 
 ## 9. Widget anchoring (informative)
@@ -431,7 +447,8 @@ Anchors (for example top-centre of the bounding box) are computed from these.
 - the extensions are declared as in §2;
 - the scene structure follows §4, and IDs are unique and well-formed;
 - feature IDs are contiguous and ascending within primitives;
-- metadata references are in range, and component `extras` match the `components` table;
+- metadata references are in range, and component `extras` match the `components` and `attributes` tables;
+- the `attributes` table is in component order, without empty values or repeated names per component;
 - `FIDUCIAL` features, and only they, have a fiducial type;
 - instances are well-formed, and IDs and component node names carry their instance (§5, §6.14);
 - per copper layer, the sum of feature areas equals the area of their union, within tolerance (§6.2). Feature areas are the areas of their top faces. Features may overlap by grid-rounding slivers where their boundaries cross, and float32 positions add rounding, so the sum may exceed the union by at most `δ · P`: `P` is the sum of the feature perimeters and `δ` is 20 nm (twice the converter's 10 nm grid) plus twice the float32 spacing at the board's largest coordinate;

@@ -74,6 +74,11 @@ impl<R: BufRead> Parser<R> {
             }
             RefKind::Step => self.steps.get(key).is_some(),
             RefKind::Spec => self.specs.get(key).is_some(),
+            RefKind::Enterprise => self.enterprises.get(key).is_some(),
+            RefKind::AvlItem => self
+                .avl
+                .as_ref()
+                .is_some_and(|a| a.items.get(key).is_some()),
             RefKind::PadstackDef => self.step.padstack_defs.get(key).is_some(),
             RefKind::Package => self.step.packages.get(key).is_some(),
             RefKind::Component => self.step.components.get(key).is_some(),

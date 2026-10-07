@@ -2,9 +2,10 @@
 source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step miao, ASSEMBLY
+software: KiCad 9.0.9 (KiCad EDA)
 thickness: 1.5799 mm
 counts: 704 features, 69684 vertices, 136436 triangles, 33 nets, 18 components, 95 pins (93 checked against pads)
-warnings: 15 from the reader, 1 from the converter
+warnings: 11 from the reader, 1 from the converter
   - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
 layer layer/User.Drawings Documentation Top z 0.9099..0.9199 mm Default hidden
   1 features {"Marking": 1}, 40 vertices, 80 triangles, top area 9.2552 mm²
@@ -35,8 +36,9 @@ drill layer/F.Cu_B.Cu layer/F.Cu..layer/B.Cu
 drill layer/F.Cu_B.Cu_1 layer/F.Cu..layer/B.Cu
   4 features {"Barrel": 4}, 672 vertices, 1344 triangles, top area 0.3658 mm²
 components: 18
-  SW1 at (95.1687, 0.7899, 92.9005) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder SW_Push_SPST_NO_Alps_SKRK_1
-  U3 at (99.9998, 0.7899, 93.2510) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
-  JP2 at (94.7649, 0.7899, 99.0346) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), no body
-  U2 at (99.9998, 0.7899, 94.3889) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder SOT-23-6_4
-  R5 at (99.0498, 0.7899, 91.0996) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder R_0402_1005Metric_5
+bom: 18 with attributes, populate {Some(false): 3, Some(true): 15}, names {"Description": 16, "LCSC": 15, "Value": 18}
+  SW1 at (95.1687, 0.7899, 92.9005) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder SW_Push_SPST_NO_Alps_SKRK_1, populate Some(true), attributes {"Description": "Push button switch, generic, two pins", "LCSC": "C115357", "Value": "BOOT"}
+  U3 at (99.9998, 0.7899, 93.2510) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body, populate Some(false), attributes {"Value": "xiao_drop-in_gpio_usb_no_cutout"}
+  JP2 at (94.7649, 0.7899, 99.0346) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), no body, populate Some(false), attributes {"Description": "Solder Jumper, 3-pole, open", "Value": "UART vs SPI"}
+  U2 at (99.9998, 0.7899, 94.3889) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder SOT-23-6_4, populate Some(true), attributes {"Description": "Very low capacitance ESD protection diode, 2 data-line, SOT-23-6", "LCSC": "C2687116", "Value": "USBLC6-2SC6"}
+  R5 at (99.0498, 0.7899, 91.0996) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder R_0402_1005Metric_5, populate Some(true), attributes {"Description": "Resistor", "LCSC": "C25905", "Value": "5.1k"}

@@ -21,6 +21,16 @@
           "type": "string",
           "pattern": "^inst/[^/]+$",
           "description": "ID of the component's instance in a panel (spec §6.14)."
+        },
+        "populate": {
+          "type": "boolean",
+          "description": "Whether the BOM places the part (spec §8.2); absent without a BOM entry."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The component's BOM attributes by name (spec §8.2); absent when it has none.",
+          "minProperties": 1,
+          "additionalProperties": { "type": "string", "minLength": 1 }
         }
       },
       "additionalProperties": false

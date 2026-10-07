@@ -2362,3 +2362,260 @@ mod specs {
         );
     }
 }
+
+mod assembly {
+    use super::*;
+    use crate::{
+        AvlMpn, AvlVmpn, BomRefDes, Characteristic, CharacteristicValue, Enterprise,
+        SoftwarePackage,
+    };
+
+    /// Parses a document with the given root children before and after `Ecad`, as the
+    /// schema orders them (`LogisticHeader`, `HistoryRecord` and `Bom` before, `Avl` after).
+    fn assembly_doc(before: &str, after: &str) -> Document {
+        let xml = format!(
+            r#"<IPC-2581 revision="C"><Content/>{before}
+<Ecad name="e"><CadHeader units="MILLIMETER"/><CadData/></Ecad>{after}
+</IPC-2581>"#
+        );
+        parse_bytes(xml.as_bytes()).unwrap()
+    }
+
+    fn s(value: &str) -> Option<String> {
+        Some(value.to_owned())
+    }
+
+    /// The header, history, BOM and AVL that KiCad 9 writes, with an MPN and a distributor
+    /// part number.
+    #[test]
+    fn reads_kicad_assembly_data() {
+        let d = assembly_doc(
+            r#"<LogisticHeader>
+                 <Role id="Owner" roleFunction="SENDER"/>
+                 <Enterprise id="UNKNOWN" code="NONE"/>
+                 <Enterprise id="VENDOR_0" name="Wurth" code="NONE"/>
+                 <Enterprise id="VENDOR_1" name="LCSC" code="NONE"/>
+                 <Person name="UNKNOWN" enterpriseRef="UNKNOWN" roleRef="Owner"/>
+               </LogisticHeader>
+               <HistoryRecord number="1" origination="2026-10-06T12:24:38" software="KiCad EDA" lastChange="2026-10-06T12:24:38">
+                 <FileRevision fileRevisionId="1" comment="NO COMMENT" label="NO LABEL">
+                   <SoftwarePackage name="KiCad" revision="9.0.9" vendor="KiCad EDA">
+                     <Certification certificationStatus="SELFTEST"/>
+                   </SoftwarePackage>
+                 </FileRevision>
+               </HistoryRecord>
+               <Bom name="board_1">
+                 <BomHeader revision="1.0" assembly="board_2"><StepRef name="board"/></BomHeader>
+                 <BomItem OEMDesignNumberRef="Button_SW_Push" quantity="2" pinCount="4" category="ELECTRICAL" description="Push button switch">
+                   <RefDes name="SW1" packageRef="SW_Push" populate="true" layerRef="F.Cu"/>
+                   <RefDes name="SW2" packageRef="SW_Push" populate="false" layerRef="F.Cu"/>
+                   <Characteristics category="ELECTRICAL">
+                     <Textual definitionSource="KICAD" textualCharacteristicName="LCSC" textualCharacteristicValue="C139797"/>
+                     <Textual definitionSource="KICAD" textualCharacteristicName="Value" textualCharacteristicValue="SW_Push"/>
+                   </Characteristics>
+                 </BomItem>
+               </Bom>"#,
+            r#"<Avl name="Primary_Vendor_List">
+                 <AvlHeader title="BOM" source="KiCad" author="OWNER" datetime="2026-10-06T12:24:38" version="1"/>
+                 <AvlItem OEMDesignNumber="MountingHole"/>
+                 <AvlItem OEMDesignNumber="Button_SW_Push">
+                   <AvlVmpn qualified="false" chosen="false"><AvlMpn name="434133025816"/><AvlVendor enterpriseRef="VENDOR_0"/></AvlVmpn>
+                   <AvlVmpn qualified="false" chosen="false"><AvlMpn name="C139797"/><AvlVendor enterpriseRef="VENDOR_1"/></AvlVmpn>
+                 </AvlItem>
+               </Avl>"#,
+        );
+        assert_eq!(kinds(&d.diagnostics), Vec::<&DiagnosticKind>::new());
+        let names: Vec<_> = d.enterprises.iter().map(|(k, _)| k).collect();
+        assert_eq!(names, ["UNKNOWN", "VENDOR_0", "VENDOR_1"]);
+        assert_eq!(
+            d.enterprises.get("VENDOR_0"),
+            Some(&Enterprise {
+                id: "VENDOR_0".into(),
+                name: s("Wurth"),
+                code: s("NONE")
+            })
+        );
+        let history = d.history.unwrap();
+        assert_eq!(history.software, s("KiCad EDA"));
+        assert_eq!(
+            history.software_package,
+            Some(SoftwarePackage {
+                name: "KiCad".into(),
+                revision: s("9.0.9"),
+                vendor: s("KiCad EDA"),
+                model: None
+            })
+        );
+
+        assert_eq!(d.boms.len(), 1);
+        assert_eq!(d.boms[0].name, "board_1");
+        let item = &d.boms[0].items[0];
+        assert_eq!(item.oem_design_number_ref, s("Button_SW_Push"));
+        assert_eq!(item.description, s("Push button switch"));
+        assert_eq!(item.category, s("ELECTRICAL"));
+        assert_eq!(item.internal_part_number, None);
+        assert_eq!(
+            item.ref_des[1],
+            BomRefDes {
+                name: "SW2".into(),
+                package_ref: s("SW_Push"),
+                populate: Some(false),
+                layer_ref: s("F.Cu")
+            }
+        );
+        assert_eq!(item.ref_des[0].populate, Some(true));
+        assert_eq!(
+            item.characteristics,
+            [
+                Characteristic {
+                    definition_source: s("KICAD"),
+                    name: s("LCSC"),
+                    value: CharacteristicValue::Textual(s("C139797"))
+                },
+                Characteristic {
+                    definition_source: s("KICAD"),
+                    name: s("Value"),
+                    value: CharacteristicValue::Textual(s("SW_Push"))
+                },
+            ]
+        );
+
+        let avl = d.avl.unwrap();
+        assert_eq!(avl.name, "Primary_Vendor_List");
+        assert_eq!(avl.items.len(), 2);
+        assert!(avl.items.get("MountingHole").unwrap().vmpns.is_empty());
+        let vmpns = &avl.items.get("Button_SW_Push").unwrap().vmpns;
+        assert_eq!(
+            vmpns[0],
+            AvlVmpn {
+                qualified: Some(false),
+                chosen: Some(false),
+                mpn: Some(AvlMpn {
+                    name: "434133025816".into(),
+                    rank: None
+                }),
+                vendor: s("VENDOR_0"),
+            }
+        );
+        assert_eq!(vmpns[1].vendor, s("VENDOR_1"));
+    }
+
+    /// Every characteristic element of the schema, with its name, value and unit as written.
+    #[test]
+    fn reads_every_characteristic_kind() {
+        let d = assembly_doc(
+            r#"<Bom name="B"><BomItem OEMDesignNumberRef="P" quantity="1" category="ELECTRICAL">
+                 <RefDes name="C1"/>
+                 <Characteristics category="ELECTRICAL">
+                   <Measured definitionSource="X" measuredCharacteristicName="Capacitance" measuredCharacteristicValue="1.0E-7" engineeringUnitOfMeasure="F" engineeringNegativeTolerance="10" engineeringPositiveTolerance="20"/>
+                   <Ranged rangedCharacteristicName="Temperature" rangedCharacteristicLowerValue="-40" rangedCharacteristicUpperValue="85" engineeringUnitOfMeasure="CEL"/>
+                   <Enumerated enumeratedCharacteristicName="Dielectric" enumeratedCharacteristicValue="X7R"/>
+                   <Textual textualCharacteristicName="Note"/>
+                   <Other/>
+                 </Characteristics>
+               </BomItem></Bom>"#,
+            "",
+        );
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [&DiagnosticKind::UnknownElement {
+                element: "Other".into(),
+                parent: "Characteristics".into()
+            }]
+        );
+        let item = &d.boms[0].items[0];
+        assert_eq!(item.ref_des[0].populate, None);
+        let values: Vec<_> = item
+            .characteristics
+            .iter()
+            .map(|c| (c.name.as_deref(), &c.value))
+            .collect();
+        assert_eq!(
+            values,
+            [
+                (
+                    Some("Capacitance"),
+                    &CharacteristicValue::Measured {
+                        value: s("1.0E-7"),
+                        unit: s("F"),
+                        negative_tolerance: s("10"),
+                        positive_tolerance: s("20")
+                    }
+                ),
+                (
+                    Some("Temperature"),
+                    &CharacteristicValue::Ranged {
+                        lower: s("-40"),
+                        upper: s("85"),
+                        unit: s("CEL"),
+                        negative_tolerance: None,
+                        positive_tolerance: None
+                    }
+                ),
+                (
+                    Some("Dielectric"),
+                    &CharacteristicValue::Enumerated(s("X7R"))
+                ),
+                (Some("Note"), &CharacteristicValue::Textual(None)),
+            ]
+        );
+        assert_eq!(item.characteristics[0].definition_source, s("X"));
+    }
+
+    /// Altium's revision A BOM: the part in `internalPartNumber`, no `OEMDesignNumberRef`,
+    /// and attributes the schema doesn't have; no header, history or AVL.
+    #[test]
+    fn reads_altium_revision_a_bom() {
+        let d = assembly_doc(
+            r#"<Bom name="BOM">
+                 <BomHeader assembly="Assembly" revision="Revision"><StepRef name="LDO-PCB"/></BomHeader>
+                 <BomItem quantity="2" numberIO="4" category="ELECTRICAL" internalPartNumber="FP-SM02B" description="CONN HEADER SMD R/A 2POS 1.25MM" packageRef="FP-SM02B">
+                   <RefDes name="J2"/><RefDes name="J1"/>
+                   <Characteristics category="ELECTRICAL"/>
+                 </BomItem>
+               </Bom>"#,
+            "",
+        );
+        assert_eq!(kinds(&d.diagnostics), Vec::<&DiagnosticKind>::new());
+        assert!(d.history.is_none() && d.avl.is_none() && d.enterprises.is_empty());
+        let item = &d.boms[0].items[0];
+        assert_eq!(item.oem_design_number_ref, None);
+        assert_eq!(item.internal_part_number, s("FP-SM02B"));
+        let names: Vec<_> = item.ref_des.iter().map(|r| r.name.as_str()).collect();
+        assert_eq!(names, ["J2", "J1"]);
+        assert!(item.characteristics.is_empty());
+    }
+
+    /// Several `Bom`s are kept in order; a vendor without an enterprise, a repeated
+    /// `AvlItem` and a second `HistoryRecord` are reported.
+    #[test]
+    fn reports_dangling_vendors_and_repetitions() {
+        let d = assembly_doc(
+            r#"<HistoryRecord software="A"><FileRevision fileRevisionId="1" comment=""><SoftwarePackage name="A" vendor="V" revision="1"/></FileRevision></HistoryRecord>
+               <HistoryRecord software="B"/>
+               <Bom name="ONE"/><Bom name="TWO"/>"#,
+            r#"<Avl name="L"><AvlItem OEMDesignNumber="P"><AvlVmpn><AvlMpn name="M" rank="2"/><AvlVendor enterpriseRef="NOPE"/></AvlVmpn></AvlItem>
+               <AvlItem OEMDesignNumber="P"/></Avl>"#,
+        );
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [
+                &DiagnosticKind::DuplicateElement {
+                    element: "HistoryRecord".into(),
+                    parent: "IPC-2581".into()
+                },
+                &DiagnosticKind::DuplicateKey {
+                    kind: RefKind::AvlItem,
+                    key: "P".into()
+                },
+                &dangling(RefKind::Enterprise, "NOPE"),
+            ]
+        );
+        assert_eq!(d.history.unwrap().software, s("A"));
+        let names: Vec<_> = d.boms.iter().map(|b| b.name.as_str()).collect();
+        assert_eq!(names, ["ONE", "TWO"]);
+        let avl = d.avl.unwrap();
+        let mpn = avl.items.get("P").unwrap().vmpns[0].mpn.clone().unwrap();
+        assert_eq!(mpn.rank, Some(2));
+    }
+}

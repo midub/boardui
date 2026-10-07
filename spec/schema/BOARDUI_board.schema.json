@@ -27,7 +27,18 @@
         "revision": { "type": "string" },
         "step": { "type": "string" },
         "functionMode": { "type": "string" },
-        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "software": {
+          "description": "The software that wrote the source file (IPC-2581 HistoryRecord/FileRevision/SoftwarePackage), since profile 0.8.",
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "revision": { "type": "string", "minLength": 1 },
+            "vendor": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     },
@@ -62,7 +73,8 @@
         "nets": { "$ref": "#/$defs/index" },
         "components": { "$ref": "#/$defs/index" },
         "pins": { "$ref": "#/$defs/index" },
-        "instances": { "$ref": "#/$defs/index" }
+        "instances": { "$ref": "#/$defs/index" },
+        "attributes": { "$ref": "#/$defs/index" }
       },
       "additionalProperties": false
     },

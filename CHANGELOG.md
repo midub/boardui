@@ -5,6 +5,12 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
 
 ## [Unreleased]
 
+- **Component attributes (profile 0.8, still a draft):** the converter reads the BOM, the
+  approved vendor list and the exporting software. Each component gets its BOM attributes
+  (characteristics such as KiCad's `Value` and `LCSC`, `Description`, `MPN`, `Manufacturer`) in
+  a new `attributes` table and in its node's `extras`, and `populate` (KiCad's DNP); the board
+  gets `source.software` (for example KiCad 9.0.9). The viewer's `info()` returns them and both
+  demos show them in the details panel ([spec §8.2](spec/README.md#82-ext_structural_metadata)).
 - **Demo in React:** the demo is rebuilt in React on the new `@boardui/react` wrapper
   (`<BoardViewer>`, `<Widget>` for React widgets, JSX typings for `<board-viewer>`) and moves to
   <https://midub.github.io/boardui/react/>; <https://midub.github.io/boardui/> redirects there,

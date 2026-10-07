@@ -6,7 +6,7 @@ use boardui_geom::{Indices, LayerMesh, Prism};
 
 use crate::board::{
     Board, BoardDrill, BoardLayer, ComponentExtras, ComponentInfo, FeatureKind, Fiducial, Mount,
-    PROFILE_VERSION, Role, Side, Source, Tables, ThicknessSource,
+    PROFILE_VERSION, Role, Side, Source, Tables, ThicknessSource, populate,
 };
 use crate::buffer::{AssetBuilder, push};
 use crate::json::{
@@ -266,6 +266,10 @@ pub struct ComponentAsset {
     pub body: Option<BodyRef>,
     /// Row in the `instances` table; `None` for the converted step's own components.
     pub instance: Option<u32>,
+    /// Whether the BOM places the part, if it says.
+    pub populate: Option<bool>,
+    /// BOM attributes as `(name, value)`, in order, with unique names and non-empty values.
+    pub attributes: Vec<(String, String)>,
 }
 
 /// The body of a component.
@@ -430,6 +434,7 @@ impl Writer {
             components: self.components_table(asset, &component_nodes),
             pins: self.pins_table(asset),
             instances: self.instances_table(asset),
+            attributes: self.attributes_table(asset),
         };
 
         let mut board_layers = Vec::new();
@@ -577,6 +582,9 @@ impl Writer {
                 package: component.package.clone(),
                 side: component.side,
                 mount: component.mount,
+                populate: component.populate,
+                attributes: (!component.attributes.is_empty())
+                    .then(|| component.attributes.iter().cloned().collect()),
                 instance: component
                     .instance
                     .map(|i| instance_id(&asset.instances[i as usize].name)),
@@ -777,7 +785,32 @@ impl Writer {
             "instance",
             components.iter().map(|c| c.instance).collect(),
         ));
+        if components.iter().any(|c| c.populate.is_some()) {
+            columns.push(Column::U8(
+                "populate",
+                components
+                    .iter()
+                    .map(|c| populate::value(c.populate))
+                    .collect(),
+            ));
+        }
         self.table("components", "component", components.len(), columns)
+    }
+
+    /// The `attributes` table: the components' attributes in component order (spec §8.2).
+    fn attributes_table(&mut self, asset: &BoardAsset) -> Option<u32> {
+        let rows: Vec<(u32, &(String, String))> = asset
+            .components
+            .iter()
+            .enumerate()
+            .flat_map(|(row, c)| c.attributes.iter().map(move |a| (row as u32, a)))
+            .collect();
+        let columns = vec![
+            Column::U32("component", rows.iter().map(|(c, _)| *c).collect()),
+            Column::Strings("name", rows.iter().map(|(_, (n, _))| n.clone()).collect()),
+            Column::Strings("value", rows.iter().map(|(_, (_, v))| v.clone()).collect()),
+        ];
+        self.table("attributes", "attribute", rows.len(), columns)
     }
 
     fn pins_table(&mut self, asset: &BoardAsset) -> Option<u32> {

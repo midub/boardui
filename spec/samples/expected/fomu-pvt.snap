@@ -2,9 +2,10 @@
 source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step fomu-pvt, ASSEMBLY
+software: KiCad 9.0.9 (KiCad EDA)
 thickness: 0.5800 mm
 counts: 1649 features, 145988 vertices, 286820 triangles, 31 nets, 55 components, 218 pins (144 checked against pads)
-warnings: 15 from the reader, 19 from the converter
+warnings: 11 from the reader, 19 from the converter
   - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
   - the profile of step `fomu-pvt` has no cutouts; the closed contours inside it were cut out: 1 on layer `Edge.Cuts`
   - 30 of 30 pins of component `U5` are not on their pads
@@ -62,8 +63,9 @@ drill layer/In1.Cu_In2.Cu layer/In1.Cu..layer/In2.Cu
 drill layer/In2.Cu_B.Cu layer/In2.Cu..layer/B.Cu
   167 features {"Barrel": 167}, 5678 vertices, 11356 triangles, top area 1.5361 mm²
 components: 55
+bom: 17 with attributes, populate {None: 38, Some(false): 15, Some(true): 2}, names {"Value": 17}
   U7 at (22.0500, -0.2900, 18.8650) mm, rotation (0.7071, 0.0000, 0.7071, 0.0000), placeholder XTAL-2520_1
   U10 at (26.4200, -0.2900, 21.8800) mm, rotation (0.7071, 0.0000, -0.7071, 0.0000), placeholder LED-RGB-5DS-UHD1110-FKA_2
-  U9 at (16.8500, 0.2900, 27.3500) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
+  U9 at (16.8500, 0.2900, 27.3500) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body, populate Some(false), attributes {"Value": "USB-B"}
   U5 at (24.4000, -0.2900, 21.9000) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder iCE40UP5K-UWG30_4
   C22 at (20.3000, -0.2900, 25.4600) mm, rotation (0.7071, 0.0000, -0.7071, 0.0000), placeholder C_0402_1005Metric_5

@@ -2,7 +2,8 @@
 //!
 //! [`parse`] reads an IPC-2581 revision B or C file with a pull parser (no DOM) and returns a
 //! [`Document`]: the content dictionaries, layers, stack-ups and steps, with every length
-//! converted to metres. Shapes are described as written in the file; turning them into
+//! converted to metres, and the assembly data: the bills of materials with their part
+//! characteristics, the approved vendor list and the software that wrote the file. Shapes are described as written in the file; turning them into
 //! geometry is up to the caller (`boardui-geom`). The `PadStack`s of revision A and B
 //! steps (Altium writes them) are kept as written, in [`Step::pad_stacks`].
 //!
@@ -52,11 +53,13 @@ use std::io::BufRead;
 pub use diagnostic::{Diagnostic, DiagnosticKind, RefKind};
 pub use error::{Error, ErrorKind, Position};
 pub use model::{
-    Component, Content, Document, Ecad, Feature, FeatureElement, Features, Fiducial, FiducialKind,
-    Hole, Layer, LayerFeature, LayerHole, LayerPad, Marking, MountType, Package, PackageDrawing,
-    Pad, PadStack, PadUsage, PadUse, PadstackDef, PadstackPad, Pin, PinRef, PlatingStatus,
-    Polarity, Set, Side, SlotCavity, Span, Spec, SpecColor, SpecGeneral, SpecProperty, Stackup,
-    StackupGroup, StackupLayer, Step, StepRepeat, Units, WhereMeasured,
+    Avl, AvlItem, AvlMpn, AvlVmpn, Bom, BomItem, BomRefDes, Characteristic, CharacteristicValue,
+    Component, Content, Document, Ecad, Enterprise, Feature, FeatureElement, Features, Fiducial,
+    FiducialKind, HistoryRecord, Hole, Layer, LayerFeature, LayerHole, LayerPad, Marking,
+    MountType, Package, PackageDrawing, Pad, PadStack, PadUsage, PadUse, PadstackDef, PadstackPad,
+    Pin, PinRef, PlatingStatus, Polarity, Set, Side, SlotCavity, SoftwarePackage, Span, Spec,
+    SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup, StackupLayer, Step, StepRepeat,
+    Units, WhereMeasured,
 };
 pub use shape::{
     Arc, ButterflyShape, Color, Contour, Corners, EmbeddedFont, FillDesc, FillProperty, FillStyle,

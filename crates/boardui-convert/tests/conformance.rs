@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use boardui_convert::{Conversion, ModelLibrary, Options, convert, validate};
 use boardui_gltf::buffer::{read_u32s, read_vec3, view_bytes};
 use boardui_gltf::metadata::NO_ROW;
-use boardui_gltf::{Board, FeatureKind, Fiducial, Root, Side, glb};
+use boardui_gltf::{Board, ComponentExtras, FeatureKind, Fiducial, Root, Side, glb};
 
 fn samples_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/samples")
@@ -199,6 +199,7 @@ samples! {
     outline_cutouts => "outline-cutouts",
     pinless_package => "pinless-package",
     board_sized_package => "board-sized-package",
+    bom_attributes => "bom-attributes",
     testcase1 => "testcase1-RevC-Assembly",
     testcase3 => "testcase3-RevC-Assembly",
     testcase10 => "testcase10-RevC-Assembly",
@@ -732,6 +733,16 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         s.function_mode.as_deref().unwrap_or("?")
     )
     .unwrap();
+    if let Some(sw) = &s.software {
+        writeln!(
+            out,
+            "software: {} {} ({})",
+            sw.name,
+            sw.revision.as_deref().unwrap_or("?"),
+            sw.vendor.as_deref().unwrap_or("?")
+        )
+        .unwrap();
+    }
     writeln!(out, "thickness: {:.4} mm", board.thickness * 1e3).unwrap();
     let st = &conversion.stats;
     writeln!(
@@ -867,6 +878,27 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
     }
     let components = &root.nodes[root.nodes[0].children[2] as usize].children;
     writeln!(out, "components: {}", components.len()).unwrap();
+    let extras = |c: u32| -> ComponentExtras {
+        serde_json::from_value(root.nodes[c as usize].extras.clone().expect("extras"))
+            .expect("component extras")
+    };
+    // Spec §8.2: BOM attributes and the populate flag.
+    let (mut with_attributes, mut populate, mut names) = (0, BTreeMap::new(), BTreeMap::new());
+    for &c in components {
+        let info = extras(c).boardui;
+        *populate.entry(info.populate).or_insert(0) += 1;
+        for name in info.attributes.iter().flat_map(|a| a.keys()) {
+            *names.entry(name.clone()).or_insert(0) += 1;
+        }
+        with_attributes += usize::from(info.attributes.is_some());
+    }
+    if board.tables.attributes.is_some() || populate.keys().any(Option::is_some) {
+        writeln!(
+            out,
+            "bom: {with_attributes} with attributes, populate {populate:?}, names {names:?}"
+        )
+        .unwrap();
+    }
     for &c in components
         .iter()
         .take(if detailed { usize::MAX } else { 5 })
@@ -885,9 +917,17 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
             ),
             (None, None) => "no body".into(),
         };
+        let info = extras(c).boardui;
+        let bom = match (info.populate, &info.attributes) {
+            (None, None) => String::new(),
+            (populate, attributes) => format!(
+                ", populate {populate:?}, attributes {:?}",
+                attributes.clone().unwrap_or_default()
+            ),
+        };
         writeln!(
             out,
-            "  {} at ({:.4}, {:.4}, {:.4}) mm, rotation ({:.4}, {:.4}, {:.4}, {:.4}), {body}",
+            "  {} at ({:.4}, {:.4}, {:.4}) mm, rotation ({:.4}, {:.4}, {:.4}, {:.4}), {body}{bom}",
             n.name.as_deref().unwrap_or("?"),
             t[0],
             t[1],

@@ -2,9 +2,10 @@
 source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step test-3_r2.-17_4, ASSEMBLY
+software: Allegro allegro_17.4S(3/22/2021) (Cadence)
 thickness: 1.6000 mm
 counts: 1685 features, 116410 vertices, 231564 triangles, 261 nets, 42 components, 487 pins (487 checked against pads)
-warnings: 11 from the reader, 1 from the converter
+warnings: 8 from the reader, 1 from the converter
   - zero-width lines are drawn as 0.1 mm hairlines
 layer layer/@assembly-top Assembly Top z 0.8300..0.8400 mm Default synthesized hidden
   90 features {"Marking": 90}, 9652 vertices, 19280 triangles, top area 150.3127 mm²
@@ -27,8 +28,9 @@ layer layer/@assembly-bottom Assembly Bottom z -0.8400..-0.8300 mm Default synth
 drill layer/DRILL_1-6 layer/TOP..layer/BOTTOM
   174 features {"Barrel": 171, "Other": 3}, 14260 vertices, 28520 triangles, top area 11.3410 mm²
 components: 42
-  J1 at (-1.2700, 0.8000, -71.1200) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder ELECTROMECH
+bom: 41 with attributes, populate {None: 1, Some(true): 41}, names {"COMP_CLASS": 41, "DEVICE_TYPE": 41, "PARENT_PART_TYPE": 17, "PARENT_PPT": 17, "PARENT_PPT_PART": 17, "VALUE": 17}
+  J1 at (-1.2700, 0.8000, -71.1200) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder ELECTROMECH, populate Some(true), attributes {"COMP_CLASS": "IC", "DEVICE_TYPE": "ELECTROMECH"}
   OR_0000020B161A9090 at (68.5800, 0.8000, -74.9300) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder SHIELD
-  C7 at (21.5900, 0.8000, -22.8600) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder 1206T
-  C2 at (3.8100, 0.8000, -23.1648) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder 1206T
-  C3 at (13.9700, 0.8000, -22.8600) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder 1206T
+  C7 at (21.5900, 0.8000, -22.8600) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder 1206T, populate Some(true), attributes {"COMP_CLASS": "DISCRETE", "DEVICE_TYPE": "CAPACITOR-5P", "PARENT_PART_TYPE": "CAPACITOR", "PARENT_PPT": "CAPACITOR", "PARENT_PPT_PART": "CAPACITOR-5P", "VALUE": "5P"}
+  C2 at (3.8100, 0.8000, -23.1648) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder 1206T, populate Some(true), attributes {"COMP_CLASS": "DISCRETE", "DEVICE_TYPE": "CAPACITOR-5P", "PARENT_PART_TYPE": "CAPACITOR", "PARENT_PPT": "CAPACITOR", "PARENT_PPT_PART": "CAPACITOR-5P", "VALUE": "5P"}
+  C3 at (13.9700, 0.8000, -22.8600) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder 1206T, populate Some(true), attributes {"COMP_CLASS": "DISCRETE", "DEVICE_TYPE": "CAPACITOR-53P", "PARENT_PART_TYPE": "CAPACITOR", "PARENT_PPT": "CAPACITOR", "PARENT_PPT_PART": "CAPACITOR-53P", "VALUE": "53P"}
