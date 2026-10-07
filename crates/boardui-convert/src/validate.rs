@@ -570,8 +570,7 @@ impl Validator<'_> {
         let placements = ["x", "y", "angle"].map(|c| instances.floats(c).unwrap_or(&[]));
         let mut scopes = Vec::with_capacity(instances.count);
         let mut seen = HashSet::new();
-        for row in 0..instances.count.min(ids.len()) {
-            let id = &ids[row];
+        for (row, id) in ids.iter().enumerate().take(instances.count) {
             let segment = id.strip_prefix("inst/").filter(|s| !s.contains('/'));
             match segment {
                 Some(segment) if well_formed(id) => scopes.push(format!("{segment}/")),
