@@ -2,11 +2,13 @@
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import { checkDist } from './check-dist.js';
+import { licensesMiddleware, stageLicenses } from './licenses.js';
 import { samplesMiddleware, stageSamples } from './samples.js';
 
 /**
- * Serves the sample boards (`src/samples.ts`) from `spec/samples` under `<base>samples/` in dev,
- * copies them into the build, and checks the build for IPC consortium test data (`checkDist`).
+ * Serves the sample boards (`src/samples.ts`) from `spec/samples` under `<base>samples/` and the
+ * third-party licences under `<base>licenses/` in dev, copies both into the build, and checks the
+ * build for IPC consortium test data (`checkDist`).
  */
 export function demoSamples(): Plugin {
   let base = '/';
@@ -21,9 +23,11 @@ export function demoSamples(): Plugin {
     },
     configureServer(server) {
       server.middlewares.use(samplesMiddleware(base));
+      server.middlewares.use(licensesMiddleware(base));
     },
     writeBundle() {
       stageSamples(outDir);
+      stageLicenses(outDir);
     },
     closeBundle() {
       if (!build) return;

@@ -1,10 +1,12 @@
 import type { BoardViewerElement } from '@boardui/angular';
-import { DemoSession, exposeDemo } from '@boardui/demo-shared';
+import { DemoModels, DemoSession, exposeDemo } from '@boardui/demo-shared';
 import { SAMPLE_SIZES } from '@boardui/demo-shared/sizes';
 
 /** Opening boards (`DemoSession`): one per page. The samples are next to the app (base href). */
 export const session = new DemoSession({ samplesBase: 'samples/', sizes: SAMPLE_SIZES });
-exposeDemo(session);
+/** Runtime 3D models: KiCad's libraries, and `?models=<mapping URL>`. */
+export const models = new DemoModels(location.search);
+exposeDemo(session, models);
 
 /** The page's viewer, once the app has started. */
 export const viewer = (): BoardViewerElement => {

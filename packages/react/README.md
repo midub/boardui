@@ -54,12 +54,16 @@ function Board({ file }: { file: File }) {
 | `backend` | `backend` attribute | `'webgl'` uses WebGL2 even where WebGPU is available; read when the element is created |
 | `autoRotate` | `autoRotate` | the camera orbits the board |
 | `xray` | `setXray()` | x-ray mode; leave it undefined to control it through the element |
+| `modelSources` | `modelSources` | runtime model sources, e.g. `[kicadSource()]` of [`@boardui/models`](../models/README.md); keep the array stable (a new one starts over) |
+| `modelsShown` | `modelsShown` | runtime models shown, or the placeholder bodies |
 | `onHover` | `bui-hover` | `CustomEvent<ElementInfo \| null>` |
 | `onSelect` | `bui-select` | `CustomEvent<ElementInfo \| null>` |
 | `onProgress` | `bui-progress` | `CustomEvent<LoadProgress>` of `loadIpc2581` |
 | `onLoad` | `bui-load` | `CustomEvent<ElementInfo>`: a board was loaded (`src`, `load`, `loadIpc2581`); `detail` is `info('board')` |
 | `onUnload` | `bui-unload` | `CustomEvent<ElementInfo>`: the board is about to be replaced; the next `onLoad` follows at once |
 | `onError` | `error` | `ErrorEvent` |
+| `onModelProgress` | `bui-model-progress` | `CustomEvent<ModelStatus>`: runtime models are loading |
+| `onModelDone` | `bui-model-done` | `CustomEvent<ModelStatus>`: every component has been tried |
 | `ref` | the element | `load`, `loadIpc2581`, `highlight`, `hide`, `select`, `focus`, `setView`, `layers`, `info`, `ids`, … |
 
 Any other prop (`className`, `style`, `id`, `onPointerMove`, …) goes to `<board-viewer>`. The

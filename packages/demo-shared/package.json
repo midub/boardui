@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@boardui/converter": "workspace:*",
+    "@boardui/models": "workspace:*",
     "@boardui/viewer": "workspace:*"
   },
   "devDependencies": {

@@ -2,8 +2,9 @@
 // converted by the WASM converter in a worker and shown. The IPC consortium test cases aren't part
 // of the demo (it only links to them), so they are opened through the file input from
 // `spec/samples/ipc-testcases` (once fetched), as a user who downloaded them would.
-import { expect, type Page, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { SAMPLES, TEST_CASES } from '../src/samples.js';
+import { expect, test } from './fixtures.js';
 import {
   collectErrors,
   type DemoGlobal,

@@ -23,6 +23,7 @@ import {
 } from '@boardui/demo-shared';
 import type { ViewPreset } from '@boardui/viewer';
 import { BoardUi } from './board-ui';
+import { Models } from './models';
 import { viewer } from './session';
 
 /** Toggles for every layer and drill layer, and for the components. */
@@ -185,7 +186,7 @@ export class Nets {
 @Component({
   selector: 'aside[app-sidebar]',
   host: { id: 'sidebar', class: 'sidebar' },
-  imports: [Layers, Nets],
+  imports: [Layers, Models, Nets],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="panel">
@@ -212,6 +213,7 @@ export class Nets {
         <kbd>x</kbd>
       </label>
     </section>
+    <section app-models></section>
     <section app-layers [board]="board()"></section>
     <section app-nets [board]="board()"></section>
     @if (board().conversion; as conversion) {

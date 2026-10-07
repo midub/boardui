@@ -11,7 +11,7 @@ so the application's build links it). Like the other packages it isn't published
 build it from this repository and install it as a tarball, next to `@boardui/viewer` and
 `@boardui/converter` (see the root README, "Embedding the viewer"). `three` (`^0.186`) is a peer
 dependency. With the Angular CLI, the converter's worker and WASM module need a build step: see
-[below](#the-converters-worker-and-wasm-with-the-angular-cli).
+[below](#the-workers-and-wasm-with-the-angular-cli).
 
 ```ts
 import { Component, signal } from '@angular/core';
@@ -69,12 +69,16 @@ export class Board {
 | `backend` | `backend` attribute | `'webgl'` uses WebGL2 even where WebGPU is available; read when the element is created |
 | `autoRotate` | `autoRotate` | the camera orbits the board; unset leaves the element's setting alone |
 | `xray` | `setXray()` | x-ray mode; leave it unset to control it through the element |
+| `modelSources` | `modelSources` | runtime model sources, e.g. `[kicadSource()]` of [`@boardui/models`](../models/README.md); a new array starts over; unset leaves the element's alone |
+| `modelsShown` | `modelsShown` | runtime models shown, or the placeholder bodies; unset leaves it alone |
 | `(hover)` | `bui-hover` | `ElementInfo \| null` (the event's `detail`) |
 | `(select)` | `bui-select` | `ElementInfo \| null` |
 | `(progress)` | `bui-progress` | `LoadProgress` of `loadIpc2581` |
 | `(load)` | `bui-load` | `ElementInfo` of the board (`info('board')`): a board was loaded and replaced the previous one |
 | `(unload)` | `bui-unload` | `ElementInfo` of the board that is about to be replaced; `(load)` follows |
 | `(error)` | `error` | `ErrorEvent` |
+| `(modelProgress)` | `bui-model-progress` | `ModelStatus`: runtime models are loading |
+| `(modelDone)` | `bui-model-done` | `ModelStatus`: every component has been tried |
 | `element` | the element | `load`, `loadIpc2581`, `highlight`, `hide`, `select`, `focus`, `setView`, `layers`, `info`, `ids`, … |
 
 `autoRotate` and `xray` also take an attribute without a value (`<bui-board-viewer autoRotate>`).
@@ -107,11 +111,13 @@ The widget follows the board: it attaches once the viewer has loaded a board wit
 next board has the element too. Without a board, or while the board lacks the element, it isn't
 shown; its content stays as it is (Angular renders it as long as the `<bui-widget>` exists).
 
-## The converter's worker and WASM with the Angular CLI
+## The workers and WASM with the Angular CLI
 
 `@boardui/converter` starts its worker with `new Worker(new URL('./worker.js', import.meta.url))`,
-the worker loads `new URL('../wasm/boardui_wasm_bg.wasm', import.meta.url)`, and the viewer starts
-its BVH workers (for meshes of 50,000 triangles or more) the same way with `./bvh.worker.js`.
+the worker loads `new URL('../wasm/boardui_wasm_bg.wasm', import.meta.url)`, the viewer starts
+its BVH workers (for meshes of 50,000 triangles or more) the same way with `./bvh.worker.js`,
+and `@boardui/models`' STEP loader its worker with `./step.worker.js`, which loads
+`../occt/occt-import-js.wasm`.
 Vite bundles these; Angular's application builder (esbuild) leaves them as they are in
 dependencies, so they resolve next to the app's scripts, and the files must be there:
 
@@ -121,10 +127,15 @@ dependencies, so they resolve next to the app's scripts, and the files must be t
 | `converter/worker.js` | `@boardui/converter`'s `dist/worker.js`, bundled |
 | `wasm/boardui_wasm_bg.wasm` | `@boardui/converter`'s `wasm/boardui_wasm_bg.wasm` |
 | `bvh.worker.js` | `@boardui/viewer`'s `dist/bvh.worker.js`, bundled (three-mesh-bvh, three.js) |
+| `step.worker.js` | `import './models/step.worker.js';` |
+| `models/step.worker.js` | `@boardui/models`' `dist/step.worker.js`, bundled (with occt-import-js's glue) |
+| `occt/occt-import-js.wasm` | `@boardui/models`' `occt/occt-import-js.wasm` (7.6 MB, loaded with the first STEP model) |
+| `licenses/…` | occt-import-js's and OpenCascade's LGPL-2.1 texts (`occt/LICENSE*.txt`), to ship with the worker |
 
 The Angular demo writes them with esbuild ([`scripts/assets.mjs`](../demo-angular/scripts/assets.mjs))
 into a folder that `angular.json` copies into the app as assets, for `ng build` and `ng serve`.
-Without them, `loadIpc2581` fails, and so does building the picking structures of large meshes.
+Without them, `loadIpc2581` fails, and so do building the picking structures of large meshes and
+reading STEP models (those components keep their placeholders).
 
 ## Server-side rendering
 

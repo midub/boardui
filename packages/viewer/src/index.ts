@@ -28,7 +28,26 @@ export {
 } from './element.js';
 export { type ElementKind, encodeIdSegment, featureId } from './ids.js';
 export type { BoardSource } from './load.js';
+export { MODEL_CACHE_NAME } from './model-cache.js';
+export {
+  flatten,
+  gltfLoader,
+  type ModelAttribution,
+  type ModelBoard,
+  type ModelComponent,
+  type ModelFormat,
+  type ModelGeometry,
+  type ModelLoader,
+  type ModelPart,
+  type ModelRef,
+  type ModelSource,
+  type ModelTransform,
+  modelLoader,
+  registerModelLoader,
+  transformMatrix,
+} from './model-sources.js';
 export type { RenderStats } from './renderer.js';
+export type { ModelFailure, ModelSourceStatus, ModelStatus } from './runtime-models.js';
 export type { WidgetAnchor, WidgetOcclusion, WidgetOptions } from './widgets.js';
 
 // Not defined where there is no DOM (server-side rendering), so importing the module is safe there.

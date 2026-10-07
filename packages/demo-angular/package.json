@@ -17,6 +17,7 @@
     "@boardui/angular": "workspace:*",
     "@boardui/converter": "workspace:*",
     "@boardui/demo-shared": "workspace:*",
+    "@boardui/models": "workspace:*",
     "@boardui/viewer": "workspace:*",
     "rxjs": "catalog:",
     "three": "catalog:",

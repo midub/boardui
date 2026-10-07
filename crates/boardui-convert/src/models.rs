@@ -12,7 +12,101 @@ use serde::Deserialize;
 #[serde(deny_unknown_fields)]
 struct Mapping {
     version: u32,
-    models: Vec<ModelRule>,
+    models: Vec<RawRule>,
+}
+
+/// A rule as written. Rules that only the viewer can apply (its runtime `mappingSource`:
+/// wildcards, `refDes` and attribute matches, URLs, templates, STEP and OBJ models) are
+/// skipped with a warning.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct RawRule {
+    #[serde(rename = "match")]
+    matcher: serde_json::Map<String, serde_json::Value>,
+    file: String,
+    #[serde(default)]
+    format: Option<String>,
+    #[serde(default)]
+    offset_mm: [f64; 3],
+    #[serde(default)]
+    rotation_deg: [f64; 3],
+    #[serde(default = "one")]
+    scale: f64,
+}
+
+impl RawRule {
+    /// The rule as the converter applies it, or (`Ok(Err(reason))`) why only the viewer can
+    /// apply it.
+    fn resolve(self, index: usize) -> Result<Result<ModelRule, String>, MappingError> {
+        let invalid = |what: &str| {
+            MappingError(format!(
+                "invalid model mapping: rule {index} (`{}`): {what}",
+                self.file
+            ))
+        };
+        if self.matcher.is_empty() {
+            return Err(invalid("`match` is empty"));
+        }
+        for (key, value) in &self.matcher {
+            let ok = match key.as_str() {
+                "part" | "package" | "refDes" => value.is_string(),
+                "attributes" => value
+                    .as_object()
+                    .is_some_and(|a| a.values().all(serde_json::Value::is_string)),
+                _ => return Err(invalid(&format!("unknown match field `{key}`"))),
+            };
+            if !ok {
+                return Err(invalid(&format!("`match.{key}` has the wrong type")));
+            }
+        }
+        let format = self.format.clone().or_else(|| {
+            Path::new(&self.file)
+                .extension()
+                .map(|e| e.to_string_lossy().to_ascii_lowercase())
+        });
+        let only = |reason: &str| Ok(Err(reason.to_owned()));
+        let single = (self.matcher.len() == 1)
+            .then(|| self.matcher.iter().next())
+            .flatten();
+        let matcher = match single {
+            Some((key, serde_json::Value::String(value))) if key == "part" || key == "package" => {
+                if value.contains(['*', '?']) {
+                    return only("it matches with wildcards");
+                }
+                if key == "part" {
+                    Match::Part {
+                        part: value.clone(),
+                    }
+                } else {
+                    Match::Package {
+                        package: value.clone(),
+                    }
+                }
+            }
+            _ => return only("it matches on more than the part or the package"),
+        };
+        if self.file.contains("://") {
+            return only("its file is a URL");
+        }
+        if self.file.contains('{') {
+            return only("its file is a template");
+        }
+        // Without a `format`, any file but STEP and OBJ is read as glTF, as before.
+        match (self.format.as_deref(), format.as_deref()) {
+            (Some("glb" | "gltf"), _) => {}
+            (Some(other), _) | (None, Some(other @ ("step" | "stp" | "obj"))) => {
+                return only(&format!("its model is {other}"));
+            }
+            (None, _) => {}
+        }
+        Ok(Ok(ModelRule {
+            matcher,
+            file: self.file,
+            offset_mm: self.offset_mm,
+            rotation_deg: self.rotation_deg,
+            scale: self.scale,
+        }))
+    }
 }
 
 /// One rule of the mapping file.
@@ -117,7 +211,18 @@ impl ModelLibrary {
         let mut models = Vec::new();
         let mut rule_models = Vec::new();
         let mut warnings = Vec::new();
-        for rule in &mapping.models {
+        let mut rules = Vec::new();
+        for (index, raw) in mapping.models.into_iter().enumerate() {
+            let file = raw.file.clone();
+            match raw.resolve(index)? {
+                Ok(rule) => rules.push(rule),
+                Err(reason) => warnings.push(format!(
+                    "model rule {index} (`{file}`) skipped: {reason}, which only the viewer's \
+                     runtime models read"
+                )),
+            }
+        }
+        for rule in &rules {
             if !(rule.scale.is_finite() && rule.scale > 0.0)
                 || !rule
                     .offset_mm
@@ -155,7 +260,7 @@ impl ModelLibrary {
             models.push(model);
         }
         Ok(Self {
-            rules: mapping.models,
+            rules,
             models,
             rule_models,
             warnings,
@@ -245,6 +350,55 @@ mod tests {
             [0.0, 0.002, 0.0],
             "node transforms are baked"
         );
+    }
+
+    #[test]
+    fn runtime_only_rules_are_skipped_with_a_warning() {
+        let json = r#"{"version":1,"models":[
+            {"match":{"package":"C*"},"file":"c.glb"},
+            {"match":{"refDes":"J1"},"file":"j1.glb"},
+            {"match":{"part":"X","package":"Y"},"file":"x.glb"},
+            {"match":{"attributes":{"MPN":"GRM155"}},"file":"m.glb"},
+            {"match":{"package":"QFN"},"file":"https://models.example/qfn.glb"},
+            {"match":{"package":"SOT"},"file":"{package}.glb"},
+            {"match":{"package":"R0402"},"file":"r.step"},
+            {"match":{"package":"R0603"},"file":"r.bin","format":"obj"},
+            {"match":{"package":"0402"},"file":"a.gltf"}]}"#;
+        let mut loads = Vec::new();
+        let library = ModelLibrary::from_json(json, |f| {
+            loads.push(f.to_owned());
+            Ok(triangle_gltf().into_bytes())
+        })
+        .unwrap();
+        assert_eq!(loads, ["a.gltf"]);
+        assert_eq!(library.rules.len(), 1);
+        assert!(library.find(None, "0402").is_some());
+        let reasons: Vec<_> = library
+            .warnings
+            .iter()
+            .map(|w| {
+                w.split(" skipped: ")
+                    .nth(1)
+                    .unwrap()
+                    .split(',')
+                    .next()
+                    .unwrap()
+            })
+            .collect();
+        assert_eq!(
+            reasons,
+            [
+                "it matches with wildcards",
+                "it matches on more than the part or the package",
+                "it matches on more than the part or the package",
+                "it matches on more than the part or the package",
+                "its file is a URL",
+                "its file is a template",
+                "its model is step",
+                "its model is obj",
+            ]
+        );
+        assert!(library.warnings[0].starts_with("model rule 0 (`c.glb`) skipped"));
     }
 
     #[test]

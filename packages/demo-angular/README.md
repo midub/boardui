@@ -32,7 +32,7 @@ Components that stand for one element of the page use attribute selectors
 (`<aside app-sidebar>`), so the DOM is the React demo's and the shared styles and e2e tests apply.
 
 `scripts/assets.mjs` (run by `dev` and `build`) writes `.generated/`, which `angular.json` copies
-into the app: the sample boards (`stageSamples` of `@boardui/demo-shared`), and the converter's and
-viewer's workers and the WASM module, which Angular's application builder doesn't bundle from
-dependencies (see [`@boardui/angular`](../angular/README.md#the-converters-worker-and-wasm-with-the-angular-cli)).
+into the app: the sample boards (`stageSamples` of `@boardui/demo-shared`), the third-party
+licences (`stageLicenses`), and the converter's, viewer's and STEP loader's workers and WASM
+modules, which Angular's application builder doesn't bundle from dependencies (see [`@boardui/angular`](../angular/README.md#the-workers-and-wasm-with-the-angular-cli)).
 `build` then fails if `dist/` contains an IPC consortium test case (`cli.js check-dist`).

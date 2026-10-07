@@ -1,6 +1,6 @@
 # 0007 Placeholder bodies plus user-supplied GLB models
 
-**Status:** Accepted, 2026-10-06
+**Status:** Accepted, 2026-10-06. Extended by [ADR 0014](0014-runtime-model-sources.md): the viewer loads models from servers at runtime.
 
 ## Context
 

@@ -2,12 +2,14 @@
  * The build helpers from the command line (`node dist/build/cli.js <command>`):
  *
  * - `sizes <dir>`: writes `sizes.js` and `sizes.d.ts` (the sample sizes) to `<dir>`;
- * - `stage <outDir>`: copies the sample files to `<outDir>/samples/`;
+ * - `stage <outDir>`: copies the sample files to `<outDir>/samples/` and the third-party licences
+ *   to `<outDir>/licenses/`;
  * - `check-dist <dir>…`: fails if a directory contains IPC consortium test data;
  * - `site <outDir>`: assembles the Pages site from the demos' `dist/`;
  * - `serve <dir> [port]`: serves a site at `http://127.0.0.1:<port>/boardui/` (default 4173).
  */
 import { checkDist } from './check-dist.js';
+import { stageLicenses } from './licenses.js';
 import { stageSamples, writeSampleSizes } from './samples.js';
 import { serveSite } from './serve.js';
 import { buildSite } from './site.js';
@@ -26,6 +28,7 @@ try {
       break;
     case 'stage':
       stageSamples(arg(0));
+      stageLicenses(arg(0));
       break;
     case 'check-dist':
       for (const dir of args) {

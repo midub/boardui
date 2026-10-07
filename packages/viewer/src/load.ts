@@ -10,10 +10,15 @@ export type BoardSource = string | URL | ArrayBuffer | Uint8Array;
  *
  * @param source URL of a `.glb`/`.gltf`, or the bytes of a GLB.
  * @param signal Aborts a pending download.
+ * @param base URL that relative URIs in the bytes of a glTF resolve against.
  */
-export async function loadGltf(source: BoardSource, signal?: AbortSignal): Promise<GLTF> {
+export async function loadGltf(
+  source: BoardSource,
+  signal?: AbortSignal,
+  base = '',
+): Promise<GLTF> {
   let data: ArrayBuffer;
-  let path = '';
+  let path = base;
   if (typeof source === 'string' || source instanceof URL) {
     const url = String(source);
     const response = await fetch(url, signal ? { signal } : {});

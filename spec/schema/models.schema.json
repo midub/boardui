@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/midub/boardui/spec/schema/models.schema.json",
   "title": "boardui component model mapping",
-  "description": "Maps parts or packages to user-supplied glTF/GLB body models (boardui convert --models). Model conventions: Y-up, metres, origin at the package origin, top-side placement at 0° rotation, seating plane at y = 0. Matching tries part rules first, then package rules; the first match wins. See spec/README.md §6.9.",
+  "description": "Maps components to body models: for the converter (boardui convert --models, spec §6.9) and for the viewer at runtime (mappingSource of @boardui/models, spec §6.15). Model conventions: Y-up, metres, origin at the package origin, top-side placement at 0° rotation, seating plane at y = 0 (STEP models are read as Z-up millimetres and converted). Rules that match more than the package (part, refDes, attributes) are tried first, then rules that match the package only, each in file order; the first match wins. The converter applies rules that match exactly one part or package by name to a local glTF/GLB file, and skips the others (wildcards, refDes and attribute matches, URLs, templates, STEP and OBJ models) with a warning.",
   "type": "object",
   "required": ["version", "models"],
   "properties": {
@@ -14,24 +14,28 @@
         "required": ["match", "file"],
         "properties": {
           "match": {
-            "oneOf": [
-              {
+            "description": "What the rule matches; every given field must match. `*` stands for any text and `?` for one character (viewer only).",
+            "type": "object",
+            "minProperties": 1,
+            "properties": {
+              "part": { "type": "string" },
+              "package": { "type": "string" },
+              "refDes": { "description": "Viewer only.", "type": "string" },
+              "attributes": {
+                "description": "BOM attributes of the component (spec §8.4), e.g. {\"MPN\": \"GRM155*\"}. Viewer only.",
                 "type": "object",
-                "required": ["part"],
-                "properties": { "part": { "type": "string" } },
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "required": ["package"],
-                "properties": { "package": { "type": "string" } },
-                "additionalProperties": false
+                "additionalProperties": { "type": "string" }
               }
-            ]
+            },
+            "additionalProperties": false
           },
           "file": {
-            "description": "Path to a .glb or .gltf file, relative to the mapping file.",
+            "description": "Path of the model, relative to the mapping file. The viewer also takes an absolute URL and placeholders, filled in URL-encoded: {part}, {package}, {refDes}, {side}, {mount} and attribute names such as {MPN}; a rule whose placeholder has no value doesn't match.",
             "type": "string"
+          },
+          "format": {
+            "description": "The model's format; default from the file extension (.glb, .gltf, .step/.stp, .obj; the converter reads any other as glTF). The converter reads glb and gltf only.",
+            "enum": ["glb", "gltf", "step", "obj"]
           },
           "offsetMm": {
             "description": "Translation applied in the model's frame, in millimetres.",

@@ -46,6 +46,9 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 | `ids(kind)` | All IDs of a kind: `'layer'`, `'component'`, `'pin'`, `'net'` or `'instance'`. |
 | `stats()` | Backend, draw calls and triangles of the last frame, and the number of frames rendered. |
 | `autoRotate` | Orbits the camera continuously; the board is then rendered every frame (frame-rate measurements). |
+| `modelSources` | Where runtime models come from, tried in order (see "Runtime models"); default none. Setting it starts over for the loaded board. |
+| `modelsShown` | Runtime models shown (default) or the placeholder bodies they replace. |
+| `modelStatus` | The runtime models of the loaded board so far (as in `bui-model-progress`), or `null`. |
 
 Events (`bubbles`, `composed`): `bui-hover` when the element under the pointer changes, and
 `bui-select` when the user clicks an element or empty space; `detail` is `info(id)`, or `null`.
@@ -72,6 +75,62 @@ backend (read when the element connects).
 
 Methods that take one ID throw a `RangeError` for unknown IDs; `highlight` and `hide` skip unknown
 IDs. All of them need a loaded board.
+
+### Runtime models
+
+After every load the viewer can replace placeholder bodies (spec §6.8) with real models, fetched
+in the background from **model sources**: KiCad's library on gitlab.com, your own server, or
+anything that implements `ModelSource`. [`@boardui/models`](../models/README.md) has the sources
+and the STEP and OBJ loaders; the viewer itself loads glTF/GLB and doesn't depend on OpenCascade.
+
+```js
+import { kicadSource, mappingSource, registerLoaders } from '@boardui/models';
+registerLoaders(); // STEP (worker, loaded on first use) and OBJ
+viewer.modelSources = [mappingSource('https://models.example.com/models.json'), kicadSource()];
+viewer.addEventListener('bui-model-done', (e) => console.log(e.detail.loaded, 'models'));
+```
+
+- **Which components.** Those whose body is a placeholder (materials `boardui/body` and
+  `boardui/pin1`). Models embedded by the converter (`--models`) are never replaced, and
+  components without a body get none: the converter leaves them out on purpose (test points,
+  fiducials, logos, mounting holes, packages as large as the board).
+- **Sources** are asked in order per component: `resolve(component, board, signal)` gets the
+  component (`id`, `refDes`, `part`, `package`, `side`, `mount`, `attributes` from
+  `extras.boardui.attributes`, `{}` without) and the board (`profileVersion`, `source` with
+  `software` from profile 0.8), and returns a `ModelRef` or `null`. The first model that resolves
+  and loads wins; `null`, a rejection, a missing file (HTTP 404), a parse error or a model
+  without triangles falls through to the next source; with none the placeholder stays.
+- **`ModelRef`**: `key` (dedupe, sharing, cache), `url` or
+  `load(signal)` (bytes, or `null` for missing), `format` (`glb`, `gltf`, `step`, `obj` or any
+  registered one), `transform` into the package frame (`offsetMm`, `rotationDeg`, `scale` with
+  the mapping file's semantics, spec §6.9, or a column-major `matrix`), `immutable` (the content
+  behind the key never changes, so the model goes into the persistent cache) and `attribution`.
+- **Loaders** turn bytes into parts (`{ geometry, material }`, Y up in metres):
+  `registerModelLoader(format, loader)`. GLB and glTF are built in (default scene flattened, node
+  transforms baked in). A loader with `cacheVersion` (STEP) has its parsed geometry cached instead
+  of the file.
+- **In the scene.** A model replaces the placeholder body and its pin-1 marker. Components with
+  the same key share the geometry and are instanced, one batch per material, on the component's
+  state texel: hover, picking, selection, highlights, widgets, `hide`, the component toggle and
+  framing work as with placeholders, and `info()` doesn't change. `modelsShown = false` shows the
+  placeholders again.
+- **Loading** never delays `bui-load`: the board shows with placeholders, and models swap in as
+  they arrive, in batches of scene updates (at most one per 150 ms). Eight components are
+  resolved at a time, each key is loaded once, and the next load, unload or `modelSources` stops
+  the run.
+- **Cache.** Immutable models (the file, or the parsed geometry of loaders with `cacheVersion`)
+  and immutable missing files go into Cache Storage (`boardui-models-v1`, by key; secure contexts
+  only), so a board's second load makes no requests for them and parses no STEP. This cache never
+  revalidates; other models are fetched again on every load, through the HTTP cache. Cache errors
+  are ignored. Models stay in memory while the
+  element lives, pruned to those of the current board.
+
+Events: `bui-model-progress` after each batch, and `bui-model-done` when every component has been
+tried (not when a load stops the run first). `detail` (`ModelStatus`): `total` (components with a
+placeholder body), `done`, `loaded`, per source `{ name, attribution, loaded, missing, failed }`,
+the first 50 `failures` (`{ source, component, key, message }`) and `failureCount`, `models`
+(distinct keys), `cached`, `requests` and `bytes` (the viewer's model downloads; sources that
+fetch themselves count their own), `triangles` (added, all instances), `ms` and `complete`.
 
 ### Widgets
 
@@ -103,6 +162,8 @@ component) is switched off or the element is hidden with `hide`.
   tint.
 - **Components.** Component nodes that share geometry and material become one `InstancedMesh`; an
   instanced attribute carries each instance's component row into the same state-texture lookup.
+  Runtime models are batched the same way (`src/bodies.ts`); the placeholder batches they replace
+  draw only their remaining instances.
 - **Picking.** `three-mesh-bvh` BVHs per layer mesh, three's instanced ray cast for components.
   Meshes with 50k triangles or more get their BVH built in Web Workers (`src/bvh.worker.ts`, a pool
   of up to three) from copies of their positions and indices, so loading a dense board doesn't
