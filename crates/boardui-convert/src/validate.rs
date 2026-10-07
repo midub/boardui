@@ -973,28 +973,24 @@ impl Validator<'_> {
             .structural_metadata
             .as_ref()
             .expect("checked");
+        // A layer that repeats another has that layer's table and geometry, checked there.
         let repeats = self.repeats(board);
+        for (layer, earlier) in board.layers.iter().zip(&repeats) {
+            if let Some(earlier) = earlier.map(|e| &board.layers[e])
+                && layer.feature_table != earlier.feature_table
+            {
+                self.report.error(format!(
+                    "`{}` shares the mesh of `{}` but not its feature table",
+                    layer.id, earlier.id
+                ));
+            }
+        }
         let entries = board
             .layers
             .iter()
             .zip(&repeats)
-            .filter_map(|(l, &repeats)| match repeats {
-                // A layer that repeats another has that layer's table and geometry, checked
-                // there.
-                Some(earlier) => {
-                    let earlier = &board.layers[earlier];
-                    if l.feature_table != earlier.feature_table {
-                        self.report.error(format!(
-                            "`{}` shares the mesh of `{}` but not its feature table",
-                            l.id, earlier.id
-                        ));
-                    }
-                    None
-                }
-                None => Some((l.id.as_str(), l.node, l.feature_table, Some(l))),
-            })
-            .collect::<Vec<_>>()
-            .into_iter()
+            .filter(|(_, earlier)| earlier.is_none())
+            .map(|(l, _)| (l.id.as_str(), l.node, l.feature_table, Some(l)))
             .chain(
                 board
                     .drills
