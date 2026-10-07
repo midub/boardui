@@ -21,7 +21,7 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   with their nets and component pins, so pins are checked against pads. A hole that is also on
   a drill layer (Altium's `Drill Guide`) is drilled once; a span without a drill layer gets a
   synthesized `@drill-<from>-<to>` (profile 0.7: drill layers may be synthesized;
-  [spec §5](spec/README.md#5-ids), [§6.3](spec/README.md#63-holes-and-barrels)).
+  [spec §5](spec/README.md#5-element-identifiers), [§6.3](spec/README.md#63-holes-and-barrels)).
 - A copper-function layer with `side="NONE"` or a non-copper stack-up `materialType` (Altium's
   core) is a dielectric, with a warning: LDO-PCB is 0.39 mm thick instead of 1.6 mm
   ([spec §6.4](spec/README.md#64-stack-up)).

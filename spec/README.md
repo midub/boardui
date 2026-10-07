@@ -1,6 +1,6 @@
 # boardui glTF profile
 
-**Version 0.6 — draft**
+**Version 0.7 — draft**
 
 This document specifies how boardui represents a printed circuit board as a glTF 2.0 asset. The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
@@ -72,7 +72,7 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 | instance | `inst/<instance>` | panel layout unchanged |
 
 - Each `<…>` segment is percent-encoded. `%`, `/`, `#`, `@`, whitespace (Unicode `White_Space`) and control characters MUST be written as `%XX`: one `%XX` per UTF-8 byte, with upper-case hex digits. Other characters MUST NOT be encoded, so every ID has exactly one spelling.
-- Layers that the converter synthesizes (§6.3, §6.4, §6.5, §6.13) get names starting with an unencoded `@`, for example `layer/@soldermask-top`. Because `@` in source names is always encoded, the two never collide.
+- Layers that the converter synthesizes (§6.3 since 0.7, §6.4, §6.5, §6.13) get names starting with an unencoded `@`, for example `layer/@soldermask-top`. Because `@` in source names is always encoded, the two never collide.
 - `<n>` is the 0-based index of the feature among the layer's source features in document order. The step's `LayerFeature` elements for that layer are walked in document order (a step may split one layer over several of them), counting every `Pad`, `Features`, fiducial (`GlobalFiducial`, `LocalFiducial`, `BadBoardMark`, `GoodPanelMark`), `Hole` and `SlotCavity` element of their `Set`s. In revision A and B files, the features of the step's `PadStack`s (§6.3) follow, in document order: each `LayerPad` on its layer, and each `LayerHole` the converter adds on its drill layer.
 - Features drawn from package drawings (§6.13) follow the layer's source features: they are numbered on from the last one, in the order of §6.13 (from 0 on a synthesized layer).
 - Soldermask and dielectric layers have a single feature, their sheet (§6.5, §6.7), with `n = 0`. The source features of a soldermask layer are its openings; they shape the sheet but get no rows of their own.
@@ -357,7 +357,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 
 ```json
 "BOARDUI_board": {
-  "profileVersion": "0.6",
+  "profileVersion": "0.7",
   "source": {
     "format": "IPC-2581",
     "revision": "C",
