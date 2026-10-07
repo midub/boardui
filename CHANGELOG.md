@@ -39,7 +39,7 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   a dielectric whose sheet repeats an earlier dielectric's shares that layer's mesh, scaled and
   moved in Z by its node transform, and its feature table ([spec §4](spec/README.md#4-scene-structure),
   [ADR 0016](docs/adr/0016-shared-dielectric-sheets.md)). testcase1-RevC-full shrinks from
-  277 MB to 207 MB. `boardui validate` accepts exactly this transform on layer nodes; files of
+  277 MB to 203 MB. `boardui validate` accepts exactly this transform on layer nodes; files of
   profile 0.9 and older load as before. New sample `stacked-sheets`.
 
 - **Component attributes (profile 0.8, still a draft):** the converter reads the BOM, the

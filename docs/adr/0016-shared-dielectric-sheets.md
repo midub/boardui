@@ -36,7 +36,7 @@ primitives to name that layer's feature table, so every sheet was stored again.
 
 ## Consequences
 
-- testcase1-RevC-full: 277 MB → 207 MB; conversion skips extruding and writing 10 sheets.
+- testcase1-RevC-full: 277 MB → 203 MB; conversion skips extruding and writing 10 sheets.
 - Readers that merge layer meshes must apply node transforms. The boardui viewer always did
   (`mergeLayer` uses `matrixWorld`); generic glTF viewers do anyway. A reader that assumed
   identity transforms on layer nodes draws a repeat at the first layer's height.

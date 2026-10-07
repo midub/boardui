@@ -453,8 +453,10 @@ pub(crate) fn run(
                 same_sheet[i].filter(|&j| colours[i] == colours[j] && extrudes(i) && extrudes(j))
             })
             .collect();
-        let mut meshes = par::map(&finals, |i, (_, regions)| {
+        let mut meshes = par::map(&finals, |i, _| {
             let layer = &stack.layers[i];
+            // A repeat that doesn't share has no sheet of its own: it extrudes the earlier one.
+            let regions = &finals[same_sheet[i].unwrap_or(i)].1;
             match repeats[i] {
                 Some(_) => (LayerMesh::default(), Vec::new()),
                 None => extrude(&layer.name, regions, layer.z_min, layer.z_max),
