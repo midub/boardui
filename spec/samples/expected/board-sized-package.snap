@@ -3,13 +3,13 @@ source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step board, FABRICATION
 thickness: 1.6000 mm
-counts: 13 features, 184 vertices, 356 triangles, 0 nets, 3 components, 10 pins (10 checked against pads)
+counts: 15 features, 216 vertices, 420 triangles, 0 nets, 4 components, 12 pins (12 checked against pads)
 warnings: 0 from the reader, 0 from the converter
 layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
-  1 features {"Sheet": 1}, 88 vertices, 212 triangles, top area 310.0000 mm²
-    row 0: Sheet net - area 310.0000 mm²
+  1 features {"Sheet": 1}, 104 vertices, 252 triangles, top area 308.0000 mm²
+    row 0: Sheet net - area 308.0000 mm²
 layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
-  10 features {"Pad": 10}, 80 vertices, 120 triangles, top area 10.0000 mm²
+  12 features {"Pad": 12}, 96 vertices, 144 triangles, top area 12.0000 mm²
     row 0: Pad net - area 1.0000 mm²
     row 1: Pad net - area 1.0000 mm²
     row 2: Pad net - area 1.0000 mm²
@@ -20,6 +20,8 @@ layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
     row 7: Pad net - area 1.0000 mm²
     row 8: Pad net - area 1.0000 mm²
     row 9: Pad net - area 1.0000 mm²
+    row 10: Pad net - area 1.0000 mm²
+    row 11: Pad net - area 1.0000 mm²
 layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
   1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 320.0000 mm²
     row 0: Sheet net - area 320.0000 mm²
@@ -28,7 +30,8 @@ layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
 layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
   1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 320.0000 mm²
     row 0: Sheet net - area 320.0000 mm²
-components: 3
+components: 4
   U1 at (10.0000, 0.8000, -8.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
   U2 at (7.0000, 0.8000, -8.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder MODULE_8X8
   R1 at (15.0000, 0.8000, -8.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0603
+  U3 at (10.0000, 0.8000, -8.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder SHIELD_BOARD

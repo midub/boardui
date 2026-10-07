@@ -1062,7 +1062,7 @@ def board_sized_package():
     U1's footprint is the board itself, as for a carrier board made to drop in for a module
     (MIAO's XIAO footprint): its outline covers the 20 × 16 mm board and its pads ring the
     edge. It gets no body but stays a component. U2, a module covering a fifth of the board,
-    and R1 get bodies.
+    and R1 get bodies, and so does U3, a board-sized shield whose height the file gives.
     """
     d = Doc()
     d.line_desc("OUTLINE", 0.1)
@@ -1073,6 +1073,7 @@ def board_sized_package():
         "MODULE_BOARD": ((-10, -8, 10, 8), [(-9, -7), (9, -7), (9, 7), (-9, 7)]),
         "MODULE_8X8": ((-4, -4, 4, 4), [(-3, -3), (3, -3), (3, 3), (-3, 3)]),
         "R0603": ((-1.2, -0.6, 1.2, 0.6), [(-0.8, 0), (0.8, 0)]),
+        "SHIELD_BOARD": ((-10, -8, 10, 8), [(-9, 0), (9, 0)]),
     }
     for name, (box, pins) in packages.items():
         pin_xml = "".join(
@@ -1085,9 +1086,15 @@ def board_sized_package():
             f"{pin_xml}</Package>"
         )
     pads = []
-    for ref, package, x, y in [("U1", "MODULE_BOARD", 10, 8), ("U2", "MODULE_8X8", 7, 8), ("R1", "R0603", 15, 8)]:
+    parts = [
+        ("U1", "MODULE_BOARD", 10, 8, ""),
+        ("U2", "MODULE_8X8", 7, 8, ""),
+        ("R1", "R0603", 15, 8, ""),
+        ("U3", "SHIELD_BOARD", 10, 8, f' height="{d.u(1.5)}"'),
+    ]
+    for ref, package, x, y, height in parts:
         d.step.append(
-            f'<Component refDes="{ref}" packageRef="{package}" layerRef="TOP" mountType="SMT">'
+            f'<Component refDes="{ref}" packageRef="{package}" layerRef="TOP" mountType="SMT"{height}>'
             f"<Location {d.xy(x, y)}/></Component>"
         )
         for n, (px, py) in enumerate(packages[package][1], 1):

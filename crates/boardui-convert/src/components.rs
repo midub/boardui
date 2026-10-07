@@ -129,11 +129,18 @@ pub(crate) fn build(
                 let pad_less = package.pins.is_empty()
                     || (!pads_by_component.is_empty()
                         && !pads_by_component.contains_key(c.ref_des.as_str()));
+                // A height from the file means a real body (a shield, a display); only a
+                // guessed one is dropped for covering the board.
+                let guessed = !c
+                    .height
+                    .or(package.height)
+                    .is_some_and(|h| h.is_finite() && h > 0.0);
                 match body_range(c, package, pad_less, shapes) {
                     Some((_, _, outline))
-                        if board.as_ref().is_some_and(|board| {
-                            covers_board(package, &outline, at, board, shapes)
-                        }) =>
+                        if guessed
+                            && board.as_ref().is_some_and(|board| {
+                                covers_board(package, &outline, at, board, shapes)
+                            }) =>
                     {
                         None
                     }
