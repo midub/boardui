@@ -4,7 +4,7 @@ source: crates/boardui-convert/tests/conformance.rs
 source: IPC-2581 rev C, step egg250-panel, ASSEMBLY
 thickness: 1.5800 mm
 counts: 663 features, 64986 vertices, 126544 triangles, 20 nets, 101 components, 157 pins (106 checked against pads)
-warnings: 19 from the reader, 2 from the converter
+warnings: 15 from the reader, 2 from the converter
   - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
   - the profile of step `egg250-panel` has no cutouts; the closed contours inside it were cut out: 3 on layer `Edge.Cuts`
 layer layer/F.Courtyard Courtyard Top z 0.9000..0.9100 mm Default hidden

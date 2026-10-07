@@ -1134,10 +1134,7 @@ mod step {
         assert_eq!(
             profile.polygon.xform,
             Xform {
-                offset: Point {
-                    x: mm(0.5),
-                    y: 0.0
-                },
+                offset: Point { x: mm(0.5), y: 0.0 },
                 rotation: 90.0,
                 ..Xform::default()
             }
@@ -1156,7 +1153,10 @@ mod step {
             }
         );
         // A cutout may have a stroke and a fill like any polygon.
-        assert_eq!(profile.cutouts[0].fill, Some(FillStyle::Ref("F".to_owned())));
+        assert_eq!(
+            profile.cutouts[0].fill,
+            Some(FillStyle::Ref("F".to_owned()))
+        );
         assert_eq!(profile.cutouts[1].xform.rotation, 45.0);
         let outline = s.packages.get("P").unwrap().outline.as_ref().unwrap();
         assert_eq!(outline.polygon.xform.rotation, 30.0);
@@ -1384,7 +1384,10 @@ mod step {
             <Package name="LOWER" pinOne="unknown"><Pin number="1"/></Package>"#,
         )
         .unwrap();
-        assert_eq!(kinds(&d.diagnostics), [&dangling(RefKind::Pin, "LOWER/unknown")]);
+        assert_eq!(
+            kinds(&d.diagnostics),
+            [&dangling(RefKind::Pin, "LOWER/unknown")]
+        );
         let packages = &d.ecad.steps.get("S").unwrap().packages;
         let pin_one = |name: &str| packages.get(name).unwrap().pin_one.as_deref();
         assert_eq!(pin_one("LOGO"), None);
