@@ -57,7 +57,9 @@ pub enum Shape {
     Polygon(Polygon),
     /// `Outline`: a stroked polygon outline.
     Outline(Outline),
-    /// A shape element the reader cannot describe, for example `Text`. A
+    /// `Text`: a string set in a font.
+    Text(Box<Text>),
+    /// A shape element the reader cannot describe, for example one from a newer revision. A
     /// [`UnsupportedShape`](crate::DiagnosticKind::UnsupportedShape) warning was recorded.
     Unsupported {
         /// Local name of the element.
@@ -349,6 +351,74 @@ pub struct Contour {
     pub polygon: Polygon,
     /// `Cutout` paths, in document order.
     pub cutouts: Vec<Path>,
+}
+
+/// `Text`: a string set in a font, placed by its `Xform` and sized by its `BoundingBox`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Text {
+    /// `textString`.
+    pub string: String,
+    /// `fontSize`, if given. The text is sized by its bounding box; this is kept as written.
+    pub font_size: Option<u32>,
+    /// `Xform`. Absent: identity.
+    pub xform: Xform,
+    /// `BoundingBox`: lower-left corner (`lowerLeftX`, `lowerLeftY`).
+    pub lower_left: Point,
+    /// `BoundingBox`: upper-right corner (`upperRightX`, `upperRightY`).
+    pub upper_right: Point,
+    /// `FontRef@id`: an entry of [`Content::fonts`](crate::Content::fonts), if given.
+    pub font_ref: Option<String>,
+    /// Stroke from a `LineDesc` or `LineDescRef` child, if given. Rev C has no such child; it
+    /// is read because the stroke width of text in a bundled font is otherwise unknown.
+    pub line: Option<LineStyle>,
+    /// Colour from a `Color`, `ColorRef` or `ColorTerm` child, if given.
+    pub color: Option<crate::SpecColor>,
+}
+
+/// A font of `DictionaryFont`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Font {
+    /// `FontDefEmbedded`: a font whose glyphs are in the file.
+    Embedded(EmbeddedFont),
+    /// `FontDefExternal`: a font known by name only.
+    External {
+        /// `name`.
+        name: String,
+        /// `urn`.
+        urn: String,
+    },
+}
+
+/// `FontDefEmbedded`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EmbeddedFont {
+    /// `name`.
+    pub name: String,
+    /// The font's stroke (`LineDesc` or `LineDescRef`), if given.
+    pub line: Option<LineStyle>,
+    /// `Glyph`s in document order.
+    pub glyphs: Vec<Glyph>,
+}
+
+impl EmbeddedFont {
+    /// The glyph of a character, if the font has one.
+    pub fn glyph(&self, c: char) -> Option<&Glyph> {
+        self.glyphs.iter().find(|g| g.char_code == u32::from(c))
+    }
+}
+
+/// `Glyph` of an embedded font. Coordinates are in the units of its `DictionaryFont`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Glyph {
+    /// `charCode`: the `xsd:hexBinary` value read as a big-endian Unicode code point, so
+    /// `41` and `0041` are both `A`.
+    pub char_code: u32,
+    /// `lowerLeftX`, `lowerLeftY`: lower-left corner of the glyph's cell.
+    pub lower_left: Point,
+    /// `upperRightX`, `upperRightY`: upper-right corner of the glyph's cell.
+    pub upper_right: Point,
+    /// The glyph's shapes (`Line`, `Arc`, `Polyline`, `Outline`) in document order.
+    pub shapes: Vec<Shape>,
 }
 
 /// A stroke: an inline `LineDesc` or a `LineDescRef`.

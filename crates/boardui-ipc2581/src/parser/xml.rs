@@ -391,6 +391,15 @@ impl<R: BufRead> Parser<R> {
         })
     }
 
+    /// A required `xsd:hexBinary` of at most four bytes, read as a big-endian number.
+    pub(super) fn req_hex(&mut self, attribute: &str) -> Result<u32, Error> {
+        self.req_with(attribute, "up to 8 hexadecimal digits", |s| {
+            let s = s.trim();
+            let even = s.len() % 2 == 0 && (2..=8).contains(&s.len());
+            even.then(|| u32::from_str_radix(s, 16).ok()).flatten()
+        })
+    }
+
     /// An optional enumerated attribute.
     pub(super) fn opt_enum<T: AttrEnum>(&mut self, attribute: &str) -> Result<Option<T>, Error> {
         self.opt_with(attribute, T::EXPECTED, |s| T::from_attr(s.trim()))

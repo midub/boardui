@@ -180,7 +180,7 @@ impl Transform {
 }
 
 /// A row of a layer's or drill's feature table (spec §8.2).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FeatureRow {
     /// `kind`.
     pub kind: FeatureKind,
@@ -194,6 +194,8 @@ pub struct FeatureRow {
     pub component: Option<u32>,
     /// The fiducial type of a [`FeatureKind::Fiducial`] feature.
     pub fiducial: Option<Fiducial>,
+    /// The strings of the `Text`s the feature draws, joined by line feeds; empty if none.
+    pub text: String,
 }
 
 /// A layer of the board (spec §4, §8.3).
@@ -770,6 +772,10 @@ impl Writer {
                     .collect(),
             ));
         }
+        columns.push(Column::Strings(
+            "text",
+            rows.iter().map(|r| r.text.clone()).collect(),
+        ));
         self.table(id, "feature", rows.len(), columns)
     }
 }

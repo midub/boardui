@@ -4,7 +4,10 @@ use boardui_geom::{ArcDirection, DVec2, LineCap, Path, Shape, Stroke, Tolerance}
 use boardui_ipc2581 as ipc;
 use glam::DAffine2;
 use ipc::{FillProperty, LineEnd, LineProperty, PrimitiveKind, RingShape};
+use std::collections::BTreeSet;
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
+
+use crate::text::{CAP_HEIGHT, DESCENT, STROKE_WIDTH, StrokeFont, StrokeGlyph};
 
 /// How deep `UserPrimitiveRef`s may nest before the shape is given up as cyclic.
 const MAX_DEPTH: usize = 16;
@@ -20,6 +23,9 @@ const MAX_DASHES: f64 = 100_000.0;
 
 /// Most rings a `Moire` may have.
 const MAX_MOIRE_RINGS: u32 = 1024;
+
+/// Most characters without a glyph listed in the warning about them.
+const MAX_LISTED_CHARACTERS: usize = 10;
 
 /// The order in which an `Xform` mirrors and rotates.
 ///
@@ -61,16 +67,47 @@ pub fn point(p: ipc::Point) -> DVec2 {
 /// Whether a shape draws lines (strokes) rather than areas. Used to classify traces.
 pub fn is_stroke(shape: &ipc::Shape, content: &ipc::Content) -> bool {
     match shape {
-        ipc::Shape::Line(_) | ipc::Shape::Arc(_) | ipc::Shape::Polyline(_) => true,
+        ipc::Shape::Line(_)
+        | ipc::Shape::Arc(_)
+        | ipc::Shape::Polyline(_)
+        | ipc::Shape::Text(_) => true,
         ipc::Shape::UserSpecial(shapes) => {
             !shapes.is_empty() && shapes.iter().all(|s| is_stroke(s, content))
         }
-        ipc::Shape::UserRef(id) => content
-            .user_primitives
-            .get(id)
-            .is_some_and(|s| matches!(s, ipc::Shape::UserSpecial(_)) && is_stroke(s, content)),
+        ipc::Shape::UserRef(id) => content.user_primitives.get(id).is_some_and(|s| {
+            matches!(s, ipc::Shape::UserSpecial(_) | ipc::Shape::Text(_)) && is_stroke(s, content)
+        }),
         _ => false,
     }
+}
+
+/// The strings of the `Text`s a shape draws, in document order (spec §8.2).
+pub fn texts<'a>(shape: &'a ipc::Shape, content: &'a ipc::Content) -> Vec<&'a str> {
+    fn walk<'a>(
+        shape: &'a ipc::Shape,
+        content: &'a ipc::Content,
+        depth: usize,
+        out: &mut Vec<&'a str>,
+    ) {
+        match shape {
+            _ if depth > MAX_DEPTH => {}
+            ipc::Shape::Text(text) => out.push(&text.string),
+            ipc::Shape::UserSpecial(shapes) => {
+                for s in shapes {
+                    walk(s, content, depth + 1, out);
+                }
+            }
+            ipc::Shape::UserRef(id) => {
+                if let Some(s) = content.user_primitives.get(id) {
+                    walk(s, content, depth + 1, out);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    walk(shape, content, 0, &mut out);
+    out
 }
 
 /// Whether a shape only erases: it is drawn with `ERASE` lines (spec §6.1). Such a feature
@@ -109,7 +146,7 @@ fn erases_at(shape: &ipc::Shape, content: &ipc::Content, depth: usize) -> bool {
         ipc::Shape::UserSpecial(shapes) => {
             !shapes.is_empty() && shapes.iter().all(|s| erases_at(s, content, depth + 1))
         }
-        ipc::Shape::Outline(_) | ipc::Shape::Unsupported { .. } => false,
+        ipc::Shape::Outline(_) | ipc::Shape::Text(_) | ipc::Shape::Unsupported { .. } => false,
     }
 }
 
@@ -121,6 +158,10 @@ pub struct ShapeConverter<'a> {
     pub order: MirrorOrder,
     /// Messages about shapes that were approximated or dropped.
     pub warnings: Vec<String>,
+    /// Characters of `Text`s that no font has a glyph for.
+    missing_glyphs: BTreeSet<char>,
+    /// How many `Text`s were scaled down to fit their bounding box.
+    text_overflows: usize,
 }
 
 impl<'a> ShapeConverter<'a> {
@@ -131,7 +172,41 @@ impl<'a> ShapeConverter<'a> {
             tolerance,
             order,
             warnings: Vec::new(),
+            missing_glyphs: BTreeSet::new(),
+            text_overflows: 0,
         }
+    }
+
+    /// Takes the warnings, including the ones that summarize all `Text`s. A text too wide for
+    /// its box gives one warning each, to be merged into one with a count.
+    pub fn take_warnings(&mut self) -> Vec<String> {
+        if !self.missing_glyphs.is_empty() {
+            let mut listed: Vec<_> = self
+                .missing_glyphs
+                .iter()
+                .take(MAX_LISTED_CHARACTERS)
+                .map(|&c| format!("U+{:04X}", u32::from(c)))
+                .collect();
+            let more = self
+                .missing_glyphs
+                .len()
+                .saturating_sub(MAX_LISTED_CHARACTERS);
+            if more > 0 {
+                listed.push(format!("and {more} more"));
+            }
+            self.warnings.push(format!(
+                "text characters without a glyph are drawn as boxes: {}",
+                listed.join(", ")
+            ));
+        }
+        let overflow = "a text wider than its bounding box was scaled down to fit";
+        self.warnings.extend(std::iter::repeat_n(
+            overflow.to_owned(),
+            self.text_overflows,
+        ));
+        self.missing_glyphs.clear();
+        self.text_overflows = 0;
+        std::mem::take(&mut self.warnings)
     }
 
     /// The placement of an element with this file's mirror order.
@@ -255,10 +330,161 @@ impl<'a> ShapeConverter<'a> {
                 let line = self.content.line_desc(&outline.line).copied();
                 self.filled_with_line(vec![p], Fill::Solid, line, at)
             }
+            ipc::Shape::Text(text) if mode == Mode::Area => self.text(text, at, depth),
+            ipc::Shape::Text(_) => None,
             ipc::Shape::Unsupported { element } => {
                 self.warn(format!("unsupported shape `{element}` has no geometry"));
                 None
             }
+        }
+    }
+
+    /// `Text` (spec §6.1): its string in its embedded font, or in the bundled stroke font,
+    /// fitted into its bounding box.
+    fn text(&mut self, text: &ipc::Text, at: DAffine2, depth: usize) -> Option<Shape> {
+        let at = at * self.placement(ipc::Point::default(), &text.xform);
+        let font = self.font(text);
+        let bundled = StrokeFont::get();
+        // The font's cell in font units: the bounding box's height is fitted to it.
+        let (bottom, top) = match font {
+            Some(f) => cell(f)?,
+            None => (-DESCENT, CAP_HEIGHT),
+        };
+        // Bundled glyphs in text with an embedded font are scaled to its cell.
+        let k = (top - bottom) / (CAP_HEIGHT + DESCENT);
+        let mut glyphs = Vec::new();
+        let mut pen = 0.0;
+        for c in text.string.chars() {
+            let glyph = match font.and_then(|f| f.glyph(c)) {
+                Some(g) => Glyph::Embedded(g),
+                None => {
+                    if let Some(f) = font.filter(|_| !c.is_whitespace()) {
+                        self.warn(format!(
+                            "embedded font `{}` lacks some characters; they are drawn with the bundled font",
+                            f.name
+                        ));
+                    }
+                    Glyph::Bundled(bundled.glyph(c).unwrap_or_else(|| {
+                        self.missing_glyphs.insert(c);
+                        bundled.missing()
+                    }))
+                }
+            };
+            glyphs.push((pen, glyph));
+            pen += match glyph {
+                Glyph::Embedded(g) => (g.upper_right.x - g.lower_left.x).max(0.0),
+                Glyph::Bundled(g) => g.advance * k,
+            };
+        }
+        let min = point(text.lower_left).min(point(text.upper_right));
+        let size = (point(text.lower_left) - point(text.upper_right)).abs();
+        if size.x == 0.0 || size.y == 0.0 {
+            self.warn("texts with an empty bounding box were dropped".into());
+            return None;
+        }
+        // Height drives the size; text too wide for the box is scaled down and centred
+        // vertically.
+        let mut s = size.y / (top - bottom);
+        let mut lift = 0.0;
+        if pen * s > size.x * (1.0 + 1e-6) {
+            self.text_overflows += 1;
+            s = size.x / pen;
+            lift = (size.y - (top - bottom) * s) / 2.0;
+        }
+        let fit = at
+            * DAffine2::from_translation(DVec2::new(min.x, min.y + lift))
+            * DAffine2::from_scale(DVec2::splat(s))
+            * DAffine2::from_translation(DVec2::new(0.0, -bottom));
+        let stroke = self.text_stroke(text, font, at, fit, k);
+        let mut parts = Vec::new();
+        for (x, glyph) in glyphs {
+            match glyph {
+                Glyph::Embedded(g) => {
+                    let at = fit * DAffine2::from_translation(DVec2::new(x - g.lower_left.x, 0.0));
+                    for shape in &g.shapes {
+                        parts.extend(self.convert(shape, at, Mode::Area, depth + 1));
+                    }
+                }
+                Glyph::Bundled(g) => {
+                    let at = fit
+                        * DAffine2::from_translation(DVec2::new(x, 0.0))
+                        * DAffine2::from_scale(DVec2::splat(k));
+                    for points in &g.strokes {
+                        let mut points = points.iter().map(|&p| at.transform_point2(p));
+                        let Some(start) = points.next() else {
+                            continue;
+                        };
+                        let path = points.fold(Path::new(start), Path::line_to);
+                        parts.extend(self.line(path, stroke, DAffine2::IDENTITY));
+                    }
+                }
+            }
+        }
+        union(parts)
+    }
+
+    /// The embedded font of a `Text`; `None` for the bundled font.
+    fn font(&mut self, text: &ipc::Text) -> Option<&'a ipc::EmbeddedFont> {
+        let id = text.font_ref.as_ref()?;
+        let content = self.content;
+        match content.fonts.get(id) {
+            Some(ipc::Font::Embedded(f)) if cell(f).is_some() => Some(f),
+            Some(ipc::Font::Embedded(f)) => {
+                self.warn(format!(
+                    "embedded font `{}` has no glyphs; its text is drawn with the bundled font",
+                    f.name
+                ));
+                None
+            }
+            Some(ipc::Font::External { name, .. }) => {
+                self.warn(format!(
+                    "external font `{name}` is not available; its text is drawn with the bundled font"
+                ));
+                None
+            }
+            None => {
+                self.warn(format!(
+                    "font `{id}` is not defined; its text is drawn with the bundled font"
+                ));
+                None
+            }
+        }
+    }
+
+    /// The stroke of bundled glyphs in board units: the `Text`'s own `LineDesc`, else its
+    /// embedded font's, else [`STROKE_WIDTH`] of the cap height. `fit` maps font units and
+    /// `k` bundled glyph units to font units.
+    fn text_stroke(
+        &mut self,
+        text: &ipc::Text,
+        font: Option<&ipc::EmbeddedFont>,
+        at: DAffine2,
+        fit: DAffine2,
+        k: f64,
+    ) -> ipc::LineDesc {
+        let own = text.line.as_ref().map(|style| {
+            let desc = self.content.line_desc(style).copied();
+            if desc.is_none() {
+                self.warn(
+                    "a line descriptor is not defined; its text has the default width".into(),
+                );
+            }
+            desc.map(|d| (d, scale(at)))
+        });
+        let font = font
+            .and_then(|f| f.line.as_ref())
+            .and_then(|style| self.content.line_desc(style).copied())
+            .map(|d| (d, scale(fit)));
+        match own.flatten().or(font) {
+            Some((desc, scale)) => ipc::LineDesc {
+                width: desc.width * scale,
+                ..desc
+            },
+            None => ipc::LineDesc {
+                width: STROKE_WIDTH * CAP_HEIGHT * k * scale(fit),
+                end: LineEnd::Round,
+                property: LineProperty::Solid,
+            },
         }
     }
 
@@ -633,6 +859,31 @@ fn polygon(outline: Path) -> Shape {
         outline,
         holes: Vec::new(),
     }
+}
+
+/// A glyph of a `Text`.
+#[derive(Clone, Copy)]
+enum Glyph<'a> {
+    Embedded(&'a ipc::Glyph),
+    Bundled(&'a StrokeGlyph),
+}
+
+/// The vertical extent of an embedded font's cell: the lowest and highest edge of its glyph
+/// cells. `None` if it has no glyphs.
+fn cell(font: &ipc::EmbeddedFont) -> Option<(f64, f64)> {
+    let bottom = font
+        .glyphs
+        .iter()
+        .map(|g| g.lower_left.y.min(g.upper_right.y));
+    let top = font
+        .glyphs
+        .iter()
+        .map(|g| g.lower_left.y.max(g.upper_right.y));
+    let (bottom, top) = (
+        bottom.fold(f64::MAX, f64::min),
+        top.fold(f64::MIN, f64::max),
+    );
+    (top > bottom).then_some((bottom, top))
 }
 
 /// The scale factor of a similarity transform.
@@ -1509,5 +1760,197 @@ mod tests {
         let outlined = square(2e-3, Some(erase), None);
         let s = conv.area(&outlined, DAffine2::IDENTITY).unwrap();
         close_to(area(&s), 1.8e-3 * 1.8e-3, 1e-12);
+    }
+
+    fn text(string: &str, width: f64, height: f64, font: Option<&str>) -> ipc::Shape {
+        ipc::Shape::Text(Box::new(ipc::Text {
+            string: string.to_owned(),
+            font_size: None,
+            xform: ipc::Xform::default(),
+            lower_left: ipc::Point::default(),
+            upper_right: ipc::Point {
+                x: width,
+                y: height,
+            },
+            font_ref: font.map(str::to_owned),
+            line: None,
+            color: None,
+        }))
+    }
+
+    /// Content with embedded font `E` in millimetres: an `I` (a 0.1 mm line) in a cell from
+    /// -0.25 to 1, and a stroke of 0.05; external font `X`.
+    fn fonts() -> ipc::Content {
+        let xml = r#"<IPC-2581 revision="C"><Content><FunctionMode mode="ASSEMBLY"/>
+            <DictionaryFont units="MILLIMETER">
+              <EntryFont id="E"><FontDefEmbedded name="plotter">
+                <LineDesc lineWidth="0.05" lineEnd="ROUND"/>
+                <Glyph charCode="49" lowerLeftX="0" lowerLeftY="-0.25" upperRightX="0.5" upperRightY="1">
+                  <Line startX="0.25" startY="0" endX="0.25" endY="1"><LineDesc lineWidth="0.1" lineEnd="ROUND"/></Line>
+                </Glyph>
+              </FontDefEmbedded></EntryFont>
+              <EntryFont id="X"><FontDefExternal name="Arial" urn="urn:arial"/></EntryFont>
+            </DictionaryFont></Content>
+            <Ecad name="e"><CadHeader units="MILLIMETER"/><CadData/></Ecad></IPC-2581>"#;
+        ipc::parse_bytes(xml.as_bytes()).unwrap().content
+    }
+
+    fn close_to_box(actual: (DVec2, DVec2), min: (f64, f64), max: (f64, f64)) {
+        // Round caps are polygons: their extremes may fall a few micrometres short.
+        let eps = 5e-6;
+        close_to(actual.0.x, min.0, eps);
+        close_to(actual.0.y, min.1, eps);
+        close_to(actual.1.x, max.0, eps);
+        close_to(actual.1.y, max.1, eps);
+    }
+
+    #[test]
+    fn bundled_text_fills_the_box_height() {
+        let c = content();
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
+        // The cell is 28 units (descenders to capitals): 0.1 mm per unit, strokes
+        // 0.15 × 2.1 mm wide. `H` has stems at 5 and 17 units of its 22.
+        let s = conv
+            .area(&text("HH", 10e-3, 2.8e-3, None), DAffine2::IDENTITY)
+            .unwrap();
+        let w = STROKE_WIDTH * 2.1e-3 / 2.0;
+        let (bottom, top) = (0.7e-3 - w, 2.8e-3 + w);
+        close_to_box(bounds(&s), (0.5e-3 - w, bottom), (3.9e-3 + w, top));
+        assert_eq!(conv.take_warnings(), Vec::<String>::new());
+
+        // Rotated and mirrored by the `Text`'s `Xform`, then placed.
+        let ipc::Shape::Text(mut t) = text("HH", 10e-3, 2.8e-3, None) else {
+            unreachable!()
+        };
+        t.xform = ipc::Xform {
+            rotation: 90.0,
+            mirror: true,
+            ..ipc::Xform::default()
+        };
+        let at = DAffine2::from_translation(DVec2::new(1.0, 2.0));
+        let s = conv.area(&ipc::Shape::Text(t), at).unwrap();
+        // Mirrored (x → -x), then rotated (x, y) → (-y, x).
+        close_to_box(
+            bounds(&s),
+            (1.0 - top, 2.0 - 3.9e-3 - w),
+            (1.0 - bottom, 2.0 - 0.5e-3 + w),
+        );
+    }
+
+    #[test]
+    fn wide_text_is_scaled_down_to_fit() {
+        let c = content();
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
+        // 88 units into 2.2 mm: 0.025 mm per unit, centred in the 2.8 mm height.
+        let s = conv
+            .area(&text("HHHH", 2.2e-3, 2.8e-3, None), DAffine2::IDENTITY)
+            .unwrap();
+        let w = STROKE_WIDTH * 21.0 * 0.025e-3 / 2.0;
+        let lift = (2.8e-3 - 28.0 * 0.025e-3) / 2.0;
+        close_to_box(
+            bounds(&s),
+            (5.0 * 0.025e-3 - w, lift + 7.0 * 0.025e-3 - w),
+            (83.0 * 0.025e-3 + w, lift + 28.0 * 0.025e-3 + w),
+        );
+        assert_eq!(
+            conv.take_warnings(),
+            ["a text wider than its bounding box was scaled down to fit"]
+        );
+        assert!(conv.take_warnings().is_empty());
+        // An empty box draws nothing.
+        assert!(
+            conv.area(&text("H", 0.0, 1e-3, None), DAffine2::IDENTITY)
+                .is_none()
+        );
+        assert!(
+            conv.area(&text("", 1e-3, 1e-3, None), DAffine2::IDENTITY)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn embedded_glyphs_and_their_fallbacks() {
+        let c = fonts();
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
+        // The 1.25 mm cell into 2.5 mm: scale 2, lines 0.2 mm wide at x = 0.5 and 1.5 mm,
+        // from the baseline at 0.5 mm to 2.5 mm.
+        let s = conv
+            .area(&text("II", 10e-3, 2.5e-3, Some("E")), DAffine2::IDENTITY)
+            .unwrap();
+        close_to_box(bounds(&s), (0.4e-3, 0.4e-3), (1.6e-3, 2.6e-3));
+        assert!(conv.take_warnings().is_empty());
+        // Characters the font lacks come from the bundled font, scaled to its cell, and
+        // unknown ones are boxes; the bundled strokes are as wide as the font's.
+        let s = conv
+            .area(
+                &text("I-\u{2603}\u{2603}Ω", 10e-3, 2.5e-3, Some("E")),
+                DAffine2::IDENTITY,
+            )
+            .unwrap();
+        let (min, max) = bounds(&s);
+        close_to(min.x, 0.4e-3, 5e-6);
+        // Three boxes of 16 units after `I` (1 mm) and `-` (its advance).
+        let unit = 2.5e-3 / 28.0;
+        let dash = StrokeFont::get().glyph('-').unwrap().advance * unit;
+        close_to(
+            max.x,
+            1e-3 + dash + 2.0 * 16.0 * unit + 13.0 * unit + 0.05e-3,
+            2e-6,
+        );
+        close_to(max.y, 2.6e-3, 5e-6);
+        assert_eq!(
+            conv.take_warnings(),
+            [
+                "embedded font `plotter` lacks some characters; they are drawn with the bundled font",
+                "text characters without a glyph are drawn as boxes: U+03A9, U+2603",
+            ]
+        );
+        // External and undefined fonts fall back to the bundled font.
+        for (font, warning) in [
+            (
+                "X",
+                "external font `Arial` is not available; its text is drawn with the bundled font",
+            ),
+            (
+                "nope",
+                "font `nope` is not defined; its text is drawn with the bundled font",
+            ),
+        ] {
+            let s = conv
+                .area(&text("HH", 10e-3, 2.8e-3, Some(font)), DAffine2::IDENTITY)
+                .unwrap();
+            close_to(bounds(&s).1.x, 3.9e-3 + STROKE_WIDTH * 2.1e-3 / 2.0, 5e-6);
+            assert_eq!(conv.take_warnings(), [warning]);
+        }
+    }
+
+    #[test]
+    fn text_strokes_follow_a_line_desc() {
+        let c = content();
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
+        let ipc::Shape::Text(mut t) = text("H", 10e-3, 2.8e-3, None) else {
+            unreachable!()
+        };
+        t.line = Some(desc(0.4e-3, LineEnd::Round, LineProperty::Solid));
+        let s = conv.area(&ipc::Shape::Text(t), DAffine2::IDENTITY).unwrap();
+        close_to_box(bounds(&s), (0.3e-3, 0.5e-3), (1.9e-3, 3.0e-3));
+        assert!(
+            conv.filled(&text("H", 1e-3, 1e-3, None), DAffine2::IDENTITY)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn texts_are_collected_and_strokes() {
+        let c = content();
+        let group = ipc::Shape::UserSpecial(vec![
+            text("R1", 1e-3, 1e-3, None),
+            square(1e-3, None, None),
+            ipc::Shape::UserSpecial(vec![text("10k", 1e-3, 1e-3, None)]),
+        ]);
+        assert_eq!(texts(&group, &c), ["R1", "10k"]);
+        assert!(texts(&square(1e-3, None, None), &c).is_empty());
+        assert!(is_stroke(&text("A", 1e-3, 1e-3, None), &c));
+        assert!(!erases(&text("A", 1e-3, 1e-3, None), &c));
     }
 }
