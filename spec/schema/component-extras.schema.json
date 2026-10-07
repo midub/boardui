@@ -17,7 +17,11 @@
         "package": { "type": "string" },
         "side": { "enum": ["TOP", "BOTTOM"] },
         "mount": { "enum": ["SMT", "THMT", "OTHER"] },
-        "instance": { "type": "string", "pattern": "^inst/[^/]+$", "description": "ID of the component's instance in a panel (spec §6.14)." }
+        "instance": {
+          "type": "string",
+          "pattern": "^inst/[^/]+$",
+          "description": "ID of the component's instance in a panel (spec §6.14)."
+        }
       },
       "additionalProperties": false
     }

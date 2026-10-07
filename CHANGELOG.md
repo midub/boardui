@@ -25,6 +25,12 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   board. Package assembly drawings fill a synthesized `@assembly-top`/`-bottom` when the file has
   no assembly layer, and package silkscreens are drawn where the silkscreen layer has nothing for
   a part. The viewer and demo list the new layers, switched off (profile 0.4; spec §6.11–§6.13).
+- **Panels:** `StepRepeat` is read and a panel converts with every board it places, nested,
+  rotated and flipped (`mirror`, layers swapped). The default step is the panel (the step that
+  no `StepRepeat` references); single-step files convert as before. Each placed copy is an
+  instance (`inst/board-2`), and its components, pins, nets and features get the instance as an
+  extra ID segment (`cmp/board-2/R1`, `feat/board-2/TOP/12`); nets are per board. The viewer
+  resolves the new IDs (profile 0.5; spec §5, §6.14, [ADR 0013](docs/adr/0013-panels.md)).
 
 ## [1.0.0] - 2026-10-06
 

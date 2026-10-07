@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { BoardLayerJson } from '../src/board-extension.js';
 import { BoardModel } from '../src/board-model.js';
-import { featureId } from '../src/ids.js';
 import { loadGltf } from '../src/load.js';
 
 // The converter's expected outputs (spec/samples/hand-written/*/*.glb), so the viewer is
@@ -30,8 +29,8 @@ describe('converter samples', () => {
     for (const layer of model.layers) {
       expect(model.resolve(layer.id)).not.toBeNull();
       if (layer.kind === 'layer' && layer.table.count > 0) {
-        const source = layer.table.get('source', 0) as number;
-        expect(model.resolve(featureId(layer.id, source))).not.toBeNull();
+        const id = model.idOfTexel(layer.stateOffset);
+        expect(model.resolve(id)?.texels).toEqual(Uint32Array.of(layer.stateOffset));
       }
     }
     for (const id of model.ids('component')) {
@@ -127,5 +126,84 @@ describe('optional layers', () => {
     const r1 = other.resolve('cmp/R1');
     if (!r1) throw new Error('cmp/R1');
     expect([...other.emphasis(r1)]).toEqual([...r1.texels]);
+  });
+});
+
+describe('panels (spec §6.14)', () => {
+  const load = async () => {
+    const bytes = readFileSync(path.join(samples, 'panel', 'panel.glb'));
+    const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    return BoardModel.fromGltf(await loadGltf(glb));
+  };
+
+  it('lists and describes instances', async () => {
+    const model = await load();
+    expect(model.ids('instance')).toEqual([
+      'inst/strip-1',
+      'inst/board-1',
+      'inst/board-2',
+      'inst/strip-2',
+      'inst/board-3',
+      'inst/board-4',
+      'inst/board-5',
+      'inst/board-6',
+    ]);
+    expect(model.describe('inst/board-6')?.properties).toMatchObject({
+      step: 'board',
+      parent: null,
+      angle: 90,
+      side: 'BOTTOM',
+    });
+    expect(model.describe('inst/board-1')?.properties).toMatchObject({ parent: 'inst/strip-1' });
+    expect(model.describe('cmp/board-6/R1')?.properties).toMatchObject({
+      refDes: 'R1',
+      side: 'BOTTOM',
+      instance: 'inst/board-6',
+    });
+  });
+
+  it('gives features of instances their instance in the ID', async () => {
+    const model = await load();
+    const top = model.layer('layer/TOP');
+    if (!top) throw new Error('layer/TOP');
+    // The panel's own fiducials, then the strip's, then the boards'.
+    expect(model.idOfTexel(top.stateOffset)).toBe('feat/TOP/0');
+    expect(model.idOfTexel(top.stateOffset + 3)).toBe('feat/strip-1/TOP/0');
+    expect(model.idOfTexel(top.stateOffset + 4)).toBe('feat/board-1/TOP/0');
+    expect(model.resolve('feat/board-1/TOP/0')?.texels).toEqual(
+      Uint32Array.of(top.stateOffset + 4),
+    );
+    expect(model.describe('feat/board-1/TOP/0')?.properties).toMatchObject({
+      net: 'net/board-1/GND',
+      instance: 'inst/board-1',
+    });
+    expect(model.resolve('feat/board-9/TOP/0')).toBeNull();
+    expect(model.resolve('feat/TOP/99')).toBeNull();
+  });
+
+  it('highlights a net in its own board only', async () => {
+    const model = await load();
+    const gnd = model.resolve('net/board-2/GND');
+    if (!gnd) throw new Error('net/board-2/GND');
+    expect(gnd.texels.length).toBeGreaterThan(3);
+    for (const texel of gnd.texels) {
+      expect(model.idOfTexel(texel)).toMatch(/^feat\/board-2\//);
+    }
+  });
+
+  it('resolves an instance with the instances placed in it', async () => {
+    const model = await load();
+    const strip = model.resolve('inst/strip-1');
+    if (!strip) throw new Error('inst/strip-1');
+    const ids = [...strip.texels].map((t) => model.idOfTexel(t));
+    expect(ids).toContain('feat/strip-1/TOP/0');
+    expect(ids).toContain('feat/board-2/TOP/0');
+    expect(ids).toContain('cmp/board-1/C1');
+    expect(ids.some((id) => id.includes('board-3'))).toBe(false);
+    expect([...strip.texels]).toEqual([...strip.texels].sort((a, b) => a - b));
+    expect(strip.box).not.toBeNull();
+    // Board 1 starts at x = 8 mm; its leftmost feature is the silkscreen at x = 8.925 mm.
+    expect(strip.box?.min.x).toBeCloseTo(0.008925, 5);
+    expect(strip.box?.max.z).toBeLessThan(-0.005);
   });
 });

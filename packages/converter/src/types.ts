@@ -66,6 +66,8 @@ export interface ConvertStats {
   components: number;
   nets: number;
   pins: number;
+  /** Copies of steps placed by `StepRepeat`s in a panel (spec §6.14). */
+  instances: number;
   /** Package pins referenced by pads. */
   pinsChecked: number;
   /** Of those, pins that land on none of their pads (spec §6.8). */
