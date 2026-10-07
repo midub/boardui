@@ -41,6 +41,7 @@ export const SAMPLES: readonly Sample[] = [
   handWritten('minimal-2layer', 'One resistor, two pads, a trace and a via'),
   handWritten('bottom-placement', 'A package on the bottom side at 0°, 30°, 90° and 270°'),
   handWritten('slots', 'Plated and non-plated slots'),
+  handWritten('panel', 'A panel: boards repeated, nested, rotated and flipped by StepRepeat'),
   handWritten('overlap-priority', 'Pad over trace over plane'),
   handWritten('negative-polarity', 'A plane with negative cut-outs'),
   handWritten('zero-width-lines', 'Silkscreen lines of zero width, drawn as hairlines'),

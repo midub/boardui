@@ -1,0 +1,246 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step panel, FABRICATION
+thickness: 1.6000 mm
+counts: 193 features, 10832 vertices, 21568 triangles, 12 nets, 12 components, 24 pins (24 checked against pads)
+warnings: 0 from the reader, 0 from the converter
+instances: 8
+  inst/strip-1 of step strip in the converted step at (5.0000, 5.0000) mm, 0.0000°, Top
+  inst/board-1 of step board in inst/strip-1 at (8.0000, 8.0000) mm, 0.0000°, Top
+  inst/board-2 of step board in inst/strip-1 at (34.0000, 8.0000) mm, 0.0000°, Top
+  inst/strip-2 of step strip in the converted step at (5.0000, 23.0000) mm, 0.0000°, Top
+  inst/board-3 of step board in inst/strip-2 at (8.0000, 26.0000) mm, 0.0000°, Top
+  inst/board-4 of step board in inst/strip-2 at (34.0000, 26.0000) mm, 0.0000°, Top
+  inst/board-5 of step board in the converted step at (74.0000, 13.0000) mm, 90.0000°, Top
+  inst/board-6 of step board in the converted step at (93.0000, 33.0000) mm, 90.0000°, Bottom
+layer layer/@assembly-top Assembly Top z 0.9000..0.9100 mm Default synthesized hidden
+  18 features {"Marking": 18}, 804 vertices, 1560 triangles, top area 4.9523 mm²
+    row 0: Marking net - instance 1 area 0.6371 mm²
+    row 1: Marking net - instance 1 area 0.1059 mm²
+    row 2: Marking net - instance 1 area 0.0823 mm² text "1"
+    row 3: Marking net - instance 2 area 0.6371 mm²
+    row 4: Marking net - instance 2 area 0.1059 mm²
+    row 5: Marking net - instance 2 area 0.0823 mm² text "1"
+    row 6: Marking net - instance 4 area 0.6371 mm²
+    row 7: Marking net - instance 4 area 0.1059 mm²
+    row 8: Marking net - instance 4 area 0.0823 mm² text "1"
+    row 9: Marking net - instance 5 area 0.6371 mm²
+    row 10: Marking net - instance 5 area 0.1059 mm²
+    row 11: Marking net - instance 5 area 0.0823 mm² text "1"
+    row 12: Marking net - instance 6 area 0.6371 mm²
+    row 13: Marking net - instance 6 area 0.1059 mm²
+    row 14: Marking net - instance 6 area 0.0823 mm² text "1"
+    row 15: Marking net - instance 7 area 0.6371 mm²
+    row 16: Marking net - instance 7 area 0.1059 mm²
+    row 17: Marking net - instance 7 area 0.0823 mm² text "1"
+layer layer/TOP_PASTE Paste Top z 0.8000..0.9000 mm Default hidden
+  12 features {"Pad": 12}, 96 vertices, 144 triangles, top area 9.6000 mm²
+    row 0: Pad net - instance 1 area 0.8000 mm²
+    row 1: Pad net - instance 1 area 0.8000 mm²
+    row 2: Pad net - instance 2 area 0.8000 mm²
+    row 3: Pad net - instance 2 area 0.8000 mm²
+    row 4: Pad net - instance 4 area 0.8000 mm²
+    row 5: Pad net - instance 4 area 0.8000 mm²
+    row 6: Pad net - instance 5 area 0.8000 mm²
+    row 7: Pad net - instance 5 area 0.8000 mm²
+    row 8: Pad net - instance 6 area 0.8000 mm²
+    row 9: Pad net - instance 6 area 0.8000 mm²
+    row 10: Pad net - instance 7 area 0.8000 mm²
+    row 11: Pad net - instance 7 area 0.8000 mm²
+layer layer/TOP_SILK Silkscreen Top z 0.8200..0.8300 mm Default
+  16 features {"Marking": 16}, 1550 vertices, 3060 triangles, top area 23.8996 mm²
+    row 0: Marking net - instance 1 area 1.6739 mm²
+    row 1: Marking net - instance 1 area 0.8826 mm²
+    row 2: Marking net - instance 1 area 1.8887 mm² text "REV A"
+    row 3: Marking net - instance 2 area 1.6739 mm²
+    row 4: Marking net - instance 2 area 0.8826 mm²
+    row 5: Marking net - instance 2 area 1.8887 mm² text "REV A"
+    row 6: Marking net - instance 4 area 1.6739 mm²
+    row 7: Marking net - instance 4 area 0.8826 mm²
+    row 8: Marking net - instance 4 area 1.8887 mm² text "REV A"
+    row 9: Marking net - instance 5 area 1.6739 mm²
+    row 10: Marking net - instance 5 area 0.8826 mm²
+    row 11: Marking net - instance 5 area 1.8887 mm² text "REV A"
+    row 12: Marking net - instance 6 area 1.6739 mm²
+    row 13: Marking net - instance 6 area 0.8826 mm²
+    row 14: Marking net - instance 6 area 1.8887 mm² text "REV A"
+    row 15: Marking net - instance 7 area 1.6739 mm²
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 1282 vertices, 2712 triangles, top area 3647.9668 mm²
+    row 0: Sheet net - area 3647.9668 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  46 features {"Fiducial": 5, "Fill": 5, "Pad": 12, "Trace": 12, "Via": 12}, 1656 vertices, 3196 triangles, top area 102.8925 mm²
+    row 0: Fiducial(Global) net - area 0.7757 mm²
+    row 1: Fiducial(Global) net - area 0.7757 mm²
+    row 2: Fiducial(Global) net - area 0.7757 mm²
+    row 3: Fiducial(Local) net - instance 0 area 0.7757 mm²
+    row 4: Pad net 0 instance 1 area 1.0800 mm²
+    row 5: Pad net 1 instance 1 area 1.0800 mm²
+    row 6: Trace net 1 instance 1 area 1.5865 mm²
+    row 7: Trace net 0 instance 1 area 0.8734 mm²
+    row 8: Fill net 0 instance 1 area 13.4496 mm²
+    row 9: Via net 1 instance 1 area 0.1840 mm²
+    row 10: Via net 0 instance 1 area 0.1840 mm²
+    row 11: Pad net 2 instance 2 area 1.0800 mm²
+    row 12: Pad net 3 instance 2 area 1.0800 mm²
+    row 13: Trace net 3 instance 2 area 1.5865 mm²
+    row 14: Trace net 2 instance 2 area 0.8734 mm²
+    row 15: Fill net 2 instance 2 area 13.4496 mm²
+    row 16: Via net 3 instance 2 area 0.1840 mm²
+    row 17: Via net 2 instance 2 area 0.1840 mm²
+    row 18: Fiducial(Local) net - instance 3 area 0.7757 mm²
+    row 19: Pad net 4 instance 4 area 1.0800 mm²
+    row 20: Pad net 5 instance 4 area 1.0800 mm²
+    row 21: Trace net 5 instance 4 area 1.5865 mm²
+    row 22: Trace net 4 instance 4 area 0.8734 mm²
+    row 23: Fill net 4 instance 4 area 13.4496 mm²
+    row 24: Via net 5 instance 4 area 0.1840 mm²
+    row 25: Via net 4 instance 4 area 0.1840 mm²
+    row 26: Pad net 6 instance 5 area 1.0800 mm²
+    row 27: Pad net 7 instance 5 area 1.0800 mm²
+    row 28: Trace net 7 instance 5 area 1.5865 mm²
+    row 29: Trace net 6 instance 5 area 0.8734 mm²
+    row 30: Fill net 6 instance 5 area 13.4496 mm²
+    row 31: Via net 7 instance 5 area 0.1840 mm²
+    row 32: Via net 6 instance 5 area 0.1840 mm²
+    row 33: Pad net 8 instance 6 area 1.0800 mm²
+    row 34: Pad net 9 instance 6 area 1.0800 mm²
+    row 35: Trace net 9 instance 6 area 1.5867 mm²
+    row 36: Trace net 8 instance 6 area 0.8734 mm²
+    row 37: Fill net 8 instance 6 area 13.4495 mm²
+    row 38: Via net 9 instance 6 area 0.1840 mm²
+    row 39: Via net 8 instance 6 area 0.1840 mm²
+    row 40: Pad net 11 instance 7 area 1.0800 mm²
+    row 41: Pad net 10 instance 7 area 1.0800 mm²
+    row 42: Trace net 11 instance 7 area 1.9616 mm²
+    row 43: Trace net 10 instance 7 area 2.3366 mm²
+    row 44: Via net 11 instance 7 area 0.1840 mm²
+    row 45: Via net 10 instance 7 area 0.1840 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 956 vertices, 1992 triangles, top area 3664.8051 mm²
+    row 0: Sheet net - area 3664.8051 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  39 features {"Fiducial": 2, "Fill": 1, "Pad": 12, "Trace": 12, "Via": 12}, 1294 vertices, 2484 triangles, top area 54.1198 mm²
+    row 0: Fiducial(Global) net - area 0.7757 mm²
+    row 1: Fiducial(GoodPanel) net - area 0.7757 mm²
+    row 2: Pad net 1 instance 1 area 1.0800 mm²
+    row 3: Pad net 0 instance 1 area 1.0800 mm²
+    row 4: Trace net 1 instance 1 area 1.9615 mm²
+    row 5: Trace net 0 instance 1 area 2.3365 mm²
+    row 6: Via net 1 instance 1 area 0.1840 mm²
+    row 7: Via net 0 instance 1 area 0.1840 mm²
+    row 8: Pad net 3 instance 2 area 1.0800 mm²
+    row 9: Pad net 2 instance 2 area 1.0800 mm²
+    row 10: Trace net 3 instance 2 area 1.9615 mm²
+    row 11: Trace net 2 instance 2 area 2.3365 mm²
+    row 12: Via net 3 instance 2 area 0.1840 mm²
+    row 13: Via net 2 instance 2 area 0.1840 mm²
+    row 14: Pad net 5 instance 4 area 1.0800 mm²
+    row 15: Pad net 4 instance 4 area 1.0800 mm²
+    row 16: Trace net 5 instance 4 area 1.9615 mm²
+    row 17: Trace net 4 instance 4 area 2.3365 mm²
+    row 18: Via net 5 instance 4 area 0.1840 mm²
+    row 19: Via net 4 instance 4 area 0.1840 mm²
+    row 20: Pad net 7 instance 5 area 1.0800 mm²
+    row 21: Pad net 6 instance 5 area 1.0800 mm²
+    row 22: Trace net 7 instance 5 area 1.9615 mm²
+    row 23: Trace net 6 instance 5 area 2.3365 mm²
+    row 24: Via net 7 instance 5 area 0.1840 mm²
+    row 25: Via net 6 instance 5 area 0.1840 mm²
+    row 26: Pad net 9 instance 6 area 1.0800 mm²
+    row 27: Pad net 8 instance 6 area 1.0800 mm²
+    row 28: Trace net 9 instance 6 area 1.9617 mm²
+    row 29: Trace net 8 instance 6 area 2.3367 mm²
+    row 30: Via net 9 instance 6 area 0.1840 mm²
+    row 31: Via net 8 instance 6 area 0.1840 mm²
+    row 32: Pad net 10 instance 7 area 1.0800 mm²
+    row 33: Pad net 11 instance 7 area 1.0800 mm²
+    row 34: Trace net 11 instance 7 area 1.5866 mm²
+    row 35: Trace net 10 instance 7 area 0.8734 mm²
+    row 36: Fill net 10 instance 7 area 13.4495 mm²
+    row 37: Via net 11 instance 7 area 0.1840 mm²
+    row 38: Via net 10 instance 7 area 0.1840 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 1144 vertices, 2424 triangles, top area 3650.2938 mm²
+    row 0: Sheet net - area 3650.2938 mm²
+layer layer/BOT_SILK Silkscreen Bottom z -0.8300..-0.8200 mm Default
+  8 features {"Marking": 8}, 502 vertices, 996 triangles, top area 12.8145 mm²
+    row 0: Marking net - instance 1 area 1.6739 mm²
+    row 1: Marking net - instance 2 area 1.6739 mm²
+    row 2: Marking net - instance 4 area 1.6739 mm²
+    row 3: Marking net - instance 5 area 1.6739 mm²
+    row 4: Marking net - instance 6 area 1.6739 mm²
+    row 5: Marking net - instance 7 area 1.6739 mm²
+    row 6: Marking net - instance 7 area 0.8826 mm²
+    row 7: Marking net - instance 7 area 1.8887 mm² text "REV A"
+layer layer/BOT_PASTE Paste Bottom z -0.9000..-0.8000 mm Default hidden
+  12 features {"Pad": 12}, 96 vertices, 144 triangles, top area 9.6000 mm²
+    row 0: Pad net - instance 1 area 0.8000 mm²
+    row 1: Pad net - instance 1 area 0.8000 mm²
+    row 2: Pad net - instance 2 area 0.8000 mm²
+    row 3: Pad net - instance 2 area 0.8000 mm²
+    row 4: Pad net - instance 4 area 0.8000 mm²
+    row 5: Pad net - instance 4 area 0.8000 mm²
+    row 6: Pad net - instance 5 area 0.8000 mm²
+    row 7: Pad net - instance 5 area 0.8000 mm²
+    row 8: Pad net - instance 6 area 0.8000 mm²
+    row 9: Pad net - instance 6 area 0.8000 mm²
+    row 10: Pad net - instance 7 area 0.8000 mm²
+    row 11: Pad net - instance 7 area 0.8000 mm²
+layer layer/@assembly-bottom Assembly Bottom z -0.9100..-0.9000 mm Default synthesized hidden
+  18 features {"Marking": 18}, 804 vertices, 1560 triangles, top area 4.9523 mm²
+    row 0: Marking net - instance 1 area 0.6371 mm²
+    row 1: Marking net - instance 1 area 0.1059 mm²
+    row 2: Marking net - instance 1 area 0.0823 mm² text "1"
+    row 3: Marking net - instance 2 area 0.6371 mm²
+    row 4: Marking net - instance 2 area 0.1059 mm²
+    row 5: Marking net - instance 2 area 0.0823 mm² text "1"
+    row 6: Marking net - instance 4 area 0.6371 mm²
+    row 7: Marking net - instance 4 area 0.1059 mm²
+    row 8: Marking net - instance 4 area 0.0823 mm² text "1"
+    row 9: Marking net - instance 5 area 0.6371 mm²
+    row 10: Marking net - instance 5 area 0.1059 mm²
+    row 11: Marking net - instance 5 area 0.0823 mm² text "1"
+    row 12: Marking net - instance 6 area 0.6371 mm²
+    row 13: Marking net - instance 6 area 0.1059 mm²
+    row 14: Marking net - instance 6 area 0.0823 mm² text "1"
+    row 15: Marking net - instance 7 area 0.6371 mm²
+    row 16: Marking net - instance 7 area 0.1059 mm²
+    row 17: Marking net - instance 7 area 0.0823 mm² text "1"
+drill layer/DRILL layer/TOP..layer/BOTTOM
+  21 features {"Barrel": 12, "Other": 9}, 648 vertices, 1296 triangles, top area 0.3006 mm²
+    row 0: Other net - area 0.0000 mm²
+    row 1: Other net - area 0.0000 mm²
+    row 2: Other net - area 0.0000 mm²
+    row 3: Barrel net 1 instance 1 area 0.0250 mm²
+    row 4: Barrel net 0 instance 1 area 0.0250 mm²
+    row 5: Other net - instance 1 area 0.0000 mm²
+    row 6: Barrel net 3 instance 2 area 0.0250 mm²
+    row 7: Barrel net 2 instance 2 area 0.0250 mm²
+    row 8: Other net - instance 2 area 0.0000 mm²
+    row 9: Barrel net 5 instance 4 area 0.0250 mm²
+    row 10: Barrel net 4 instance 4 area 0.0250 mm²
+    row 11: Other net - instance 4 area 0.0000 mm²
+    row 12: Barrel net 7 instance 5 area 0.0250 mm²
+    row 13: Barrel net 6 instance 5 area 0.0250 mm²
+    row 14: Other net - instance 5 area 0.0000 mm²
+    row 15: Barrel net 9 instance 6 area 0.0250 mm²
+    row 16: Barrel net 8 instance 6 area 0.0250 mm²
+    row 17: Other net - instance 6 area 0.0000 mm²
+    row 18: Barrel net 11 instance 7 area 0.0250 mm²
+    row 19: Barrel net 10 instance 7 area 0.0250 mm²
+    row 20: Other net - instance 7 area 0.0000 mm²
+components: 12
+  board-1/R1 at (13.0000, 0.8000, -14.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0805
+  board-1/C1 at (23.0000, -0.8000, -14.0000) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder R0805
+  board-2/R1 at (39.0000, 0.8000, -14.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0805
+  board-2/C1 at (49.0000, -0.8000, -14.0000) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder R0805
+  board-3/R1 at (13.0000, 0.8000, -32.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0805
+  board-3/C1 at (23.0000, -0.8000, -32.0000) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder R0805
+  board-4/R1 at (39.0000, 0.8000, -32.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0805
+  board-4/C1 at (49.0000, -0.8000, -32.0000) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder R0805
+  board-5/R1 at (68.0000, 0.8000, -18.0000) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder R0805
+  board-5/C1 at (68.0000, -0.8000, -28.0000) mm, rotation (0.7071, 0.0000, 0.7071, 0.0000), placeholder R0805
+  board-6/R1 at (87.0000, -0.8000, -28.0000) mm, rotation (0.7071, 0.0000, 0.7071, 0.0000), placeholder R0805
+  board-6/C1 at (87.0000, 0.8000, -18.0000) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder R0805

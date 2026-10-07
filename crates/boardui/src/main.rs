@@ -36,7 +36,7 @@ enum Command {
         /// Model mapping file for component bodies (spec/schema/models.schema.json).
         #[arg(long)]
         models: Option<PathBuf>,
-        /// The step to convert (default: the first one).
+        /// The step to convert (default: the step that no other step places, such as the panel).
         #[arg(long)]
         step: Option<String>,
         /// Maximum chord deviation of arcs, in millimetres.
@@ -172,6 +172,9 @@ fn convert(args: &ConvertArgs) -> miette::Result<ExitCode> {
         "{} layers, {} drills, {} features, {} vertices, {} triangles, {} components, {} nets, {} pins",
         s.layers, s.drills, s.features, s.vertices, s.triangles, s.components, s.nets, s.pins
     );
+    if s.instances > 0 {
+        info!("{} step instances placed by StepRepeat", s.instances);
+    }
     if s.pins_misplaced > 0 {
         warn!(
             "{} of {} component pins are not on their pads",

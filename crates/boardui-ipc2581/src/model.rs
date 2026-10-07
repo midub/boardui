@@ -276,6 +276,9 @@ pub struct Step {
     pub datum: Option<Point>,
     /// `Profile`: board outline with cutouts, if given.
     pub profile: Option<Contour>,
+    /// `StepRepeat`s in document order: copies of other steps placed in this one, for a panel
+    /// or array.
+    pub step_repeats: Vec<StepRepeat>,
     /// `PadStackDef`s, by name.
     pub padstack_defs: Table<PadstackDef>,
     /// `Package`s, by name.
@@ -285,6 +288,31 @@ pub struct Step {
     /// `LayerFeature`s, by layer name. Several `LayerFeature` elements for the same layer are
     /// merged into one entry, in document order.
     pub layer_features: Table<LayerFeature>,
+}
+
+/// `StepRepeat`: an array of copies of another step (IPC-2581C §8.2.3.5).
+///
+/// Copy `(i, j)`, for `i` in `0..nx` and `j` in `0..ny`, places the referenced step's
+/// `Datum` at `location + (i·dx, j·dy)`, mirrored about its Y axis if `mirror`, then
+/// rotated counter-clockwise by `angle`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StepRepeat {
+    /// `stepRef`: the name of the repeated step.
+    pub step_ref: String,
+    /// `x`, `y`: where the first copy's datum lands.
+    pub location: Point,
+    /// `nx`: copies along X, including the first. Absent: 1.
+    pub nx: u32,
+    /// `ny`: copies along Y, including the first. Absent: 1.
+    pub ny: u32,
+    /// `dx`: distance between copies along X. Absent: 0.
+    pub dx: f64,
+    /// `dy`: distance between copies along Y. Absent: 0.
+    pub dy: f64,
+    /// `angle`: counter-clockwise rotation, in degrees. Absent: 0.
+    pub angle: f64,
+    /// `mirror`: the copies are mirrored (flipped over). Absent: false.
+    pub mirror: bool,
 }
 
 impl Step {

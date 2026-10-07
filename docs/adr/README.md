@@ -16,3 +16,4 @@ Each record captures one decision from the 3D rewrite design. Format: context, d
 | [0010](0010-v1-scope.md) | v1 tool set | Accepted |
 | [0011](0011-same-repo-new-major.md) | Same repository, new major version | Accepted |
 | [0012](0012-spec-format.md) | Spec format | Accepted |
+| [0013](0013-panels.md) | Panels: root step by default, instances with their own IDs and nets, baked geometry | Accepted |

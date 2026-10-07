@@ -20,7 +20,7 @@ viewer") shows how to install them from a source build.
 
 ## API
 
-Element IDs follow spec §5 (`cmp/U3`, `pin/U3/1`, `net/GND`, `layer/TOP`, `feat/TOP/12`, `board`).
+Element IDs follow spec §5 (`cmp/U3`, `pin/U3/1`, `net/GND`, `layer/TOP`, `feat/TOP/12`, `board`). In a panel, each placed board is an instance (`inst/board-2`), and its elements carry the instance: `cmp/board-2/U3`, `net/board-2/GND`, `feat/board-2/TOP/12` (spec §6.14). Resolving an instance gives its features and components, and those of the instances placed in it.
 Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/SDA')`.
 
 | Member | |
@@ -38,7 +38,7 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 | `setView('top' \| 'bottom' \| 'iso')` | Frames the board from above, from below (mirrored, as when flipping a board), or obliquely. |
 | `attachWidget(id, element, { anchor, offset, occlusion })` | Shows an HTML element above the board, following a board element. Returns a detach function. |
 | `info(id)` | `{ id, kind, properties }`, with references to other elements as IDs. |
-| `ids(kind)` | All IDs of a kind: `'layer'`, `'component'`, `'pin'` or `'net'`. |
+| `ids(kind)` | All IDs of a kind: `'layer'`, `'component'`, `'pin'`, `'net'` or `'instance'`. |
 | `stats()` | Backend, draw calls and triangles of the last frame, and the number of frames rendered. |
 | `autoRotate` | Orbits the camera continuously; the board is then rendered every frame (frame-rate measurements). |
 

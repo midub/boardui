@@ -7,7 +7,7 @@ use super::{Parser, insert, missing_element};
 use crate::{
     Component, DiagnosticKind, Error, Feature, FeatureElement, Features, Fiducial, FiducialKind,
     Hole, LayerFeature, Marking, Package, PackageDrawing, Pad, PadUsage, PadstackDef, PadstackPad,
-    Pin, PinRef, RefKind, Set, SlotCavity, Step, Table,
+    Pin, PinRef, RefKind, Set, SlotCavity, Step, StepRepeat, Table,
 };
 
 impl<R: BufRead> Parser<R> {
@@ -27,6 +27,11 @@ impl<R: BufRead> Parser<R> {
                 Ok(())
             }
             "Datum" | "Profile" => p.duplicate("Step"),
+            "StepRepeat" => {
+                let repeat = p.read_step_repeat()?;
+                p.step.step_repeats.push(repeat);
+                Ok(())
+            }
             "PadStackDef" => {
                 let position = p.tag.position;
                 let def = p.read_padstack_def()?;
@@ -85,6 +90,23 @@ impl<R: BufRead> Parser<R> {
             position,
         );
         Ok(())
+    }
+
+    fn read_step_repeat(&mut self) -> Result<StepRepeat, Error> {
+        let step_ref = self.req_ref("stepRef")?;
+        self.check_ref(RefKind::Step, &step_ref);
+        let repeat = StepRepeat {
+            step_ref,
+            location: self.point("x", "y")?,
+            nx: self.opt_u32("nx")?.unwrap_or(1),
+            ny: self.opt_u32("ny")?.unwrap_or(1),
+            dx: self.opt_len("dx")?.unwrap_or(0.0),
+            dy: self.opt_len("dy")?.unwrap_or(0.0),
+            angle: self.opt_f64("angle")?.unwrap_or(0.0),
+            mirror: self.opt_bool("mirror")?.unwrap_or(false),
+        };
+        self.leaf("StepRepeat")?;
+        Ok(repeat)
     }
 
     fn read_padstack_def(&mut self) -> Result<PadstackDef, Error> {

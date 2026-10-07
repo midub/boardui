@@ -61,7 +61,8 @@
       "properties": {
         "nets": { "$ref": "#/$defs/index" },
         "components": { "$ref": "#/$defs/index" },
-        "pins": { "$ref": "#/$defs/index" }
+        "pins": { "$ref": "#/$defs/index" },
+        "instances": { "$ref": "#/$defs/index" }
       },
       "additionalProperties": false
     },

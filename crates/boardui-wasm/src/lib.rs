@@ -166,6 +166,7 @@ pub fn convert(
             "components": s.components,
             "nets": s.nets,
             "pins": s.pins,
+            "instances": s.instances,
             "pinsChecked": s.pins_checked,
             "pinsMisplaced": s.pins_misplaced,
             "glbBytes": conversion.glb.len(),

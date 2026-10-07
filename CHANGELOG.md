@@ -29,6 +29,12 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   a `FontDefEmbedded` font, else with a bundled single-stroke font (KiCad's Newstroke, ASCII and
   Latin-1, CC0); characters no font has are boxes. Features carry their strings in a new `text`
   property, shown by the viewer's `info()` (profile 0.5; spec §6.1, §8.2).
+- **Panels:** `StepRepeat` is read and a panel converts with every board it places, nested,
+  rotated and flipped (`mirror`, layers swapped). The default step is the panel (the step that
+  no `StepRepeat` references); single-step files convert as before. Each placed copy is an
+  instance (`inst/board-2`), and its components, pins, nets and features get the instance as an
+  extra ID segment (`cmp/board-2/R1`, `feat/board-2/TOP/12`); nets are per board. The viewer
+  resolves the new IDs (profile 0.6; spec §5, §6.14, [ADR 0013](docs/adr/0013-panels.md)).
 
 ## [1.0.0] - 2026-10-06
 
