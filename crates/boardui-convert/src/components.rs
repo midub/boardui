@@ -22,6 +22,9 @@ const DEFAULT_HEIGHT_RANGE: (f64, f64) = (0.2e-3, 2e-3);
 const PIN1_THICKNESS: f64 = 20e-6;
 /// Pins farther than this from their pads count as misplaced.
 const PAD_TOLERANCE: f64 = 0.1e-3;
+/// A placeholder body covering more than this share of its board's outline is left out: the
+/// package is the board itself, or a module that would hide it (spec §6.8).
+const MAX_BOARD_COVER: f64 = 0.5;
 
 /// A pad that references a component pin, for checking placements.
 pub(crate) struct PadRef {
@@ -39,13 +42,15 @@ pub(crate) struct Components {
 }
 
 /// Places the components of every part, in part order (spec §6.8, §6.14). `pads` are the
-/// pads of each step, by step name, in the step's coordinates.
+/// pads of each step, by step name, in the step's coordinates; `outlines` the outline of
+/// each part on the board.
 pub(crate) fn build(
     parts: &[Part<'_>],
     stack: &Stack,
     library: Option<&ModelLibrary>,
     shapes: &mut ShapeConverter<'_>,
     pads: &HashMap<&str, Vec<PadRef>>,
+    outlines: &[Option<Region>],
     warnings: &mut Warnings,
 ) -> Components {
     let mut out = Components {
@@ -57,7 +62,7 @@ pub(crate) fn build(
     };
     let mut placeholder_keys: HashMap<(String, u64, u64), Option<usize>> = HashMap::new();
     let mut model_indices: HashMap<usize, usize> = HashMap::new();
-    for part in parts {
+    for (part, board) in parts.iter().zip(outlines) {
         let step = part.step;
         let mut pads_by_component: HashMap<&str, Vec<&PadRef>> = HashMap::new();
         for pad in pads.get(step.name.as_str()).into_iter().flatten() {
@@ -120,8 +125,18 @@ pub(crate) fn build(
                     transform,
                 })
             } else if let Some(package) = package {
-                let dims = body_range(c, package, shapes);
-                match dims {
+                // Pads link to pins in this step, but none to this component's.
+                let pad_less = package.pins.is_empty()
+                    || (!pads_by_component.is_empty()
+                        && !pads_by_component.contains_key(c.ref_des.as_str()));
+                match body_range(c, package, pad_less, shapes) {
+                    Some((_, _, outline))
+                        if board.as_ref().is_some_and(|board| {
+                            covers_board(package, &outline, at, board, shapes)
+                        }) =>
+                    {
+                        None
+                    }
                     Some((standoff, height, outline)) => {
                         let key = (c.package_ref.clone(), standoff.to_bits(), height.to_bits());
                         let index = placeholder_keys.entry(key).or_insert_with(|| {
@@ -269,9 +284,11 @@ pub(crate) fn transform(at: DAffine2, side: Side, surface: f64) -> Transform {
 }
 
 /// The body's Z range above the seating plane and its outline, or `None` for no body.
+/// `pad_less`: no pad belongs to the component.
 fn body_range(
     c: &ipc::Component,
     package: &ipc::Package,
+    pad_less: bool,
     shapes: &mut ShapeConverter<'_>,
 ) -> Option<(f64, f64, Region)> {
     let outline = package_outline(package, shapes)?;
@@ -285,11 +302,13 @@ fn body_range(
         .filter(|h| h.is_finite() && *h > 0.0);
     let height = match height {
         Some(h) => h,
-        // Without a height, only real components (not fiducials, test points, …) get one.
-        None if matches!(
-            c.mount_type,
-            Some(ipc::MountType::Smt | ipc::MountType::Thmt)
-        ) =>
+        // Without a height, only real components get one: not fiducials, test points, logos
+        // or holes, which are mounted as `OTHER` or have no pads.
+        None if !pad_less
+            && matches!(
+                c.mount_type,
+                Some(ipc::MountType::Smt | ipc::MountType::Thmt)
+            ) =>
         {
             let b = outline.bounds()?;
             let size = b.max - b.min;
@@ -299,6 +318,28 @@ fn body_range(
     };
     let standoff = if standoff < height { standoff } else { 0.0 };
     Some((standoff, height, outline))
+}
+
+/// Whether a package outline placed with `at` covers more than [`MAX_BOARD_COVER`] of its
+/// part's board outline.
+fn covers_board(
+    package: &ipc::Package,
+    outline: &Region,
+    at: DAffine2,
+    board: &Region,
+    shapes: &mut ShapeConverter<'_>,
+) -> bool {
+    let limit = board.area() * MAX_BOARD_COVER;
+    if outline.area() * at.matrix2.determinant().abs() <= limit {
+        return false;
+    }
+    let Some(drawn) = &package.outline else {
+        return false;
+    };
+    shapes
+        .filled(&ipc::Shape::Outline(drawn.clone()), at)
+        .and_then(|s| s.to_region(Tolerance::DEFAULT).ok())
+        .is_some_and(|placed| placed.intersection(board).area() > limit)
 }
 
 /// The package outline as a filled region, in the package frame.

@@ -1175,6 +1175,22 @@ mod step {
     fn checks_pin_one() {
         let d = step_doc(r#"<Package name="P" pinOne="9"><Pin number="1"/></Package>"#).unwrap();
         assert_eq!(kinds(&d.diagnostics), [&dangling(RefKind::Pin, "P/9")]);
+        // KiCad's pin-less footprints (logos, placeholders) say `pinOne="UNKNOWN"`.
+        let d = step_doc(r#"<Package name="LOGO" pinOne="UNKNOWN"/>"#).unwrap();
+        assert!(d.diagnostics.is_empty(), "{:?}", d.diagnostics);
+        assert_eq!(
+            d.ecad
+                .steps
+                .values()
+                .next()
+                .unwrap()
+                .packages
+                .get("LOGO")
+                .unwrap()
+                .pin_one
+                .as_deref(),
+            Some("UNKNOWN")
+        );
     }
 
     #[test]

@@ -21,6 +21,7 @@
 mod colours;
 mod components;
 mod models;
+mod outline;
 mod panel;
 mod pipeline;
 mod shapes;
