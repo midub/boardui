@@ -87,15 +87,20 @@ impl LayerMesh {
     /// extrusion rejects either range, or `from.0` and `from.1` are the same in `f32` so that
     /// bottom and top vertices can't be told apart.
     pub fn restacked(&self, from: (f64, f64), to: (f64, f64)) -> Option<Self> {
-        let valid = |(z_min, z_max): (f64, f64)| {
-            z_min.is_finite() && z_max.is_finite() && z_min < z_max
-        };
+        let valid =
+            |(z_min, z_max): (f64, f64)| z_min.is_finite() && z_max.is_finite() && z_min < z_max;
         let (bottom, top) = (from.0 as f32, from.1 as f32);
         if !valid(from) || !valid(to) || bottom == top {
             return None;
         }
         // Board z is glTF y (spec §3).
-        let z = |y: f32| if y == bottom { to.0 as f32 } else { to.1 as f32 };
+        let z = |y: f32| {
+            if y == bottom {
+                to.0 as f32
+            } else {
+                to.1 as f32
+            }
+        };
         let mut mesh = self.clone();
         for p in &mut mesh.primitives {
             p.positions.iter_mut().for_each(|v| v[1] = z(v[1]));

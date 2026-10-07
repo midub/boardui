@@ -455,9 +455,9 @@ pub(crate) fn run(
             let (mesh, messages) = &meshes[j];
             let heights = (layer.z_min, layer.z_max);
             // A sheet that failed to mesh fails again, with this layer's warning.
-            let restacked = messages.is_empty().then(|| {
-                mesh.restacked((earlier.z_min, earlier.z_max), heights)
-            });
+            let restacked = messages
+                .is_empty()
+                .then(|| mesh.restacked((earlier.z_min, earlier.z_max), heights));
             match restacked.flatten() {
                 Some(mesh) => (mesh, Vec::new()),
                 None => extrude(&layer.name, &finals[j].1, heights.0, heights.1),
