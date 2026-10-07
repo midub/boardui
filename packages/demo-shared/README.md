@@ -33,13 +33,15 @@ pnpm e2e                                      # Playwright tests of every app (s
 - **Samples:** the KiCad and hand-written boards of `spec/samples` (`src/samples.ts`). The IPC
   consortium test cases are links: download one, then drop it on the page.
 - **Progress:** download, then each converter step, with a cancel button.
-- **Board panel:** counts, conversion time, GLB size, **Download GLB**, converter warnings.
+- **Board panel:** counts, the exporting software (profile 0.8), conversion time, GLB size,
+  **Download GLB**, converter warnings.
 - **View:** top, bottom (mirrored) and iso views, x-ray; keys `t`, `b`, `i`, `x`, `f` (focus the
   selection), `Esc` (clear the selection).
 - **Layers:** toggles for every layer and drill layer, and for the components.
 - **Nets:** search; each result highlights its net in its own colour.
 - **Hover and select:** a tooltip for the element under the pointer; clicking selects it and shows
-  its metadata, with links to its net, pin and component. A selected component, pin or pad gets a
+  its metadata, with links to its net, pin and component; a component also lists its BOM
+  attributes (value, description, MPN, LCSC, … as the source names them; profile 0.8). A selected component, pin or pad gets a
   **tag**: an HTML widget (`attachWidget`) that follows it; **Pin tag** keeps it when the
   selection changes. Tags fade when the board hides their element and disappear with its layer.
 
