@@ -179,6 +179,14 @@ A feature whose region becomes empty keeps its metadata row (§8.2) and has no v
 
 Each dielectric layer is one sheet feature (kind `SHEET`): the step profile, including its cutouts, minus holes.
 
+**Cut-outs on a board outline layer.** KiCad writes the `Profile` as its outer polygon alone and draws the board's inner contours (holes, slots, the gaps of a panel) only on its `BOARD_OUTLINE` layer, `Edge.Cuts`, as separate `Line`s and `Arc`s. When a step's profile has no `Cutout`, the converter takes them from the step's `BOARD_OUTLINE` layers:
+
+- lines, arcs and open `Polyline`s are chained into closed contours in any order and direction, joining ends up to 20 µm apart (KiCad joins ends up to 10 µm apart, and its export rounds coordinates); closed shapes (`Polygon`, `Outline`, a closed `Polyline`, a standard primitive) are contours as they are;
+- a contour that lies at least 20 µm inside the profile is cut out of it. The contour that traces the profile itself, contours across or touching its edge and open chains are not;
+- the converter warns once per step with the number of cut-outs taken from each layer.
+
+A profile with `Cutout`s is used as written. In a panel (§6.14), each step's contours cut its own profile, before the profiles are joined. This is converter behaviour; the asset only carries the resulting outline.
+
 ### 6.8 Components
 
 - Each placed component gets one node under `components`. The node is named by refDes (`<instance>/<refDes>` in an instance, §6.14), with `extras` per §8.4.
@@ -196,7 +204,8 @@ Each dielectric layer is one sheet feature (kind `SHEET`): the step profile, inc
 
   The result MUST match the placement shown by the source ECAD tool; the `bottom-placement` and `kicad-royalblue54l-feather` samples verify it.
 - **Placeholder body.** Without a user model, the body is the package outline (`Package/Outline`, filled) extruded from `standoff` to `height` (material `boardui/body`), on the component node itself.
-  - `height` is `Component@height`, else `Package@height`. Without either (KiCad writes none), `SMT` and `THMT` components get half the outline's smaller side, clamped to 0.2–2 mm, and other components (test points, fiducials, logos, mounting holes) get no body.
+  - `height` is `Component@height`, else `Package@height`. Without either (KiCad writes none), `SMT` and `THMT` components with pads get half the outline's smaller side, clamped to 0.2–2 mm. Other components get no body: those mounted otherwise (test points, fiducials, logos), and those without pads, whose package has no pins, or none that a pad references while the step's pads do reference pins (logos, placeholders, mounting holes, mouse bites).
+  - A body with a guessed height (no `Component@height` or `Package@height`) whose outline, placed, covers more than half of its board (the outline of the component's step, §6.7, §6.14) is left out: such a package is the board itself, as for a carrier made to drop in for a module, or would hide it. A height from the file keeps the body (a shield, a display).
   - `standoff` is `Component@standoff`, else 0.
   - A pin-1 marker (material `boardui/pin1`) is placed on the top face over pin 1 when the package defines it: a 20 µm disc whose radius is 12 % of the outline's smaller side (0.1–0.5 mm), moved from pin 1 towards the outline's centre until it lies inside the outline.
 - **User models.** With a matching user model (§6.9), the model is added on a child node of the component node, whose transform is the mapping's correction, and the placeholder body is omitted.

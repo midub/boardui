@@ -3,9 +3,10 @@ source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step egg250-panel, ASSEMBLY
 thickness: 1.5800 mm
-counts: 663 features, 64230 vertices, 125236 triangles, 20 nets, 101 components, 157 pins (106 checked against pads)
-warnings: 20 from the reader, 1 from the converter
+counts: 663 features, 64986 vertices, 126544 triangles, 20 nets, 101 components, 157 pins (106 checked against pads)
+warnings: 19 from the reader, 2 from the converter
   - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
+  - the profile of step `egg250-panel` has no cutouts; the closed contours inside it were cut out: 3 on layer `Edge.Cuts`
 layer layer/F.Courtyard Courtyard Top z 0.9000..0.9100 mm Default hidden
   99 features {"Marking": 99}, 3970 vertices, 6756 triangles, top area 32.4492 mm²
 layer layer/F.Fab Assembly Top z 0.8900..0.9000 mm Default hidden
@@ -15,15 +16,15 @@ layer layer/F.Paste Paste Top z 0.7900..0.8900 mm Default hidden
 layer layer/F.Silkscreen Silkscreen Top z 0.8000..0.8100 mm Default
   17 features {"Marking": 17}, 1490 vertices, 2892 triangles, top area 14.1579 mm²
 layer layer/F.Mask Soldermask Top z 0.7550..0.8000 mm File
-  1 features {"Sheet": 1}, 3282 vertices, 7144 triangles, top area 1197.6381 mm²
+  1 features {"Sheet": 1}, 3570 vertices, 7652 triangles, top area 1053.5404 mm²
 layer layer/F.Cu Copper Top z 0.7550..0.7900 mm File
   155 features {"Fill": 20, "Pad": 103, "Trace": 16, "Via": 16}, 16178 vertices, 31384 triangles, top area 590.2570 mm²
 layer layer/DIELECTRIC_1 Dielectric Internal z -0.7550..0.7550 mm File
-  1 features {"Sheet": 1}, 2960 vertices, 6168 triangles, top area 1321.1057 mm²
+  1 features {"Sheet": 1}, 3140 vertices, 6460 triangles, top area 1171.0633 mm²
 layer layer/B.Cu Copper Bottom z -0.7900..-0.7550 mm File
   51 features {"Fill": 8, "Pad": 19, "Trace": 8, "Via": 16}, 2898 vertices, 5624 triangles, top area 60.8786 mm²
 layer layer/B.Mask Soldermask Bottom z -0.8000..-0.7550 mm File
-  1 features {"Sheet": 1}, 2610 vertices, 5464 triangles, top area 1294.6842 mm²
+  1 features {"Sheet": 1}, 2898 vertices, 5972 triangles, top area 1150.5865 mm²
 layer layer/B.Silkscreen Silkscreen Bottom z -0.8100..-0.8000 mm Default
   20 features {"Marking": 20}, 19944 vertices, 39568 triangles, top area 37.4087 mm²
 layer layer/B.Paste Paste Bottom z -0.8900..-0.7900 mm Default hidden
@@ -35,8 +36,8 @@ layer layer/B.Courtyard Courtyard Bottom z -0.9100..-0.9000 mm Default hidden
 drill layer/F.Cu_B.Cu layer/F.Cu..layer/B.Cu
   83 features {"Barrel": 32, "Other": 51}, 2432 vertices, 4864 triangles, top area 1.7908 mm²
 components: 101
-  KiKit_MB_4_2 at (149.7000, 0.7900, 36.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder NPTH_1
-  KiKit_MB_3_1 at (142.0000, 0.7900, 42.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder NPTH_1
-  KiKit_MB_10_3 at (149.7000, 0.7900, 52.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder NPTH_1
+  KiKit_MB_4_2 at (149.7000, 0.7900, 36.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
+  KiKit_MB_3_1 at (142.0000, 0.7900, 42.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
+  KiKit_MB_10_3 at (149.7000, 0.7900, 52.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
   R2 at (152.7000, 0.7900, 58.4300) mm, rotation (0.0000, 1.0000, 0.0000, 0.0000), placeholder ERJUP3_2
-  KiKit_MB_3_3 at (140.0000, 0.7900, 42.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder NPTH_1
+  KiKit_MB_3_3 at (140.0000, 0.7900, 42.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body

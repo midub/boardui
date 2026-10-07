@@ -3,9 +3,10 @@ source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step fomu-pvt, ASSEMBLY
 thickness: 0.5800 mm
-counts: 1649 features, 145668 vertices, 286176 triangles, 31 nets, 55 components, 218 pins (144 checked against pads)
-warnings: 17 from the reader, 18 from the converter
+counts: 1649 features, 145988 vertices, 286820 triangles, 31 nets, 55 components, 218 pins (144 checked against pads)
+warnings: 16 from the reader, 19 from the converter
   - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
+  - the profile of step `fomu-pvt` has no cutouts; the closed contours inside it were cut out: 1 on layer `Edge.Cuts`
   - 30 of 30 pins of component `U5` are not on their pads
   - 2 of 2 pins of component `D5_1` are not on their pads
   - 8 of 9 pins of component `U4` are not on their pads
@@ -16,7 +17,6 @@ warnings: 17 from the reader, 18 from the converter
   - 4 of 5 pins of component `U3` are not on their pads
   - 2 of 2 pins of component `C28` are not on their pads
   - 4 of 5 pins of component `U2` are not on their pads
-  - 2 of 2 pins of component `C11` are not on their pads
 layer layer/Eco1.User Documentation Top z 0.4200..0.4300 mm Default hidden
   1 features {"Marking": 1}, 8358 vertices, 16484 triangles, top area 125.7314 mm²
 layer layer/Cmts.User Documentation Top z 0.4100..0.4200 mm Default hidden
@@ -30,23 +30,23 @@ layer layer/F.Paste Paste Top z 0.2900..0.3900 mm Default hidden
 layer layer/F.SilkS Silkscreen Top z 0.3000..0.3100 mm Default
   0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
 layer layer/F.Mask Soldermask Top z 0.2550..0.3000 mm File
-  1 features {"Sheet": 1}, 98 vertices, 208 triangles, top area 37.6683 mm²
+  1 features {"Sheet": 1}, 122 vertices, 252 triangles, top area 35.2259 mm²
 layer layer/F.Cu Copper Top z 0.2550..0.2900 mm File
   50 features {"Pad": 12, "Trace": 5, "Via": 33}, 3062 vertices, 6124 triangles, top area 83.0373 mm²
 layer layer/DIELECTRIC_1 Dielectric Internal z 0.1083..0.2550 mm File
-  1 features {"Sheet": 1}, 710 vertices, 1532 triangles, top area 119.2900 mm²
+  1 features {"Sheet": 1}, 794 vertices, 1704 triangles, top area 115.0034 mm²
 layer layer/In1.Cu Copper Internal z 0.0733..0.1083 mm File hidden
   98 features {"Trace": 10, "Via": 88}, 5014 vertices, 10132 triangles, top area 79.8501 mm²
 layer layer/DIELECTRIC_2 Dielectric Internal z -0.0733..0.0733 mm File
-  1 features {"Sheet": 1}, 1460 vertices, 3128 triangles, top area 117.2775 mm²
+  1 features {"Sheet": 1}, 1544 vertices, 3300 triangles, top area 112.9909 mm²
 layer layer/In2.Cu Copper Internal z -0.1083..-0.0733 mm File hidden
   241 features {"Trace": 17, "Via": 224}, 11762 vertices, 23696 triangles, top area 67.6663 mm²
 layer layer/DIELECTRIC_3 Dielectric Internal z -0.2550..-0.1083 mm File
-  1 features {"Sheet": 1}, 3194 vertices, 7048 triangles, top area 117.0450 mm²
+  1 features {"Sheet": 1}, 3278 vertices, 7220 triangles, top area 112.7584 mm²
 layer layer/B.Cu Copper Bottom z -0.2900..-0.2550 mm File
   331 features {"Pad": 136, "Trace": 22, "Via": 173}, 14396 vertices, 28416 triangles, top area 76.9841 mm²
 layer layer/B.Mask Soldermask Bottom z -0.3000..-0.2550 mm File
-  1 features {"Sheet": 1}, 4674 vertices, 10112 triangles, top area 83.7760 mm²
+  1 features {"Sheet": 1}, 4718 vertices, 10196 triangles, top area 81.0028 mm²
 layer layer/B.SilkS Silkscreen Bottom z -0.3100..-0.3000 mm Default
   9 features {"Marking": 9}, 346 vertices, 664 triangles, top area 1.0079 mm²
 layer layer/B.Paste Paste Bottom z -0.3900..-0.2900 mm Default hidden

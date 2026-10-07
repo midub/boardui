@@ -4,7 +4,7 @@ source: crates/boardui-convert/tests/conformance.rs
 source: IPC-2581 rev C, step RoyalBlue54L-Feather, ASSEMBLY
 thickness: 1.5800 mm
 counts: 4358 features, 457778 vertices, 914384 triangles, 95 nets, 71 components, 352 pins (313 checked against pads)
-warnings: 17 from the reader, 1 from the converter
+warnings: 16 from the reader, 1 from the converter
   - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
 layer layer/User.Comments Documentation Top z 0.9100..0.9200 mm Default hidden
   6 features {"Marking": 6}, 2676 vertices, 5304 triangles, top area 11.6457 mm²

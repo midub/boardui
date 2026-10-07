@@ -928,6 +928,181 @@ def panel():
     return d
 
 
+def outline_cutouts():
+    """Cut-outs drawn only on a `BOARD_OUTLINE` layer, as KiCad writes them (spec §6.7).
+
+    The profile (30 × 20 mm with rounded corners) has no `Cutout`. Layer `Edge.Cuts` draws the
+    profile again and, as separate lines and arcs in no particular order, some of them reversed
+    and with ends up to 8 µm apart, a keyhole (KiCad's from Fomu), a round hole (one arc that
+    ends where it starts) and a slot (a closed `Polyline`). These three are cut out. An open
+    contour, a square across the board edge and the profile itself are not.
+    """
+    d = Doc()
+    d.line_desc("EDGE", 0.05)
+    two_layers(d, drill=False)
+    d.layer("Edge.Cuts", "BOARD_OUTLINE", "ALL")
+
+    def curve(x, y, cx, cy, clockwise=False):
+        return (
+            f'<PolyStepCurve {d.xy(x, y)} centerX="{d.u(cx)}" centerY="{d.u(cy)}" '
+            f'clockwise="{str(clockwise).lower()}"/>'
+        )
+
+    def line(x0, y0, x1, y1):
+        return (
+            f'<Line startX="{d.u(x0)}" startY="{d.u(y0)}" endX="{d.u(x1)}" endY="{d.u(y1)}">'
+            '<LineDescRef id="EDGE"/></Line>'
+        )
+
+    def arc(x0, y0, x1, y1, cx, cy, clockwise):
+        return (
+            f'<Arc startX="{d.u(x0)}" startY="{d.u(y0)}" endX="{d.u(x1)}" endY="{d.u(y1)}" '
+            f'centerX="{d.u(cx)}" centerY="{d.u(cy)}" clockwise="{str(clockwise).lower()}">'
+            '<LineDescRef id="EDGE"/></Arc>'
+        )
+
+    outline = (
+        f"<PolyBegin {d.xy(1, 0)}/><PolyStepSegment {d.xy(29, 0)}/>{curve(30, 1, 29, 1)}"
+        f"<PolyStepSegment {d.xy(30, 19)}/>{curve(29, 20, 29, 19)}"
+        f"<PolyStepSegment {d.xy(1, 20)}/>{curve(0, 19, 1, 19)}"
+        f"<PolyStepSegment {d.xy(0, 1)}/>{curve(1, 0, 1, 1)}"
+    )
+    d.step.append(f"<Profile><Polygon>{outline}</Polygon></Profile>")
+    edges = [
+        # The profile itself.
+        line(1, 0, 29, 0), arc(29, 0, 30, 1, 29, 1, False), line(30, 1, 30, 19),
+        arc(30, 19, 29, 20, 29, 19, False), line(29, 20, 1, 20), arc(1, 20, 0, 19, 1, 19, False),
+        line(0, 19, 0, 1), arc(0, 1, 1, 0, 1, 1, False),
+        # The keyhole around (8, 10): the top arc ends 8 µm short, the line is reversed.
+        arc(8.6, 9.15, 7.4, 9.15, 8, 9.15, True),
+        arc(7.4, 10.85, 8.592, 10.85, 8, 10.85, True),
+        line(8.6, 9.15, 8.6, 10.85),
+        arc(7.4, 9.15, 7.4, 10.85, 7.4, 10, True),
+        # A round hole: one arc that ends where it starts.
+        arc(17.5, 10, 17.5, 10, 16, 10, False),
+        # An open contour: three sides of a rectangle.
+        line(20, 4, 26, 4), line(26, 4, 26, 7), line(26, 7, 20, 7),
+        # A square across the board edge.
+        line(27, 8, 32, 8), line(32, 8, 32, 12), line(32, 12, 27, 12), line(27, 12, 27, 8),
+    ]
+    slot = (
+        f"<PolyBegin {d.xy(20, 13.25)}/><PolyStepSegment {d.xy(25, 13.25)}/>"
+        f"{curve(25, 14.75, 25, 14)}<PolyStepSegment {d.xy(20, 14.75)}/>{curve(20, 13.25, 20, 14)}"
+    )
+    d.step.append(
+        '<LayerFeature layerRef="Edge.Cuts">'
+        f'<Set><Features><UserSpecial>{"".join(edges)}</UserSpecial></Features></Set>'
+        f'<Set><Features><Location x="0" y="0"/><Polyline>{slot}<LineDescRef id="EDGE"/></Polyline></Features></Set>'
+        "</LayerFeature>"
+    )
+    return d
+
+
+def pinless_package():
+    """Components without pads get no placeholder body unless they give a height (spec §6.8).
+
+    No package gives a height, as in KiCad's files. R1 (`SMT`, with pads) gets a body half its
+    outline's smaller side high. LOGO1 (a package without pins whose `pinOne` is `UNKNOWN`, as
+    KiCad writes logos) and H1 (a mounting hole: one pin that no pad references) get none, and
+    the logo's `pinOne` is not reported. LOGO2, the same logo with a component `height`, gets a
+    body.
+    """
+    d = Doc()
+    d.line_desc("OUTLINE", 0.1)
+    d.primitive("PAD", f'<RectCenter width="{d.u(0.9)}" height="{d.u(1.0)}"/>')
+    d.primitive("HOLE", f'<Circle diameter="{d.u(3.2)}"/>')
+    two_layers(d)
+    profile(d, 25, 15)
+    d.step.append(
+        '<Package name="R0603" type="RESISTOR" pinOne="1">'
+        f'<Outline><Polygon>{d.rect(-1.2, -0.6, 1.2, 0.6)}</Polygon><LineDescRef id="OUTLINE"/></Outline>'
+        f'<Pin number="1"><Location {d.xy(-0.8, 0)}/><StandardPrimitiveRef id="PAD"/></Pin>'
+        f'<Pin number="2"><Location {d.xy(0.8, 0)}/><StandardPrimitiveRef id="PAD"/></Pin>'
+        "</Package>"
+    )
+    d.step.append(
+        '<Package name="LOGO" type="OTHER" pinOne="UNKNOWN">'
+        f'<Outline><Polygon>{d.rect(-2, -1, 2, 1)}</Polygon><LineDescRef id="OUTLINE"/></Outline>'
+        "</Package>"
+    )
+    d.step.append(
+        '<Package name="MountingHole_3.2mm" type="OTHER" pinOne="1">'
+        f'<Outline><Polygon>{d.rect(-1.8, -1.8, 1.8, 1.8)}</Polygon><LineDescRef id="OUTLINE"/></Outline>'
+        f'<Pin number="1"><Location {d.xy(0, 0)}/><StandardPrimitiveRef id="HOLE"/></Pin>'
+        "</Package>"
+    )
+    for ref, package, mount, x, y, height in [
+        ("R1", "R0603", "SMT", 5, 7.5, None),
+        ("LOGO1", "LOGO", "SMT", 12, 10, None),
+        ("LOGO2", "LOGO", "SMT", 12, 5, 0.3),
+        ("H1", "MountingHole_3.2mm", "THMT", 20, 7.5, None),
+    ]:
+        height = f' height="{d.u(height)}"' if height else ""
+        d.step.append(
+            f'<Component refDes="{ref}" packageRef="{package}" layerRef="TOP" '
+            f'mountType="{mount}"{height}><Location {d.xy(x, y)}/></Component>'
+        )
+    d.step.append(
+        '<LayerFeature layerRef="TOP">'
+        f'<Set net="N1" padUsage="TERMINATION">{pad(d, 4.2, 7.5, "PAD", ("R1", "1"))}</Set>'
+        f'<Set net="N2" padUsage="TERMINATION">{pad(d, 5.8, 7.5, "PAD", ("R1", "2"))}</Set>'
+        "</LayerFeature>"
+    )
+    d.step.append(
+        '<LayerFeature layerRef="DRILL"><Set>'
+        f'<Hole name="H1" diameter="{d.u(3.2)}" platingStatus="NONPLATED" plusTol="0" minusTol="0" {d.xy(20, 7.5)}/>'
+        "</Set></LayerFeature>"
+    )
+    return d
+
+
+def board_sized_package():
+    """A placeholder body covering more than half of its board is left out (spec §6.8).
+
+    U1's footprint is the board itself, as for a carrier board made to drop in for a module
+    (MIAO's XIAO footprint): its outline covers the 20 × 16 mm board and its pads ring the
+    edge. It gets no body but stays a component. U2, a module covering a fifth of the board,
+    and R1 get bodies, and so does U3, a board-sized shield whose height the file gives.
+    """
+    d = Doc()
+    d.line_desc("OUTLINE", 0.1)
+    d.primitive("PAD", f'<RectCenter width="{d.u(1.0)}" height="{d.u(1.0)}"/>')
+    two_layers(d, drill=False)
+    profile(d, 20, 16)
+    packages = {
+        "MODULE_BOARD": ((-10, -8, 10, 8), [(-9, -7), (9, -7), (9, 7), (-9, 7)]),
+        "MODULE_8X8": ((-4, -4, 4, 4), [(-3, -3), (3, -3), (3, 3), (-3, 3)]),
+        "R0603": ((-1.2, -0.6, 1.2, 0.6), [(-0.8, 0), (0.8, 0)]),
+        "SHIELD_BOARD": ((-10, -8, 10, 8), [(-9, 0), (9, 0)]),
+    }
+    for name, (box, pins) in packages.items():
+        pin_xml = "".join(
+            f'<Pin number="{n}"><Location {d.xy(x, y)}/><StandardPrimitiveRef id="PAD"/></Pin>'
+            for n, (x, y) in enumerate(pins, 1)
+        )
+        d.step.append(
+            f'<Package name="{name}" type="OTHER" pinOne="1">'
+            f'<Outline><Polygon>{d.rect(*box)}</Polygon><LineDescRef id="OUTLINE"/></Outline>'
+            f"{pin_xml}</Package>"
+        )
+    pads = []
+    parts = [
+        ("U1", "MODULE_BOARD", 10, 8, ""),
+        ("U2", "MODULE_8X8", 7, 8, ""),
+        ("R1", "R0603", 15, 8, ""),
+        ("U3", "SHIELD_BOARD", 10, 8, f' height="{d.u(1.5)}"'),
+    ]
+    for ref, package, x, y, height in parts:
+        d.step.append(
+            f'<Component refDes="{ref}" packageRef="{package}" layerRef="TOP" mountType="SMT"{height}>'
+            f"<Location {d.xy(x, y)}/></Component>"
+        )
+        for n, (px, py) in enumerate(packages[package][1], 1):
+            pads.append(f'<Set padUsage="TERMINATION">{pad(d, x + px, y + py, "PAD", (ref, str(n)))}</Set>')
+    d.step.append(f'<LayerFeature layerRef="TOP">{"".join(pads)}</LayerFeature>')
+    return d
+
+
 def text_element(d, string, box, font=None, xform="", color=""):
     """A `Text` in `box` (x0, y0, x1, y1); non-ASCII characters as character references."""
     x0, y0, x1, y1 = box
@@ -1192,6 +1367,9 @@ def main():
         "colours": colours(),
         "panel": panel(),
         "text": text(),
+        "outline-cutouts": outline_cutouts(),
+        "pinless-package": pinless_package(),
+        "board-sized-package": board_sized_package(),
     }
     for name, d in samples.items():
         d.write(HERE / name / f"{name}.xml", name, "panel" if name == "panel" else "board")

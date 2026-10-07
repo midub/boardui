@@ -897,7 +897,7 @@ fn scale(at: DAffine2) -> f64 {
     at.matrix2.determinant().abs().sqrt()
 }
 
-fn direction(clockwise: bool, at: DAffine2) -> ArcDirection {
+pub(crate) fn direction(clockwise: bool, at: DAffine2) -> ArcDirection {
     // A mirroring transform reverses the direction of arcs.
     if clockwise == (at.matrix2.determinant() > 0.0) {
         ArcDirection::Clockwise
@@ -999,7 +999,7 @@ pub fn path(p: &ipc::Path, at: DAffine2) -> Path {
     out
 }
 
-fn closed(p: &ipc::Path) -> bool {
+pub(crate) fn closed(p: &ipc::Path) -> bool {
     let end = match p.steps.last() {
         Some(ipc::PolyStep::Segment { to } | ipc::PolyStep::Curve { to, .. }) => *to,
         None => return false,
