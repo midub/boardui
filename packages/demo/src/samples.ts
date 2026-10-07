@@ -8,7 +8,7 @@
  */
 
 /** The git tag that the test case links point at. */
-export const TEST_CASES_REF = 'v1.1.0';
+export const TEST_CASES_REF = 'v1.1.1';
 
 /** A sample board. Paths are relative to `spec/samples/`. */
 export interface Sample {

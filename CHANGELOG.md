@@ -5,6 +5,11 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-07
+
+Importer fixes for Allegro, Altium and KiCad files. The glTF profile goes to 0.7 (still a draft):
+a drill layer may now be synthesized.
+
 - A standard primitive's own `Xform` (revision B; Allegro 17.4 writes it into revision C files)
   is read and applied in the primitive's frame before the pad places it, so a pad that uses
   such a primitive is turned, mirrored and offset as defined
@@ -97,6 +102,7 @@ available at the [`v1-angular`](https://github.com/midub/boardui/tree/v1-angular
 - Nothing is published to npm or crates.io; the viewer and converter packages are used from this
   repository.
 
-[Unreleased]: https://github.com/midub/boardui/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/midub/boardui/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/midub/boardui/releases/tag/v1.1.1
 [1.1.0]: https://github.com/midub/boardui/releases/tag/v1.1.0
 [1.0.0]: https://github.com/midub/boardui/releases/tag/v1.0.0
