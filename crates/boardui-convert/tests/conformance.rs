@@ -318,9 +318,11 @@ fn unpaired_layers_are_reported_once_per_step() {
 /// their `text` and top face.
 type Elements = BTreeMap<String, (String, Option<Face>)>;
 
-/// The elements of a converted file, and the placement `(x, y, angle, flipped)` of each of
-/// its instances by name (spec §8.2).
-fn elements(glb: &[u8]) -> (Elements, BTreeMap<String, (f64, f64, f64, bool)>) {
+/// The placement `(x, y, angle, flipped)` of each instance by name (spec §8.2).
+type Frames = BTreeMap<String, (f64, f64, f64, bool)>;
+
+/// The elements and instances of a converted file.
+fn elements(glb: &[u8]) -> (Elements, Frames) {
     let (root, bin) = glb::read(glb).expect("GLB");
     let board: Board =
         serde_json::from_value(root.extensions.board.clone().expect("board")).expect("board");
@@ -331,7 +333,7 @@ fn elements(glb: &[u8]) -> (Elements, BTreeMap<String, (f64, f64, f64, bool)>) {
             elements.insert(id, (String::new(), None));
         }
     }
-    let mut frames = BTreeMap::new();
+    let mut frames = Frames::new();
     let mut names = Vec::new();
     if let Some(table) = t.instances {
         let [x, y, angle] = ["x", "y", "angle"].map(|c| floats(&root, bin, Some(table), c));
