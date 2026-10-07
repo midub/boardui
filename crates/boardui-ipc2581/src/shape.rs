@@ -331,11 +331,14 @@ pub struct Polyline {
     pub line: LineStyle,
 }
 
-/// `Polygon`: a closed path.
+/// `Polygon` (or a `Cutout`, which has the same type): a closed path.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Polygon {
     /// The path.
     pub path: Path,
+    /// The polygon's own `Xform` (rev B and C), which turns the path in its own frame before
+    /// the element that holds the polygon places it. Absent: identity.
+    pub xform: Xform,
     /// Stroke, if given.
     pub line: Option<LineStyle>,
     /// Fill, if given.
@@ -356,8 +359,9 @@ pub struct Outline {
 pub struct Contour {
     /// The outer `Polygon`.
     pub polygon: Polygon,
-    /// `Cutout` paths, in document order.
-    pub cutouts: Vec<Path>,
+    /// `Cutout`s, in document order. Each has its own `Xform`; its stroke and fill are read
+    /// as written but a cutout is only a hole.
+    pub cutouts: Vec<Polygon>,
 }
 
 /// `Text`: a string set in a font, placed by its `Xform` and sized by its `BoundingBox`.

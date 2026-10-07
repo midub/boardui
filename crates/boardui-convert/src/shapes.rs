@@ -239,15 +239,40 @@ impl<'a> ShapeConverter<'a> {
             None => Fill::Hollow,
         };
         let line = self.content.line_desc(&outline.line).copied();
-        self.filled_with_line(vec![path(&outline.polygon.path, at)], fill, line, at)
+        let outline = self.polygon_path(&outline.polygon, at);
+        self.filled_with_line(vec![outline], fill, line, at)
     }
 
     /// A polygon (and its cutouts) as a filled shape.
     pub fn contour(&mut self, contour: &ipc::Contour, at: DAffine2) -> Option<Shape> {
+        let mut paths = self.contour_paths(contour, at);
+        let outline = paths.remove(0);
         Some(Shape::Polygon {
-            outline: path(&contour.polygon.path, at),
-            holes: contour.cutouts.iter().map(|c| path(c, at)).collect(),
+            outline,
+            holes: paths,
         })
+    }
+
+    /// The path of a `Polygon` or `Cutout`, placed with `at` after its own `Xform`.
+    ///
+    /// The `Xform` is a child of the polygon, next to its steps: it turns the path in the
+    /// polygon's own frame, so it applies first, like a standard primitive's own `Xform`.
+    /// The element that holds the polygon (`Contour`, `Profile`, `Outline`, a feature) and
+    /// its placements come after it (`at`). A `Contour`'s polygon and each of its cutouts
+    /// have their own `Xform`.
+    fn polygon_path(&self, polygon: &ipc::Polygon, at: DAffine2) -> Path {
+        path(
+            &polygon.path,
+            at * self.placement(ipc::Point::default(), &polygon.xform),
+        )
+    }
+
+    /// The paths of a contour: its polygon, then its cutouts.
+    fn contour_paths(&self, contour: &ipc::Contour, at: DAffine2) -> Vec<Path> {
+        std::iter::once(&contour.polygon)
+            .chain(&contour.cutouts)
+            .map(|p| self.polygon_path(p, at))
+            .collect()
     }
 
     fn convert(
@@ -323,7 +348,7 @@ impl<'a> ShapeConverter<'a> {
             ipc::Shape::Outline(outline) => {
                 // An outline encloses an area (KiCad writes text glyphs and slots this
                 // way, with zero width), drawn with its line on top.
-                let p = path(&outline.polygon.path, at);
+                let p = self.polygon_path(&outline.polygon, at);
                 if mode == Mode::Filled {
                     return Some(polygon(p));
                 }
@@ -536,6 +561,8 @@ impl<'a> ShapeConverter<'a> {
     }
 
     fn polygon(&mut self, poly: &ipc::Polygon, at: DAffine2, mode: Mode) -> Option<Shape> {
+        // Its stroke and fill are children of the polygon too: they turn with it.
+        let at = at * self.placement(ipc::Point::default(), &poly.xform);
         let outline = path(&poly.path, at);
         if mode == Mode::Filled {
             return Some(polygon(outline));
@@ -711,8 +738,7 @@ impl<'a> ShapeConverter<'a> {
                 })
             }
             PrimitiveKind::Contour(contour) => {
-                let mut paths = vec![path(&contour.polygon.path, at)];
-                paths.extend(contour.cutouts.iter().map(|c| path(c, at)));
+                let paths = self.contour_paths(contour, at);
                 self.filled_with_line(paths, fill, line, at)
             }
             PrimitiveKind::Donut {
@@ -1374,6 +1400,96 @@ mod tests {
         close_to(radius, 0.5e-3, 1e-12);
     }
 
+    /// A `w` × `h` rectangle from the origin with its own `Xform`.
+    fn rectangle(w: f64, h: f64, xform: ipc::Xform) -> ipc::Polygon {
+        ipc::Polygon {
+            path: ipc::Path {
+                start: ipc::Point::default(),
+                steps: [(w, 0.0), (w, h), (0.0, h), (0.0, 0.0)]
+                    .map(|(x, y)| ipc::PolyStep::Segment {
+                        to: ipc::Point { x, y },
+                    })
+                    .to_vec(),
+            },
+            xform,
+            line: None,
+            fill: None,
+        }
+    }
+
+    #[test]
+    fn polygon_xforms_apply_before_the_placement() {
+        let c = content();
+        let mut conv = ShapeConverter::new(&c, T, MirrorOrder::MirrorThenRotate);
+        let turned = ipc::Xform {
+            offset: ipc::Point { x: 0.5e-3, y: 0.0 },
+            rotation: 90.0,
+            ..ipc::Xform::default()
+        };
+        // 2 × 1 mm, turned upright and moved 0.5 mm right by its own `Xform` (x −0.5..0.5,
+        // y 0..2), then turned by the feature's 90° (x −2..0, y −0.5..0.5) and moved to it.
+        let at = placement(
+            ipc::Point { x: 10e-3, y: 0.0 },
+            &ipc::Xform {
+                rotation: 90.0,
+                ..ipc::Xform::default()
+            },
+            MirrorOrder::MirrorThenRotate,
+        );
+        let polygon = ipc::Shape::Polygon(rectangle(2e-3, 1e-3, turned));
+        let outline = ipc::Shape::Outline(ipc::Outline {
+            polygon: rectangle(2e-3, 1e-3, turned),
+            line: ipc::LineStyle::Desc(ipc::LineDesc {
+                width: 0.0,
+                end: ipc::LineEnd::Round,
+                property: LineProperty::Solid,
+            }),
+        });
+        for shape in [&polygon, &outline] {
+            for s in [conv.area(shape, at), conv.filled(shape, at)] {
+                close_to_box(bounds(&s.unwrap()), (8e-3, -0.5e-3), (10e-3, 0.5e-3));
+            }
+        }
+        // A contour's polygon and each cutout have their own `Xform`: a 4 mm square with a
+        // 1 mm hole from the origin, mirrored and moved by the cutout's own `Xform` to
+        // x 1..2, y 2..3.
+        let contour = ipc::Contour {
+            polygon: rectangle(4e-3, 4e-3, ipc::Xform::default()),
+            cutouts: vec![rectangle(
+                1e-3,
+                1e-3,
+                ipc::Xform {
+                    offset: ipc::Point { x: 2e-3, y: 2e-3 },
+                    mirror: true,
+                    ..ipc::Xform::default()
+                },
+            )],
+        };
+        // The area of a 1 mm square at (x, y) that `s` covers.
+        let covered = |s: &Shape, x: f64, y: f64| {
+            let square = Shape::Polygon {
+                outline: path(
+                    &rectangle(1e-3, 1e-3, ipc::Xform::default()).path,
+                    DAffine2::from_translation(DVec2::new(x, y)),
+                ),
+                holes: Vec::new(),
+            };
+            s.to_region(T)
+                .unwrap()
+                .intersection(&square.to_region(T).unwrap())
+                .area()
+        };
+        let primitive = std(PrimitiveKind::Contour(Box::new(contour.clone())));
+        for s in [
+            conv.contour(&contour, DAffine2::IDENTITY).unwrap(),
+            conv.area(&primitive, DAffine2::IDENTITY).unwrap(),
+        ] {
+            close_to(area(&s), 15e-6, 1e-12);
+            close_to(covered(&s, 1e-3, 2e-3), 0.0, 1e-12);
+            close_to(covered(&s, 0.0, 0.0), 1e-6, 1e-12);
+        }
+    }
+
     #[test]
     fn mirror_orders_differ_in_rotation_sense() {
         let xform = ipc::Xform {
@@ -1500,6 +1616,7 @@ mod tests {
                     })
                     .to_vec(),
             },
+            xform: ipc::Xform::default(),
             line: Some(ipc::LineStyle::Desc(ipc::LineDesc {
                 width: 0.1e-3,
                 end: LineEnd::Round,
@@ -1561,6 +1678,7 @@ mod tests {
                     })
                     .to_vec(),
             },
+            xform: ipc::Xform::default(),
             line: None,
             fill: None,
         };
@@ -1585,6 +1703,7 @@ mod tests {
                     clockwise: false,
                 }],
             },
+            xform: ipc::Xform::default(),
             line: None,
             fill: None,
         });
@@ -1631,6 +1750,7 @@ mod tests {
                     })
                     .to_vec(),
             },
+            xform: ipc::Xform::default(),
             line,
             fill: fill.map(|f| ipc::FillStyle::Desc(Box::new(f))),
         })

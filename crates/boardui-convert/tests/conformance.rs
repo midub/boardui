@@ -146,6 +146,7 @@ samples! {
     fiducials => "fiducials",
     hexagon_moire => "hexagon-moire",
     primitive_xform => "primitive-xform",
+    polygon_xform => "polygon-xform",
     hatch_fill => "hatch-fill",
     line_styles => "line-styles",
     slots => "slots",
@@ -455,6 +456,64 @@ fn primitive_xforms_apply_before_the_pad() {
     assert!(x * 1e3 > 3.0 && y * 1e3 < 3.0, "{x} {y}");
     let [x, y] = centroid(7);
     assert!(x * 1e3 > 7.0 && y * 1e3 > 3.0, "{x} {y}");
+}
+
+/// Spec §6.1: a `Polygon`'s or `Cutout`'s own `Xform` turns it in its own frame before the
+/// element that holds it (pad, feature, profile) is placed.
+#[test]
+fn polygon_xforms_apply_before_the_placement() {
+    let (_, path) = samples()
+        .into_iter()
+        .find(|(n, _)| n == "polygon-xform")
+        .expect("sample");
+    let (elements, _) = elements(&run(&path).glb);
+    let face = |id: &str| elements[id].1.as_ref().expect("face");
+    // Within the tessellation tolerance (5 µm).
+    let close = |a: f64, b: f64, what: &str| assert!((a - b).abs() < 0.01, "{what}: {a} vs {b}");
+    let check_box = |id: &str, min: [f64; 2], max: [f64; 2]| {
+        let f = face(id);
+        for k in 0..2 {
+            close(f.min[k] * 1e3, min[k], id);
+            close(f.max[k] * 1e3, max[k], id);
+        }
+    };
+    // Bounds (mm) of each arrow pad on TOP, in document order. The arrow points +X as
+    // written; its polygon's `Xform` turns it to +Y, mirrors it to −X or moves it by
+    // (0.5, 0.25) before the pad's 0° or 90° and location.
+    let pads = [
+        ([1.5, 8.0], [2.5, 9.5]),
+        ([3.5, 7.5], [5.0, 8.5]),
+        ([6.5, 7.5], [8.0, 8.5]),
+        ([10.5, 6.5], [11.5, 8.0]),
+        ([14.5, 7.75], [16.0, 8.75]),
+        ([16.25, 8.5], [17.25, 10.0]),
+    ];
+    for (row, (min, max)) in pads.into_iter().enumerate() {
+        check_box(&format!("feat/TOP/{row}"), min, max);
+    }
+    // The fill: 4 × 2 mm turned upright and moved 2 mm right by its `Xform`, then to its
+    // feature's location (3, 1); its 1 mm cutout, mirrored and moved by its own `Xform`, is
+    // centred at (4, 4).
+    check_box("feat/TOP/6", [3.0, 1.0], [5.0, 5.0]);
+    let fill = face("feat/TOP/6");
+    close(fill.area * 1e6, 7.0, "fill area");
+    close(fill.centroid[0] * 1e3, 4.0, "fill centroid x");
+    close(fill.centroid[1] * 1e3, 20.0 / 7.0, "fill centroid y");
+    // The board: the profile's polygon around the origin, moved to 0..20 × 0..11 by its
+    // `Xform`, less a 2 × 1 mm slot turned upright and moved to (15, 3) by the cutout's own.
+    check_box("feat/@core/0", [0.0, 0.0], [20.0, 11.0]);
+    let board = face("feat/@core/0");
+    close(board.area * 1e6, 218.0, "board area");
+    close(
+        board.centroid[0] * 1e3,
+        (220.0 * 10.0 - 2.0 * 15.0) / 218.0,
+        "board centroid x",
+    );
+    close(
+        board.centroid[1] * 1e3,
+        (220.0 * 5.5 - 2.0 * 3.0) / 218.0,
+        "board centroid y",
+    );
 }
 
 /// Spec §6.13, §8.2: features from package drawings reference their component and are

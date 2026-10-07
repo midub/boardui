@@ -78,7 +78,7 @@ impl<R: BufRead> Parser<R> {
             "Line" => Shape::Line(self.read_line()?),
             "Arc" => Shape::Arc(self.read_arc()?),
             "Polyline" => Shape::Polyline(self.read_polyline()?),
-            "Polygon" => Shape::Polygon(self.read_polygon()?),
+            "Polygon" => Shape::Polygon(self.read_polygon("Polygon")?),
             "Outline" => Shape::Outline(self.read_outline()?),
             "UserSpecial" => Shape::UserSpecial(self.read_user_special()?),
             "Text" => Shape::Text(Box::new(self.read_text()?)),
@@ -603,20 +603,6 @@ impl<R: BufRead> Parser<R> {
         Ok(true)
     }
 
-    /// Reads an element that holds only a path, such as `Cutout`.
-    fn read_path(&mut self, element: &'static str) -> Result<Path, Error> {
-        let position = self.tag.position;
-        let mut path = PathBuilder::default();
-        self.children(element, |p| {
-            if p.path_step(element, &mut path)? {
-                Ok(())
-            } else {
-                p.unknown(element)
-            }
-        })?;
-        path.finish(element, position)
-    }
-
     fn read_polyline(&mut self) -> Result<Polyline, Error> {
         let position = self.tag.position;
         let mut path = PathBuilder::default();
@@ -634,22 +620,30 @@ impl<R: BufRead> Parser<R> {
         })
     }
 
-    fn read_polygon(&mut self) -> Result<Polygon, Error> {
+    /// Reads a `Polygon` or a `Cutout` (`PolygonType`).
+    fn read_polygon(&mut self, element: &'static str) -> Result<Polygon, Error> {
         let position = self.tag.position;
         let mut path = PathBuilder::default();
-        let (mut line, mut fill) = (None, None);
-        self.children("Polygon", |p| {
-            if p.path_step("Polygon", &mut path)?
-                || p.line_style("Polygon", &mut line)?
-                || p.fill_style("Polygon", &mut fill)?
+        let (mut xform, mut line, mut fill) = (None, None, None);
+        self.children(element, |p| {
+            if p.path_step(element, &mut path)?
+                || p.line_style(element, &mut line)?
+                || p.fill_style(element, &mut fill)?
             {
-                Ok(())
-            } else {
-                p.unknown("Polygon")
+                return Ok(());
+            }
+            match p.tag.name() {
+                "Xform" if xform.is_some() => p.duplicate(element),
+                "Xform" => {
+                    xform = Some(p.read_xform()?);
+                    Ok(())
+                }
+                _ => p.unknown(element),
             }
         })?;
         Ok(Polygon {
-            path: path.finish("Polygon", position)?,
+            path: path.finish(element, position)?,
+            xform: xform.unwrap_or_default(),
             line,
             fill,
         })
@@ -665,7 +659,7 @@ impl<R: BufRead> Parser<R> {
             match p.tag.name() {
                 "Polygon" if polygon.is_some() => p.duplicate("Outline"),
                 "Polygon" => {
-                    polygon = Some(p.read_polygon()?);
+                    polygon = Some(p.read_polygon("Polygon")?);
                     Ok(())
                 }
                 _ => p.unknown("Outline"),
@@ -685,11 +679,11 @@ impl<R: BufRead> Parser<R> {
         self.children(element, |p| match p.tag.name() {
             "Polygon" if polygon.is_some() => p.duplicate(element),
             "Polygon" => {
-                polygon = Some(p.read_polygon()?);
+                polygon = Some(p.read_polygon("Polygon")?);
                 Ok(())
             }
             "Cutout" => {
-                cutouts.push(p.read_path("Cutout")?);
+                cutouts.push(p.read_polygon("Cutout")?);
                 Ok(())
             }
             _ => p.unknown(element),
