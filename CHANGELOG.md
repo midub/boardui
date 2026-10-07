@@ -11,6 +11,11 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   keeping the query, so `?sample=…` links keep working. Its framework-independent parts, build
   helpers and e2e tests are shared (`packages/demo-shared`) for the Angular demo that follows.
   Importing `@boardui/viewer` without a DOM (server-side rendering) no longer throws.
+- A `Polygon`'s or `Cutout`'s own `Xform` (revisions B and C) is read and applied in the
+  polygon's frame before the element that holds it is placed: in contours, profiles, outlines
+  and features ([spec §6.1](spec/README.md#61-prisms)).
+- KiCad's `pinOne="UNKNOWN"` (no pad numbered like a pin 1) counts as not given: no warning
+  for mounting holes, fiducials and the like, unless a pin is numbered `UNKNOWN`.
 
 ## [1.1.1] - 2026-10-07
 
@@ -37,12 +42,6 @@ a drill layer may now be synthesized.
 - A copper-function layer with `side="NONE"` or a non-copper stack-up `materialType` (Altium's
   core) is a dielectric, with a warning: LDO-PCB is 0.39 mm thick instead of 1.6 mm
   ([spec §6.4](spec/README.md#64-stack-up)).
-- A `Polygon`'s or `Cutout`'s own `Xform` (revisions B and C) is read and applied in the
-  polygon's frame before the element that holds it is placed: in contours, profiles, outlines
-  and features ([spec §6.1](spec/README.md#61-prisms)).
-- KiCad's `pinOne="UNKNOWN"` (no pad numbered like a pin 1) counts as not given: no warning
-  for mounting holes, fiducials and the like, unless a pin is numbered `UNKNOWN`.
-
 ## [1.1.0] - 2026-10-07
 
 Board colours, the missing shapes, text, optional layers and panels. The glTF profile goes from
