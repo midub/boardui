@@ -1,6 +1,6 @@
 # boardui glTF profile
 
-**Version 0.5 — draft**
+**Version 0.6 — draft**
 
 This document specifies how boardui represents a printed circuit board as a glTF 2.0 asset. The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
@@ -13,7 +13,7 @@ A *boardui asset* is a valid glTF 2.0 asset (`.glb` recommended) that:
 
 The asset is an **export**. The IPC-2581 source file stays the source of truth; this profile does not aim to convert back to IPC-2581 ([ADR 0002](../docs/adr/0002-gltf-is-an-export-with-metadata.md)). Analyses that need full design data (DRC, impedance, BOM checks) read the source.
 
-Out of scope: embedded components, cavities, rigid-flex. Paste, courtyard, assembly and documentation layers and package drawings are in scope since 0.4 (§6.11–§6.13).
+Out of scope: embedded components, cavities, rigid-flex. Paste, courtyard, assembly and documentation layers and package drawings are in scope since 0.4 (§6.11–§6.13), panels since 0.6 (§6.14).
 
 ## 2. Conformance
 
@@ -48,6 +48,7 @@ board                         root node
 │  └─ layer/DRILL_1-12        plated barrels of one drill span
 └─ components
    ├─ C12                     one node per placed component
+   ├─ board-2/C12             a component of an instance (§6.14)
    └─ …
 ```
 
@@ -68,6 +69,7 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 | pin | `pin/<refDes>/<pin>` | refDes and pin number unchanged |
 | net | `net/<net name>` | net name unchanged |
 | feature | `feat/<layer name>/<n>` | input file unchanged |
+| instance | `inst/<instance>` | panel layout unchanged |
 
 - Each `<…>` segment is percent-encoded. `%`, `/`, `#`, `@`, whitespace (Unicode `White_Space`) and control characters MUST be written as `%XX`: one `%XX` per UTF-8 byte, with upper-case hex digits. Other characters MUST NOT be encoded, so every ID has exactly one spelling.
 - Layers that the converter synthesizes (§6.4, §6.5, §6.13) get names starting with an unencoded `@`, for example `layer/@soldermask-top`. Because `@` in source names is always encoded, the two never collide.
@@ -75,6 +77,7 @@ Every element has a string ID. IDs are stable across re-exports for as long as t
 - Features drawn from package drawings (§6.13) follow the layer's source features: they are numbered on from the last one, in the order of §6.13 (from 0 on a synthesized layer).
 - Soldermask and dielectric layers have a single feature, their sheet (§6.5, §6.7), with `n = 0`. The source features of a soldermask layer are its openings; they shape the sheet but get no rows of their own.
 - Feature IDs are stable only for identical input. Viewers and widgets SHOULD bind to components, pins and nets where possible.
+- **Instances.** Components, pins, nets and features of an instance (§6.14) have the instance name as an extra segment after the kind: `cmp/<instance>/<refDes>`, `pin/<instance>/<refDes>/<pin>`, `net/<instance>/<net name>`, `feat/<instance>/<layer name>/<n>`. `<n>` counts the features of the instance's own step, so these IDs are those of the step converted alone, with the instance segment. The converted step's own elements have no instance segment: a file without `StepRepeat` gets the IDs above.
 
 ## 6. Geometry
 
@@ -177,7 +180,7 @@ Each dielectric layer is one sheet feature (kind `SHEET`): the step profile, inc
 
 ### 6.8 Components
 
-- Each placed component gets one node under `components`. The node is named by refDes, with `extras` per §8.4.
+- Each placed component gets one node under `components`. The node is named by refDes (`<instance>/<refDes>` in an instance, §6.14), with `extras` per §8.4.
 - **Mounting plane.** The node's translation is the component location on the mounting plane: the outer surface of that side's outer copper layer.
 - **Package frame.** A package point `(x, y)` at height `h` above the seating plane maps to `(x, h, −y)` in the node's frame, like board points in §3.
 - **Mirror order.** IPC-2581 exporters disagree on how a mirrored `Xform` combines mirroring (about the Y axis) and the counter-clockwise rotation θ:
@@ -265,6 +268,17 @@ A `Package` may carry a `SilkScreen` and an `AssemblyDrawing`: `Outline`s and `M
 - **Silkscreen.** A component's package silkscreen is added to the silkscreen layer of its side only where that layer has nothing for the component: none of the layer's features references the component, and the layer's features cover less than 10 % of the package silkscreen's area. KiCad, which links silkscreen to components, and the IPC consortium test cases, which mostly copy package silkscreens into the layer without links, are drawn once. A side without a silkscreen layer gets `@silkscreen-top` or `@silkscreen-bottom` (default thickness, outside the soldermask), if one of its components' packages has a silkscreen, with all of them on it.
 - The new features follow the layer's source features (§5), in component document order.
 
+### 6.14 Panels
+
+A panel is a step that places other steps with `StepRepeat` (IPC-2581C §8.2.3.5): boards, coupons or sub-panels, which may place steps in turn.
+
+- **Converted step.** Unless the user names one, the converter converts the *root step*: the first step in `Content/StepRef` order (then in document order) that no `StepRepeat` references. Without `StepRepeat`s, that is the first `StepRef`, or the first step.
+- **Copies.** A `StepRepeat` places `nx · ny` copies. Copy `(i, j)` (from 0) maps a point `p` of the referenced step to `(x + i·dx, y + j·dy) + R(angle) · F · (p − datum)` in the step that holds the `StepRepeat`. `datum` is the referenced step's `Datum` (the origin without one), `R(angle)` rotates counter-clockwise, and `F` mirrors about the Y axis when `mirror` is true. Copies of nested steps compose their maps.
+- **Instances.** Every copy, at any depth, is an *instance* of its step, named `<step>-<k>`: `k` counts the copies of that step from 1, in the order the converter places them (the `StepRepeat`s of a step in document order, the copies of each with `i` varying fastest, and each copy's own copies right after it). A `StepRepeat` that would make a step contain itself is skipped with a warning.
+- **Flipped copies.** A mirrored copy is turned over (the "flipped" pairing of IPC-2581C, which needs a symmetrical stack-up). Its features go to the counterpart of their layer: copper layer `k` of `n` (top first) to copper layer `n − 1 − k`, and a layer with side `TOP` or `BOTTOM` to the layer with the same role on the other side (the first with the first, in document order). Layers without a side keep their features. Features whose layer has no counterpart are skipped with a warning. Holes go to the drill layer with the mirrored span, or stay on their own if there is none. Components change side.
+- **Content.** Each instance adds its step's features, holes and components, placed with its map, as the converted step's are: they are features of the same layers (§5, §6.2) and nodes under `components`. Nets are per instance: each board's `GND` is its own net. The board outline (§6.5, §6.7) is the union of the profiles of the converted step and of all instances.
+- **Layers.** All instances use the converted file's stack-up. Paste and drawing layers (§6.11, §6.12) and synthesized package drawing layers (§6.13) exist if the converted step or any instance needs them; package drawings follow the side each component is placed on.
+
 ## 7. Materials
 
 | Name | Used for | Default |
@@ -311,6 +325,7 @@ Feature IDs are row indices into the layer's feature table:
 | `nets` | `net` | net |
 | `components` | `component` | placed component |
 | `pins` | `pin` | component pin referenced by any feature |
+| `instances` | `instance` | instance of a step in a panel (§6.14) |
 | `<layer ID>` | `feature` | source feature of that layer (or drill layer) |
 
 - Feature tables are named by their layer ID.
@@ -321,6 +336,7 @@ Feature IDs are row indices into the layer's feature table:
 - **Pins.** A pin's `name` is the package `Pin@name`, else the `PinRef@title`. Its `net` is the net of the first feature that references it.
 - **Fiducials.** A `FIDUCIAL` feature's `fiducial` is its IPC-2581 element: `GLOBAL`, `LOCAL`, `BAD_BOARD` or `GOOD_PANEL`. Other features have `NONE`, and a table without fiducials omits the property.
 - **Text.** A feature's `text` is the `textString` of the `Text` elements its shape draws (directly, inside a `UserSpecial` or through a `UserPrimitiveRef`), in document order, joined by line feeds (U+000A). Other features have the empty string, and a table without text omits the property.
+- **Instances.** Nets, components and features of an instance reference it with `instance`; the converted step's own have none, and a table without instance references omits the property. An instance row has the instance `id`, its `step`, the `parent` instance whose step placed it (none for copies placed by the converted step), and its placement: it maps a point `(u, v)` of its step to the board point `(x, y) + R(angle) · F · (u, v)` (IPC-2581 axes, metres, degrees counter-clockwise; `F` mirrors `u` when `side` is `BOTTOM`, a flipped copy).
 
 ### 8.3 `BOARDUI_board`
 
@@ -328,7 +344,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 
 ```json
 "BOARDUI_board": {
-  "profileVersion": "0.5",
+  "profileVersion": "0.6",
   "source": {
     "format": "IPC-2581",
     "revision": "C",
@@ -360,7 +376,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 ```
 
 - `layers` is ordered top to bottom. `thickness` is the copper-to-copper thickness.
-- `tables.*` and `featureTable` are absent for tables without rows (§8.2).
+- `tables.*` and `featureTable` are absent for tables without rows (§8.2). `tables.instances` is present only for panels (§6.14).
 - `role` is one of `COPPER`, `DIELECTRIC`, `SOLDERMASK`, `SILKSCREEN`, `PASTE`, `COURTYARD`, `ASSEMBLY`, `DOCUMENTATION`. `ipcFunction` keeps the source `layerFunction`, and is absent for synthesized layers.
 - `visible` is the suggested default visibility. Inner copper layers and the optional layers (paste and drawings, §6.11, §6.12) default to `false`, all other layers to `true`. Dielectric layers stay visible so that the board is opaque like a real one: with them hidden, the translucent soldermask (§7) would show the other side's copper and components through the board.
 
@@ -379,6 +395,7 @@ Component nodes carry `extras.boardui` ([`schema/component-extras.schema.json`](
 ```
 
 - `row` is the component's row in the `components` table, which is authoritative.
+- `instance` is the ID of the component's instance (§6.14), absent for the converted step's own components.
 - The other fields duplicate it so that generic tools (Blender custom properties, three.js `userData`) can show them. They MUST match the table.
 
 ## 9. Widget anchoring (informative)
@@ -388,6 +405,7 @@ A viewer resolves an ID to geometry as follows:
 - **Feature:** layer table and row, then its vertex range (§8.1), then its bounding box.
 - **Pin:** the union of its features.
 - **Net:** the union of the bounding boxes of the features and barrels that reference it.
+- **Instance:** the union of the bounding boxes of its features and components (§6.14).
 - **Component:** the world bounding box of its node.
 
 Anchors (for example top-centre of the bounding box) are computed from these.
@@ -401,6 +419,7 @@ Anchors (for example top-centre of the bounding box) are computed from these.
 - feature IDs are contiguous and ascending within primitives;
 - metadata references are in range, and component `extras` match the `components` table;
 - `FIDUCIAL` features, and only they, have a fiducial type;
+- instances are well-formed, and IDs and component node names carry their instance (§5, §6.14);
 - per copper layer, the sum of feature areas equals the area of their union, within tolerance (§6.2). Feature areas are the areas of their top faces. Features may overlap by grid-rounding slivers where their boundaries cross, and float32 positions add rounding, so the sum may exceed the union by at most `δ · P`: `P` is the sum of the feature perimeters and `δ` is 20 nm (twice the converter's 10 nm grid) plus twice the float32 spacing at the board's largest coordinate;
 - prisms are closed;
 - layer Z ranges are ordered (§6.4).

@@ -11,6 +11,7 @@ use glam::{DAffine2, DMat3, DQuat, DVec3};
 
 use crate::Warnings;
 use crate::models::ModelLibrary;
+use crate::panel::Part;
 use crate::shapes::{MirrorOrder, ShapeConverter, placement, point};
 use crate::stackup::Stack;
 
@@ -37,16 +38,18 @@ pub(crate) struct Components {
     pub pins_misplaced: usize,
 }
 
+/// Places the components of every part, in part order (spec §6.8, §6.14). `pads` are the
+/// pads of each step, by step name, in the step's coordinates.
 pub(crate) fn build(
-    step: &ipc::Step,
+    parts: &[Part<'_>],
     stack: &Stack,
     library: Option<&ModelLibrary>,
     shapes: &mut ShapeConverter<'_>,
-    pads: &[PadRef],
+    pads: &HashMap<&str, Vec<PadRef>>,
     warnings: &mut Warnings,
 ) -> Components {
     let mut out = Components {
-        components: Vec::with_capacity(step.components.len()),
+        components: Vec::new(),
         placeholders: Vec::new(),
         models: Vec::new(),
         pins_checked: 0,
@@ -54,94 +57,101 @@ pub(crate) fn build(
     };
     let mut placeholder_keys: HashMap<(String, u64, u64), Option<usize>> = HashMap::new();
     let mut model_indices: HashMap<usize, usize> = HashMap::new();
-    let mut pads_by_component: HashMap<&str, Vec<&PadRef>> = HashMap::new();
-    for pad in pads {
-        pads_by_component
-            .entry(&pad.component)
-            .or_default()
-            .push(pad);
-    }
-
-    for c in step.components.values() {
-        let side = component_side(c, stack);
-        let surface = match side {
-            Side::Bottom => stack
-                .outer_copper(Side::Bottom)
-                .map(|i| stack.layers[i].z_min),
-            _ => stack.outer_copper(Side::Top).map(|i| stack.layers[i].z_max),
+    for part in parts {
+        let step = part.step;
+        let mut pads_by_component: HashMap<&str, Vec<&PadRef>> = HashMap::new();
+        for pad in pads.get(step.name.as_str()).into_iter().flatten() {
+            pads_by_component
+                .entry(&pad.component)
+                .or_default()
+                .push(pad);
         }
-        .unwrap_or(0.0);
-        let at = shapes.placement(c.location, &c.xform);
-        let package = step.packages.get(&c.package_ref);
-        if package.is_none() {
-            warnings.push(format!(
-                "component `{}` uses undefined package `{}`",
-                c.ref_des, c.package_ref
-            ));
-        }
-
-        // Check the placement convention against the pads (spec §6.8): every package pin
-        // that pads reference must have one of them where the placed pin lands.
-        if let (Some(package), Some(pads)) = (package, pads_by_component.get(c.ref_des.as_str())) {
-            let (checked, misplaced) = check_pins(package, pads, at, shapes.order);
-            out.pins_checked += checked;
-            if misplaced > 0 {
-                out.pins_misplaced += misplaced;
+        for c in step.components.values() {
+            let side = placed_side(c, stack, part.flipped);
+            let surface = match side {
+                Side::Bottom => stack
+                    .outer_copper(Side::Bottom)
+                    .map(|i| stack.layers[i].z_min),
+                _ => stack.outer_copper(Side::Top).map(|i| stack.layers[i].z_max),
+            }
+            .unwrap_or(0.0);
+            // The placement in the step, where its pads are, and on the board.
+            let local = shapes.placement(c.location, &c.xform);
+            let at = part.frame * local;
+            let package = step.packages.get(&c.package_ref);
+            if package.is_none() {
                 warnings.push(format!(
-                    "{misplaced} of {checked} pins of component `{}` are not on their pads",
-                    c.ref_des
+                    "component `{}` uses undefined package `{}`",
+                    c.ref_des, c.package_ref
                 ));
-                for (_, pin) in package.pins.iter() {
-                    let pin_at = placement(pin.location, &pin.xform, shapes.order);
-                    let p = (at * pin_at).transform_point2(DVec2::ZERO);
-                    tracing::debug!("{} pin {} lands at {p}", c.ref_des, pin.number);
+            }
+
+            // Check the placement convention against the pads (spec §6.8): every package pin
+            // that pads reference must have one of them where the placed pin lands.
+            if let (Some(package), Some(pads)) =
+                (package, pads_by_component.get(c.ref_des.as_str()))
+            {
+                let (checked, misplaced) = check_pins(package, pads, local, shapes.order);
+                out.pins_checked += checked;
+                if misplaced > 0 {
+                    out.pins_misplaced += misplaced;
+                    warnings.push(format!(
+                        "{misplaced} of {checked} pins of component `{}` are not on their pads",
+                        c.ref_des
+                    ));
+                    for (_, pin) in package.pins.iter() {
+                        let pin_at = placement(pin.location, &pin.xform, shapes.order);
+                        let p = (local * pin_at).transform_point2(DVec2::ZERO);
+                        tracing::debug!("{} pin {} lands at {p}", c.ref_des, pin.number);
+                    }
                 }
             }
+
+            let model = library.and_then(|l| l.find(c.part.as_deref(), &c.package_ref));
+            let body = if let Some((index, transform)) = model {
+                let next = out.models.len();
+                let local = *model_indices.entry(index).or_insert(next);
+                if local == next {
+                    let library = library.expect("matched a rule");
+                    out.models.push(library.models[index].clone());
+                }
+                Some(BodyRef::Model {
+                    model: local,
+                    transform,
+                })
+            } else if let Some(package) = package {
+                let dims = body_range(c, package, shapes);
+                match dims {
+                    Some((standoff, height, outline)) => {
+                        let key = (c.package_ref.clone(), standoff.to_bits(), height.to_bits());
+                        let index = placeholder_keys.entry(key).or_insert_with(|| {
+                            let body = placeholder(package, &outline, standoff, height, shapes)?;
+                            out.placeholders.push(body);
+                            Some(out.placeholders.len() - 1)
+                        });
+                        index.map(BodyRef::Placeholder)
+                    }
+                    None => None,
+                }
+            } else {
+                None
+            };
+
+            out.components.push(ComponentAsset {
+                ref_des: c.ref_des.clone(),
+                part: c.part.clone().filter(|p| !p.is_empty()),
+                package: Some(c.package_ref.clone()),
+                side,
+                mount: c.mount_type.map(|m| match m {
+                    ipc::MountType::Smt => Mount::Smt,
+                    ipc::MountType::Thmt => Mount::Thmt,
+                    ipc::MountType::Other => Mount::Other,
+                }),
+                transform: transform(at, side, surface),
+                body,
+                instance: part.instance,
+            });
         }
-
-        let model = library.and_then(|l| l.find(c.part.as_deref(), &c.package_ref));
-        let body = if let Some((index, transform)) = model {
-            let next = out.models.len();
-            let local = *model_indices.entry(index).or_insert(next);
-            if local == next {
-                let library = library.expect("matched a rule");
-                out.models.push(library.models[index].clone());
-            }
-            Some(BodyRef::Model {
-                model: local,
-                transform,
-            })
-        } else if let Some(package) = package {
-            let dims = body_range(c, package, shapes);
-            match dims {
-                Some((standoff, height, outline)) => {
-                    let key = (c.package_ref.clone(), standoff.to_bits(), height.to_bits());
-                    let index = placeholder_keys.entry(key).or_insert_with(|| {
-                        let body = placeholder(package, &outline, standoff, height, shapes)?;
-                        out.placeholders.push(body);
-                        Some(out.placeholders.len() - 1)
-                    });
-                    index.map(BodyRef::Placeholder)
-                }
-                None => None,
-            }
-        } else {
-            None
-        };
-
-        out.components.push(ComponentAsset {
-            ref_des: c.ref_des.clone(),
-            part: c.part.clone().filter(|p| !p.is_empty()),
-            package: Some(c.package_ref.clone()),
-            side,
-            mount: c.mount_type.map(|m| match m {
-                ipc::MountType::Smt => Mount::Smt,
-                ipc::MountType::Thmt => Mount::Thmt,
-                ipc::MountType::Other => Mount::Other,
-            }),
-            transform: transform(at, side, surface),
-            body,
-        });
     }
     // Placeholder names must tell variants of one package apart.
     let mut seen: HashMap<String, usize> = HashMap::new();
@@ -157,27 +167,29 @@ pub(crate) fn build(
 
 /// Finds the file's [`MirrorOrder`] from the pads of mirrored components: whichever order
 /// puts more package pins onto their pads. Without evidence, KiCad's order.
-pub(crate) fn detect_mirror_order(step: &ipc::Step, pads: &[PadRef]) -> MirrorOrder {
+pub(crate) fn detect_mirror_order(steps: &[(&ipc::Step, &[PadRef])]) -> MirrorOrder {
     let orders = [MirrorOrder::MirrorThenRotate, MirrorOrder::RotateThenMirror];
-    let mut by_component: HashMap<&str, Vec<&PadRef>> = HashMap::new();
-    for pad in pads {
-        by_component.entry(&pad.component).or_default().push(pad);
-    }
     let mut votes = [0usize; 2];
-    for (ref_des, pads) in &by_component {
-        let Some(c) = step.components.get(ref_des) else {
-            continue;
-        };
-        if !c.xform.mirror || (c.xform.rotation / 180.0).fract() == 0.0 {
-            continue;
+    for (step, pads) in steps {
+        let mut by_component: HashMap<&str, Vec<&PadRef>> = HashMap::new();
+        for pad in *pads {
+            by_component.entry(&pad.component).or_default().push(pad);
         }
-        let Some(package) = step.packages.get(&c.package_ref) else {
-            continue;
-        };
-        for (k, order) in orders.into_iter().enumerate() {
-            let (checked, misplaced) =
-                check_pins(package, pads, placement(c.location, &c.xform, order), order);
-            votes[k] += checked - misplaced;
+        for (ref_des, pads) in &by_component {
+            let Some(c) = step.components.get(ref_des) else {
+                continue;
+            };
+            if !c.xform.mirror || (c.xform.rotation / 180.0).fract() == 0.0 {
+                continue;
+            }
+            let Some(package) = step.packages.get(&c.package_ref) else {
+                continue;
+            };
+            for (k, order) in orders.into_iter().enumerate() {
+                let (checked, misplaced) =
+                    check_pins(package, pads, placement(c.location, &c.xform, order), order);
+                votes[k] += checked - misplaced;
+            }
         }
     }
     if votes[1] > votes[0] {
@@ -211,7 +223,17 @@ fn check_pins(
     (checked, misplaced)
 }
 
-pub(crate) fn component_side(c: &ipc::Component, stack: &Stack) -> Side {
+/// The side a component of a part is mounted on: its own, or the other for a flipped copy
+/// (spec §6.14).
+pub(crate) fn placed_side(c: &ipc::Component, stack: &Stack, flipped: bool) -> Side {
+    match (component_side(c, stack), flipped) {
+        (Side::Top, true) => Side::Bottom,
+        (Side::Bottom, true) => Side::Top,
+        (side, _) => side,
+    }
+}
+
+fn component_side(c: &ipc::Component, stack: &Stack) -> Side {
     match stack.index(&c.layer_ref).map(|i| stack.layers[i].side) {
         Some(Side::Bottom) => Side::Bottom,
         Some(_) => Side::Top,

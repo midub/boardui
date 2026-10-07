@@ -26,6 +26,7 @@ describe('idKind', () => {
     expect(idKind('pin/C12/1')).toBe('pin');
     expect(idKind('net/GND')).toBe('net');
     expect(idKind('feat/TOP/3')).toBe('feature');
+    expect(idKind('inst/board-2')).toBe('instance');
   });
 
   it('rejects malformed IDs', () => {
@@ -40,14 +41,26 @@ describe('feature IDs', () => {
     expect(featureId('layer/TOP', 12)).toBe('feat/TOP/12');
     expect(featureId('layer/@soldermask-top', 0)).toBe('feat/@soldermask-top/0');
     expect(featureId('layer/In2%20Power', 3)).toBe('feat/In2%20Power/3');
+    expect(featureId('layer/TOP', 12, 'inst/board-2')).toBe('feat/board-2/TOP/12');
+    expect(featureId('layer/TOP', 12, null)).toBe('feat/TOP/12');
   });
 
   it('parse back into layer ID and source index', () => {
     expect(parseFeatureId('feat/In2%20Power/3')).toEqual({
       layerId: 'layer/In2%20Power',
       source: 3,
+      instanceId: null,
     });
-    expect(parseFeatureId('feat/@core/0')).toEqual({ layerId: 'layer/@core', source: 0 });
+    expect(parseFeatureId('feat/@core/0')).toEqual({
+      layerId: 'layer/@core',
+      source: 0,
+      instanceId: null,
+    });
+    expect(parseFeatureId('feat/board-2/TOP/12')).toEqual({
+      layerId: 'layer/TOP',
+      source: 12,
+      instanceId: 'inst/board-2',
+    });
   });
 
   it('reject malformed feature IDs', () => {
@@ -56,7 +69,8 @@ describe('feature IDs', () => {
       'feat/TOP/',
       'feat/TOP/01',
       'feat/TOP/-1',
-      'feat/A/B/1',
+      'feat/A/B/C/1',
+      'feat//TOP/1',
       'net/X/1',
     ]) {
       expect(parseFeatureId(id), id).toBeNull();

@@ -15,35 +15,50 @@ export function segments(id: string): string[] {
   return id.split('/').slice(1).map(decodeSegment);
 }
 
-/** A short label for an element ID: `U3`, `U3.5`, `GND`, `TOP`, `TOP #12`. */
+/**
+ * A short label for an element ID: `U3`, `U3.5`, `GND`, `TOP`, `TOP #12`. An element of a panel's
+ * instance (spec §6.14) names it: `U3 (board-2)`; the instance itself is `board-2`.
+ */
 export function label(id: string): string {
   const [kind] = id.split('/');
   const parts = segments(id);
-  switch (kind) {
-    case 'cmp':
-    case 'net':
-    case 'layer':
-      return parts[0] ?? id;
-    case 'pin':
-      return `${parts[0]}.${parts[1]}`;
-    case 'feat':
-      return `${parts[0]} #${parts[1]}`;
-    default:
-      return id;
-  }
+  const own = { cmp: 1, net: 1, pin: 2, feat: 2 }[kind as string];
+  const instance = own !== undefined && parts.length > own ? parts.shift() : undefined;
+  const text = (() => {
+    switch (kind) {
+      case 'cmp':
+      case 'net':
+      case 'layer':
+      case 'inst':
+        return parts[0] ?? id;
+      case 'pin':
+        return `${parts[0]}.${parts[1]}`;
+      case 'feat':
+        return `${parts[0]} #${parts[1]}`;
+      default:
+        return id;
+    }
+  })();
+  return instance === undefined ? text : `${text} (${instance})`;
 }
 
 /** The kind of element an ID names, for display. */
 export function kindLabel(kind: string): string {
   return (
-    { component: 'Component', pin: 'Pin', net: 'Net', feature: 'Feature', layer: 'Layer' }[kind] ??
-    kind
+    {
+      component: 'Component',
+      pin: 'Pin',
+      net: 'Net',
+      feature: 'Feature',
+      layer: 'Layer',
+      instance: 'Board instance',
+    }[kind] ?? kind
   );
 }
 
 /** Whether a string is an element ID that can be linked. */
 export function isElementId(value: unknown): value is string {
-  return typeof value === 'string' && /^(cmp|pin|net|layer|feat)\//.test(value);
+  return typeof value === 'string' && /^(cmp|pin|net|layer|feat|inst)\//.test(value);
 }
 
 /** Title and one-line summary of an element, for the tooltip and the tags. */
@@ -56,6 +71,13 @@ export function summary(info: ElementInfo): { title: string; detail: string } {
       return {
         title: label(info.id),
         detail: [str('part'), str('package'), str('side').toLowerCase()]
+          .filter(Boolean)
+          .join(' · '),
+      };
+    case 'instance':
+      return {
+        title: label(info.id),
+        detail: [`step ${str('step')}`, str('side') === 'BOTTOM' ? 'flipped' : '']
           .filter(Boolean)
           .join(' · '),
       };
@@ -87,6 +109,9 @@ export function formatValue(key: string, value: unknown): string {
     if (/^(z(Min|Max)|thickness|tolerance|platingThickness|height|standoff)$/.test(key)) {
       return `${(value * 1e3).toFixed(value < 1e-4 ? 4 : 3)} mm`;
     }
+    // An instance's placement (spec §6.14).
+    if (key === 'x' || key === 'y') return `${(value * 1e3).toFixed(3)} mm`;
+    if (key === 'angle') return `${Number(value.toFixed(4))}°`;
     return Number.isInteger(value) ? String(value) : value.toPrecision(6);
   }
   if (typeof value === 'boolean') return value ? 'yes' : 'no';

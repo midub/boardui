@@ -74,7 +74,7 @@ export interface BoardExtensionJson {
   layers: BoardLayerJson[];
   drills: BoardDrillJson[];
   /** A table without rows is omitted (spec §8.2). */
-  tables: { nets?: number; components?: number; pins?: number };
+  tables: { nets?: number; components?: number; pins?: number; instances?: number };
 }
 
 /**

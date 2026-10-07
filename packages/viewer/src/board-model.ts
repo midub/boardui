@@ -84,7 +84,7 @@ export interface ResolvedElement {
 }
 
 /** Element kinds that {@link BoardModel.ids} can list. */
-export type ListableKind = 'layer' | 'component' | 'pin' | 'net';
+export type ListableKind = 'layer' | 'component' | 'pin' | 'net' | 'instance';
 
 /** Compressed lists of state texels per table row. */
 class RowIndex {
@@ -113,11 +113,13 @@ export class BoardModel {
   readonly componentBatches: readonly ComponentBatch[];
 
   readonly #layerById = new Map<string, LayerModel>();
-  readonly #rows: Record<'component' | 'pin' | 'net', Map<string, number>>;
+  readonly #rows: Record<'component' | 'pin' | 'net' | 'instance', Map<string, number>>;
   readonly #netTexels: RowIndex;
   readonly #pinTexels: RowIndex;
   readonly #componentTexels: RowIndex;
+  readonly #instanceTexels: RowIndex;
   readonly #componentBounds: Box3[];
+  /** Feature rows per layer, by {@link sourceKey}. */
   readonly #sourceRows = new Map<LayerModel, Map<number, number>>();
 
   private constructor(
@@ -126,6 +128,8 @@ export class BoardModel {
     readonly nets: PropertyTable,
     readonly components: PropertyTable,
     readonly pins: PropertyTable,
+    /** The copies of steps placed in a panel (spec §6.14); empty for a single board. */
+    readonly instances: PropertyTable,
     /** Layers top to bottom, then drill layers. */
     readonly layers: readonly LayerModel[],
     nodes: ReadonlyMap<number, Object3D>,
@@ -141,10 +145,12 @@ export class BoardModel {
       component: rowsById(components),
       pin: rowsById(pins),
       net: rowsById(nets),
+      instance: rowsById(instances),
     };
     this.#netTexels = this.#indexFeatures('net', nets.count);
     this.#pinTexels = this.#indexFeatures('pin', pins.count);
     this.#componentTexels = this.#indexFeatures('component', components.count);
+    this.#instanceTexels = this.#indexFeatures('instance', instances.count);
 
     this.#componentBounds = Array.from({ length: components.count }, () => new Box3());
     this.componentBatches = this.#batchComponents(nodes);
@@ -227,6 +233,7 @@ export class BoardModel {
       table(board.tables.nets, 'net', 'nets'),
       table(board.tables.components, 'component', 'components'),
       table(board.tables.pins, 'pin', 'pins'),
+      table(board.tables.instances, 'instance', 'instances'),
       layers,
       nodes,
     );
@@ -285,6 +292,10 @@ export class BoardModel {
           : bounds.clone();
         return { id, kind, texels: Uint32Array.of(this.componentOffset + row), box };
       }
+      case 'instance': {
+        const row = this.#rows.instance.get(id);
+        return row === undefined ? null : this.#resolveInstance(id, row);
+      }
       default:
         return null;
     }
@@ -301,7 +312,11 @@ export class BoardModel {
       return this.components.get('id', texel - this.componentOffset) as string;
     }
     const [layer, row] = this.#layerOfTexel(texel);
-    return featureId(layer.id, layer.table.get('source', row) as number);
+    return featureId(
+      layer.id,
+      layer.table.get('source', row) as number,
+      this.#instanceId(layer, row),
+    );
   }
 
   /** Metadata of an element, or `null` if the ID is unknown. */
@@ -334,10 +349,16 @@ export class BoardModel {
       }
       case 'component':
       case 'pin':
-      case 'net': {
+      case 'net':
+      case 'instance': {
         const row = this.#rows[kind].get(id);
         if (row === undefined) return null;
-        const table = { component: this.components, pin: this.pins, net: this.nets }[kind];
+        const table = {
+          component: this.components,
+          pin: this.pins,
+          net: this.nets,
+          instance: this.instances,
+        }[kind];
         const { id: _id, node: _node, ...properties } = table.row(row);
         return { id, kind, properties: this.#withIds(properties) };
       }
@@ -389,16 +410,63 @@ export class BoardModel {
     const parsed = parseFeatureId(id);
     const layer = parsed && this.#layerById.get(parsed.layerId);
     if (!parsed || !layer) return null;
+    const instance = parsed.instanceId === null ? null : this.#rows.instance.get(parsed.instanceId);
+    if (instance === undefined) return null;
     let rows = this.#sourceRows.get(layer);
     if (!rows) {
       rows = new Map();
       for (let row = 0; row < layer.table.count; row++) {
-        rows.set(layer.table.get('source', row) as number, row);
+        const source = layer.table.get('source', row) as number;
+        rows.set(sourceKey(layer.table.get('instance', row) as number | null, source), row);
       }
       this.#sourceRows.set(layer, rows);
     }
-    const row = rows.get(parsed.source);
+    const row = rows.get(sourceKey(instance, parsed.source));
     return row === undefined ? null : [layer, row];
+  }
+
+  /** The ID of the instance a feature belongs to, or `null` (spec §6.14). */
+  #instanceId(layer: LayerModel, row: number): string | null {
+    const instance = layer.table.get('instance', row);
+    return typeof instance === 'number' ? (this.instances.get('id', instance) as string) : null;
+  }
+
+  /**
+   * An instance with the instances placed in it: their features and components, and the union
+   * of their bounding boxes (spec §9).
+   */
+  #resolveInstance(id: string, row: number): ResolvedElement {
+    // Whether instance `r` is this one or placed in it; parents precede their children.
+    const inside = (r: number): boolean => {
+      let at: number | null = r;
+      while (at !== null && at >= row) {
+        if (at === row) return true;
+        const parent = this.instances.get('parent', at) as number | null;
+        at = parent !== null && parent < at ? parent : null;
+      }
+      return false;
+    };
+    const texels: number[] = [];
+    const box = new Box3();
+    for (let r = 0; r < this.instances.count; r++) {
+      if (!inside(r)) continue;
+      for (const texel of this.#instanceTexels.get(r)) texels.push(texel);
+    }
+    const featureBox = this.#featureBox(Uint32Array.from(texels));
+    if (featureBox) box.union(featureBox);
+    for (let c = 0; c < this.components.count; c++) {
+      const instance = this.components.get('instance', c);
+      if (typeof instance === 'number' && inside(instance)) {
+        texels.push(this.componentOffset + c);
+        box.union(this.#componentBounds[c] as Box3);
+      }
+    }
+    return {
+      id,
+      kind: 'instance',
+      texels: Uint32Array.from(texels).sort(),
+      box: box.isEmpty() ? null : box,
+    };
   }
 
   #layerOfTexel(texel: number): readonly [LayerModel, number] {
@@ -429,6 +497,8 @@ export class BoardModel {
       net: this.nets,
       pin: this.pins,
       component: this.components,
+      instance: this.instances,
+      parent: this.instances,
     };
     const result: Record<string, unknown> = { ...properties };
     for (const [property, table] of Object.entries(tables)) {
@@ -439,7 +509,7 @@ export class BoardModel {
   }
 
   /** Lists the feature texels that reference each row of a table, via a feature column. */
-  #indexFeatures(column: 'net' | 'pin' | 'component', rowCount: number): RowIndex {
+  #indexFeatures(column: 'net' | 'pin' | 'component' | 'instance', rowCount: number): RowIndex {
     const visit = (emit: (row: number, texel: number) => void) => {
       for (const layer of this.layers) {
         const values = layer.table.column(column);
@@ -508,6 +578,14 @@ export class BoardModel {
       return { mesh, rows: Uint32Array.from(rows) };
     });
   }
+}
+
+/**
+ * Key of a feature in its layer: its instance row (`null` for the converted step's own) and its
+ * source index (spec §5, §6.14).
+ */
+function sourceKey(instance: number | null, source: number): number {
+  return ((instance ?? -1) + 1) * 2 ** 32 + source;
 }
 
 /**

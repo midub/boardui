@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// The profile version written by this crate (spec §11).
-pub const PROFILE_VERSION: &str = "0.5";
+pub const PROFILE_VERSION: &str = "0.6";
 
 /// Root extension `BOARDUI_board`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -123,6 +123,9 @@ pub struct Tables {
     /// The `pins` table.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pins: Option<u32>,
+    /// The `instances` table: the placed copies of a panel's steps (spec §6.14).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instances: Option<u32>,
 }
 
 /// `role` of a layer.
@@ -341,7 +344,7 @@ pub struct ComponentExtras {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ComponentInfo {
-    /// `id`: `cmp/<refDes>`.
+    /// `id`: `cmp/<refDes>`, or `cmp/<instance>/<refDes>` in an instance.
     pub id: String,
     /// `row` in the `components` table.
     pub row: u32,
@@ -358,4 +361,7 @@ pub struct ComponentInfo {
     /// `mount`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mount: Option<Mount>,
+    /// `instance`: the ID of the component's instance (spec §6.14), if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instance: Option<String>,
 }
