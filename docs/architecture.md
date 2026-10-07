@@ -28,6 +28,7 @@ IPC-2581 ──► boardui-ipc2581 ──► boardui-geom ──► boardui-gltf
 ├─ packages/
 │  ├─ converter/         @boardui/converter: WASM + Web Worker wrapper
 │  ├─ viewer/            @boardui/viewer: <board-viewer>
+│  ├─ models/            @boardui/models: runtime model sources (KiCad, mapping files), STEP and OBJ loaders
 │  ├─ react/             @boardui/react: React wrapper of <board-viewer>
 │  ├─ angular/           @boardui/angular: Angular wrapper of <board-viewer>
 │  ├─ demo-shared/       the demos' framework-independent code, build helpers, e2e tests
@@ -113,7 +114,15 @@ Every element can be hovered, selected, recoloured or hidden, but layers stay me
    - The viewer writes one texel; nothing is rebuilt.
 4. **Net highlight.** The viewer writes every texel of the net's features. The feature → net index is built once at load time.
 5. **Feature ranges.** Contiguous features (spec §8.1) let the loader compute each feature's vertex range and bounding box in one pass. These feed widget anchors and "zoom to element".
-6. **Components.** Component nodes that share a mesh are batched (`BatchedMesh` / `InstancedMesh`) per material, and the instance index maps back to the component row.
+6. **Components.** Component nodes that share a mesh are batched (`BatchedMesh` / `InstancedMesh`) per material, and the instance index maps back to the component row. Runtime models (below) are batched the same way, on the same texels, so a component behaves alike whatever body it shows.
+
+### Runtime models
+
+After a board loads, the viewer replaces placeholder bodies with real models from **model sources** ([ADR 0014](adr/0014-runtime-model-sources.md), spec §6.15):
+
+- **Sources** (`ModelSource`) resolve a component (refDes, part, package, BOM attributes) and the board (exporting software) to a `ModelRef`: key, URL or loader, format, transform into the package frame. They are tried in order; misses and failures fall through, models embedded by the converter stay.
+- **Loaders** per format: glTF/GLB in the viewer; STEP (occt-import-js in a worker, on first use) and OBJ in `@boardui/models`, with `kicadSource` (KiCad's libraries through GitLab's API) and `mappingSource` (a model mapping file on your own server).
+- **Loading** runs in the background after `bui-load`: deduplicated per key, eight components at a time, scene updates batched, stopped by the next load; `bui-model-progress` and `bui-model-done` report it. Files and tessellated STEP go into Cache Storage, so a second load of a board makes no model requests.
 
 ### Public API (sketch)
 
@@ -139,6 +148,9 @@ viewer.addEventListener('bui-hover', (e) => e.detail /* { id, kind, properties }
 viewer.addEventListener('bui-select', (e) => e.detail);
 viewer.addEventListener('bui-load', (e) => e.detail /* info('board'): widgets can attach now */);
 viewer.addEventListener('bui-unload', (e) => e.detail /* the board is about to be replaced */);
+
+viewer.modelSources = [kicadSource()];          // runtime models (@boardui/models)
+viewer.addEventListener('bui-model-done', (e) => e.detail /* { loaded, total, sources, … } */);
 ```
 
 **Widgets** are ordinary HTML elements, from any framework, placed in an overlay above the canvas:

@@ -37,6 +37,11 @@ pnpm e2e                                      # Playwright tests of every app (s
   **Download GLB**, converter warnings.
 - **View:** top, bottom (mirrored) and iso views, x-ray; keys `t`, `b`, `i`, `x`, `f` (focus the
   selection), `Esc` (clear the selection).
+- **3D models:** after every load, the viewer replaces placeholder bodies with models of KiCad's
+  libraries, fetched from gitlab.com by footprint name (`kicadSource` of `@boardui/models`); the
+  panel shows how many components got one, misses and failures, a toggle back to the
+  placeholders, and the credits (KiCad's libraries, CC-BY-SA 4.0 with an exception; occt-import-js
+  and OpenCascade, LGPL-2.1, whose licences the build serves under `licenses/`).
 - **Layers:** toggles for every layer and drill layer, and for the components.
 - **Nets:** search; each result highlights its net in its own colour.
 - **Hover and select:** a tooltip for the element under the pointer; clicking selects it and shows
@@ -45,7 +50,8 @@ pnpm e2e                                      # Playwright tests of every app (s
   **tag**: an HTML widget (`attachWidget`) that follows it; **Pin tag** keeps it when the
   selection changes. Tags fade when the board hides their element and disappear with its layer.
 
-Query parameters: `sample=<id>` opens a sample, `glb=<url>` loads a GLB, `stats` shows the
+Query parameters: `sample=<id>` opens a sample, `glb=<url>` loads a GLB, `models=<url>` adds a
+model mapping (`spec/schema/models.schema.json`, `mappingSource`) tried before KiCad, `stats` shows the
 renderer statistics (backend, fps, draw calls, triangles), `spin` orbits the camera continuously,
 `backend=webgl` forces WebGL2. To measure the frame rate on a real GPU, open
 <https://midub.github.io/boardui/?sample=royalblue54l-feather&stats&spin>, or open `?stats&spin`
@@ -61,6 +67,7 @@ viewer, the board and the last load's timings for tests and the console.
   colours) and the keyboard shortcuts; `src/files.ts`: classifying dropped or picked files, and
   drops on the window; `src/names.ts`: labels of element IDs and their metadata;
   `src/stats.ts`: the `?stats` overlay's numbers; `src/format.ts`.
+- `src/models.ts`: `DemoModels`, the runtime model sources and what the 3D models panel shows.
 - `src/samples.ts`: the samples and the test case links; `src/frameworks.ts`: the apps (`DEMOS`)
   and the links between them.
 - `src/style.css` (`@boardui/demo-shared/style.css`): the page's styles. The apps render the same
@@ -116,7 +123,9 @@ opens the GLB it writes.
   converts in the browser (the IPC consortium test cases opened through the file input; skipped
   unless fetched, see `spec/samples/ipc-testcases/README.md`), opening files and GLBs, models,
   errors, hover, selection, tags, layers, nets, x-ray, the stats overlay, the links between the
-  apps, and screenshots. The apps look the same, so they share the screenshots
+  apps, runtime models, and screenshots. gitlab.com is intercepted for the whole suite
+  (`e2e/fixtures.ts`): every request gets a 404, so no test reaches KiCad's libraries; the models
+  tests serve self-made footprints, a STEP box and a glTF box in their place. The apps look the same, so they share the screenshots
   (`e2e/*-snapshots/`, made in that image); the switch, which marks each app's own framework, is
   masked in them. Project `site` tests the redirect of `/boardui/`.
 - `REVIEW_OUT=<dir> [PERF_XML=<file>] pnpm e2e --project react e2e/review.spec.ts`: review images

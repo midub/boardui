@@ -41,6 +41,17 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   read them are skipped without them (CI fetches them and requires them). The demo's test case
   cards link to the consortium's archives and name the file to open.
 
+- **Runtime 3D models:** after a board loads, `<board-viewer>` replaces placeholder bodies with
+  real models from pluggable sources (`modelSources`, `modelsShown`, `bui-model-progress`,
+  `bui-model-done`), instanced like placeholders and cached in Cache Storage. The new
+  `@boardui/models` has `kicadSource` (KiCad's libraries, fetched from gitlab.com by footprint
+  name), `mappingSource` (a model mapping file on your own server, with wildcards, `refDes` and
+  attribute matches, URLs and templates) and the STEP (OpenCascade in a worker, loaded on first
+  use) and OBJ loaders. The React and Angular wrappers pass them through; the demos load KiCad
+  models (and `?models=<mapping URL>`) after every load, with a status line, a toggle and the
+  credits. The converter skips mapping rules that only the viewer can apply, with a warning
+  ([spec §6.15](spec/README.md#615-runtime-models-informative), [ADR 0014](docs/adr/0014-runtime-model-sources.md)).
+
 ## [1.1.1] - 2026-10-07
 
 Importer fixes for Allegro, Altium and KiCad files. The glTF profile goes to 0.7 (still a draft):

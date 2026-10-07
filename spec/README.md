@@ -228,6 +228,8 @@ Per-model `offsetMm`, `rotationDeg` and `scale` correct models that deviate. The
 
 A model's default scene is flattened into one mesh (node transforms baked into the vertices), so that every component using it shares the mesh. Positions, normals, the first texture coordinate and colour sets, indices and materials with their textures are kept; skins, morph targets, animations, cameras and lights are dropped.
 
+The same mapping file serves viewers at runtime (§6.15) with matches on `refDes`, BOM attributes and wildcards, URLs, file templates and STEP or OBJ models. Converters apply only rules that match one `part` or `package` by name to a glTF/GLB file, and skip the others with a warning.
+
 ### 6.10 Colours
 
 Soldermask and silkscreen layers take their colour from the source when it states one; the other roles keep their defaults (§7). A layer's colour comes from the `Spec`s (in `CadHeader`) it refers to: its `Layer/SpecRef`s, then the `SpecRef`s of its `StackupLayer`s in the first stack-up, in document order. Of each spec, only `General` is read. The first rule that gives a colour wins:
@@ -292,6 +294,16 @@ A panel is a step that places other steps with `StepRepeat` (IPC-2581C §8.2.3.5
 - **Flipped copies.** A mirrored copy is turned over (the "flipped" pairing of IPC-2581C, which needs a symmetrical stack-up). Its features go to the counterpart of their layer: copper layer `k` of `n` (top first) to copper layer `n − 1 − k`, and a layer with side `TOP` or `BOTTOM` to the layer with the same role on the other side (the first with the first, in document order). Layers without a side keep their features. Features whose layer has no counterpart are skipped with a warning. Holes go to the drill layer with the mirrored span, or stay on their own if there is none. Components change side.
 - **Content.** Each instance adds its step's features, holes and components, placed with its map, as the converted step's are: they are features of the same layers (§5, §6.2) and nodes under `components`. Nets are per instance: each board's `GND` is its own net. The board outline (§6.5, §6.7) is the union of the profiles of the converted step and of all instances.
 - **Layers.** All instances use the converted file's stack-up. Paste and drawing layers (§6.11, §6.12) and synthesized package drawing layers (§6.13) exist if the converted step or any instance needs them; package drawings follow the side each component is placed on.
+
+### 6.15 Runtime models (informative)
+
+This section describes how the boardui viewer adds models when it shows an asset; it adds nothing to the asset ([ADR 0014](../docs/adr/0014-runtime-model-sources.md)).
+
+- **What is replaced.** A component whose meshes all have the placeholder materials `boardui/body` and `boardui/pin1` (§6.8, §7) may get a runtime model, which replaces its body and pin-1 marker. User models (§6.9) are never replaced. Components without a body get none: converters leave them out on purpose (§6.8).
+- **Sources.** The viewer asks its model sources, in order, for each such component, with the component's `id`, `refDes`, `part`, `package`, `side`, `mount` and `attributes` (§8.4), and the board's `profileVersion` and `source` (with `software`, §8.3). A source answers with a model reference or none; the first model that loads wins, and a miss, a missing file or a failure falls through to the next source.
+- **Frame.** Models follow the conventions of §6.9 (Y up, metres, package origin, top side at 0°, seating plane at `y = 0`) after the reference's correction (`offsetMm`, `rotationDeg`, `scale` as in §6.9, or a matrix), and are placed with the component node's transform: on the mounting plane, in the package frame, mirrored with the component on the bottom side.
+- **KiCad.** KiCad's 3D frame for a footprint's models (millimetres, Z up, Y up in the top view) is the IPC-2581 package frame of KiCad's export, so a KiCad model point `(x, y, z)` mm is the package point `(x, y)` at height `z`, `(x, z, −y)` in the node's frame (§6.8). A footprint's `(model … (offset (xyz …)) (scale (xyz …)) (rotate (xyz …)))` places the model at `T(offset) · Rz(−rz) · Ry(−ry) · Rx(−rx) · S(scale)` in that frame, as KiCad's 3D viewer and exporters do.
+- **Drawn like placeholders.** Runtime models use the component's element state (§9 and the viewer's state texture): hover, selection, highlights, hiding and widget anchoring work on them, and the component's bounding box becomes the model's.
 
 ## 7. Materials
 

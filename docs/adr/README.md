@@ -17,3 +17,4 @@ Each record captures one decision from the 3D rewrite design. Format: context, d
 | [0011](0011-same-repo-new-major.md) | Same repository, new major version | Accepted |
 | [0012](0012-spec-format.md) | Spec format | Accepted |
 | [0013](0013-panels.md) | Panels: root step by default, instances with their own IDs and nets, baked geometry | Accepted |
+| [0014](0014-runtime-model-sources.md) | Runtime model sources: models loaded by the viewer from servers (KiCad via GitLab), STEP in `@boardui/models` | Accepted |

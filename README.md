@@ -115,9 +115,9 @@ cd ../my-app
 npm install three ../boardui-packages/boardui-converter-1.1.1.tgz ../boardui-packages/boardui-viewer-1.1.1.tgz
 ```
 
-For React, also pack `@boardui/react` (`--filter @boardui/react`) and install its tarball; for Angular, `@boardui/angular`.
+For React, also pack `@boardui/react` (`--filter @boardui/react`) and install its tarball; for Angular, `@boardui/angular`; for runtime 3D models (KiCad's libraries, your own model server, STEP and OBJ), `@boardui/models` ([how](packages/models/README.md)).
 
-`three` (`^0.186`) is a peer dependency. The packages are ES modules for a bundler such as Vite; the converter's WebAssembly module and worker are referenced with `new URL(…, import.meta.url)`, which Vite and other modern bundlers pick up. The Angular CLI's application builder doesn't, so an Angular app copies them next to its scripts ([how](packages/angular/README.md#the-converters-worker-and-wasm-with-the-angular-cli)). The demos, [`packages/demo-react`](packages/demo-react/README.md) and [`packages/demo-angular`](packages/demo-angular/README.md), are complete examples.
+`three` (`^0.186`) is a peer dependency. The packages are ES modules for a bundler such as Vite; the converter's WebAssembly module and worker are referenced with `new URL(…, import.meta.url)`, which Vite and other modern bundlers pick up. The Angular CLI's application builder doesn't, so an Angular app copies them next to its scripts ([how](packages/angular/README.md#the-workers-and-wasm-with-the-angular-cli)). The demos, [`packages/demo-react`](packages/demo-react/README.md) and [`packages/demo-angular`](packages/demo-angular/README.md), are complete examples.
 
 ## Profile spec
 
@@ -145,6 +145,7 @@ How a board is represented in glTF, which metadata it carries and how element ID
 | `packages/converter` | `@boardui/converter`: converter in a Web Worker |
 | `packages/viewer` | `@boardui/viewer`: `<board-viewer>` |
 | `packages/react` | `@boardui/react`: React wrapper of `<board-viewer>` |
+| `packages/models` | `@boardui/models`: runtime model sources (KiCad's libraries, model mapping files) and STEP/OBJ loaders |
 | `packages/angular` | `@boardui/angular`: Angular wrapper of `<board-viewer>` |
 | `packages/demo-react` | demo app in React, deployed to GitHub Pages |
 | `packages/demo-angular` | the same demo app in Angular, deployed to GitHub Pages |

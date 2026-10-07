@@ -34,5 +34,5 @@ Components that stand for one element of the page use attribute selectors
 `scripts/assets.mjs` (run by `dev` and `build`) writes `.generated/`, which `angular.json` copies
 into the app: the sample boards (`stageSamples` of `@boardui/demo-shared`), and the converter's and
 viewer's workers and the WASM module, which Angular's application builder doesn't bundle from
-dependencies (see [`@boardui/angular`](../angular/README.md#the-converters-worker-and-wasm-with-the-angular-cli)).
+dependencies (see [`@boardui/angular`](../angular/README.md#the-workers-and-wasm-with-the-angular-cli)).
 `build` then fails if `dist/` contains an IPC consortium test case (`cli.js check-dist`).
