@@ -44,7 +44,10 @@ export function nextHighlightColor(used: readonly string[]): string {
 /** Rows of the board panel. */
 export function boardFacts(viewer: BoardViewerElement, board: Board): [string, string][] {
   const info = viewer.info('board')?.properties ?? {};
-  const source = (info.source ?? {}) as Record<string, string>;
+  const source = (info.source ?? {}) as {
+    functionMode?: string;
+    software?: { name: string; revision?: string };
+  };
   const c = board.conversion;
   const rows: [string, string][] = [
     ['Components', formatCount(viewer.ids('component').length)],
@@ -57,6 +60,10 @@ export function boardFacts(viewer: BoardViewerElement, board: Board): [string, s
   }
   rows.push(['Thickness', formatValue('thickness', info.thickness)]);
   if (source.functionMode) rows.push(['Mode', source.functionMode]);
+  if (source.software) {
+    const { name, revision } = source.software;
+    rows.push(['Exported by', revision ? `${name} ${revision}` : name]);
+  }
   if (c) rows.push(['Converted in', formatSeconds(c.seconds)]);
   rows.push(['GLB', formatBytes(board.glb.byteLength)]);
   return rows;
@@ -128,9 +135,18 @@ export function searchNets(
   return { matches: all.slice(0, limit), more: Math.max(0, all.length - limit) };
 }
 
-/** The properties of an element that the details panel lists. */
+/**
+ * The properties of an element that the details panel lists, then a component's BOM attributes
+ * (value, description, MPN, LCSC, … as the source names them; profile 0.8). An attribute named
+ * like a property is left out, so that every row has its own name.
+ */
 export function detailRows(info: ElementInfo): [string, unknown][] {
-  return Object.entries(info.properties).filter(([, v]) => v !== '' && v !== undefined);
+  const { attributes, ...properties } = info.properties;
+  const rows = Object.entries(properties).filter(([, v]) => v !== '' && v !== undefined);
+  if (attributes && typeof attributes === 'object') {
+    rows.push(...Object.entries(attributes).filter(([name]) => !(name in properties)));
+  }
+  return rows;
 }
 
 /** The net of an element (itself for a net), for "Highlight net". */

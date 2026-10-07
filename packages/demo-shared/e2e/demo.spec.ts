@@ -162,6 +162,26 @@ test('hover, selection, tags, nets, layers and views', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('shows the BOM attributes of a KiCad component', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openBoard(page, 'sample=royalblue54l-feather');
+  // The board panel names the exporting software (spec §8.3).
+  await expect(page.locator('#sidebar .facts').first()).toContainText('KiCad 9.0.9');
+  await viewerCall(page, 'setView', 'top');
+  await viewerCall(page, 'whenPickable');
+  await settle(page);
+  const u2 = await screenPoint(page, 'cmp/U2');
+  await page.mouse.click(u2.x, u2.y);
+  const details = page.locator('#details');
+  await expect(details.locator('.details-title')).toHaveText('U2');
+  // Its attributes (spec §8.2): KiCad's symbol fields and the BOM description.
+  for (const text of ['nPM1300-QEXX', 'C7466043', 'PMIC, LED Driver, Battery Charger, QFN-32']) {
+    await expect(details).toContainText(text);
+  }
+  await expect(details.locator('dt', { hasText: 'LCSC' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('bottom view of bottom-side parts', async ({ page }) => {
   await openBoard(page, 'sample=bottom-placement');
   await viewerCall(page, 'setView', 'bottom');

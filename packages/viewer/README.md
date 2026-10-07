@@ -42,7 +42,7 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 | `setView('top' \| 'bottom' \| 'iso')` | Frames what is shown (see `frame()`) from above, from below (mirrored, as when flipping a board), or obliquely. |
 | `frame()` | Frames what is shown, keeping the view direction: visible layers and drill layers, and the components, without elements hidden with `hide`. Hidden layers don't count, so drawings far off the board on a hidden documentation layer don't widen the view. Showing or hiding layers doesn't move the camera; call `frame()` or `setView` to frame the new set. |
 | `attachWidget(id, element, { anchor, offset, occlusion })` | Shows an HTML element above the board, following a board element. Returns a detach function. |
-| `info(id)` | `{ id, kind, properties }`, with references to other elements as IDs. |
+| `info(id)` | `{ id, kind, properties }`, with references to other elements as IDs. A component's `properties.attributes` holds its BOM attributes by name (`Value`, `Description`, `MPN`, … since profile 0.8, absent when it has none); the board's `properties.source.software` names the exporting software. |
 | `ids(kind)` | All IDs of a kind: `'layer'`, `'component'`, `'pin'`, `'net'` or `'instance'`. |
 | `stats()` | Backend, draw calls and triangles of the last frame, and the number of frames rendered. |
 | `autoRotate` | Orbits the camera continuously; the board is then rendered every frame (frame-rate measurements). |

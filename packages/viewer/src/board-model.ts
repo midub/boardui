@@ -119,6 +119,8 @@ export class BoardModel {
   readonly #componentTexels: RowIndex;
   readonly #instanceTexels: RowIndex;
   readonly #componentBounds: Box3[];
+  /** Rows of {@link attributes} per component row (spec §8.2). */
+  readonly #attributeRows: number[][];
   /** Feature rows per layer, by {@link sourceKey}. */
   readonly #sourceRows = new Map<LayerModel, Map<number, number>>();
 
@@ -130,6 +132,8 @@ export class BoardModel {
     readonly pins: PropertyTable,
     /** The copies of steps placed in a panel (spec §6.14); empty for a single board. */
     readonly instances: PropertyTable,
+    /** The components' BOM attributes (spec §8.2, profile 0.8); empty before 0.8. */
+    readonly attributes: PropertyTable,
     /** Layers top to bottom, then drill layers. */
     readonly layers: readonly LayerModel[],
     nodes: ReadonlyMap<number, Object3D>,
@@ -153,6 +157,10 @@ export class BoardModel {
     this.#instanceTexels = this.#indexFeatures('instance', instances.count);
 
     this.#componentBounds = Array.from({ length: components.count }, () => new Box3());
+    this.#attributeRows = Array.from({ length: components.count }, () => []);
+    for (let row = 0; row < attributes.count; row++) {
+      this.#attributeRows[attributes.get('component', row) as number]?.push(row);
+    }
     this.componentBatches = this.#batchComponents(nodes);
     this.componentGroup.name = 'components';
     this.root.add(this.componentGroup);
@@ -234,6 +242,7 @@ export class BoardModel {
       table(board.tables.components, 'component', 'components'),
       table(board.tables.pins, 'pin', 'pins'),
       table(board.tables.instances, 'instance', 'instances'),
+      table(board.tables.attributes, 'attribute', 'attributes'),
       layers,
       nodes,
     );
@@ -384,7 +393,12 @@ export class BoardModel {
           instance: this.instances,
         }[kind];
         const { id: _id, node: _node, ...properties } = table.row(row);
-        return { id, kind, properties: this.#withIds(properties) };
+        const attributes = kind === 'component' ? this.#attributes(row) : undefined;
+        return {
+          id,
+          kind,
+          properties: { ...this.#withIds(properties), ...(attributes && { attributes }) },
+        };
       }
       default:
         return null;
@@ -516,6 +530,17 @@ export class BoardModel {
   }
 
   /** Replaces row references (`net`, `pin`, `component`) by the IDs of the rows. */
+  /** A component's attributes by name, in table order, or `undefined` if it has none. */
+  #attributes(row: number): Record<string, string> | undefined {
+    const rows = this.#attributeRows[row];
+    if (!rows?.length) return undefined;
+    const result: Record<string, string> = {};
+    for (const r of rows) {
+      result[this.attributes.get('name', r) as string] = this.attributes.get('value', r) as string;
+    }
+    return result;
+  }
+
   #withIds(properties: Record<string, PropertyValue>): Record<string, unknown> {
     const tables: Record<string, PropertyTable> = {
       net: this.nets,
