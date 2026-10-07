@@ -5,6 +5,11 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
 
 ## [Unreleased]
 
+- A standard primitive's own `Xform` (revision B; Allegro 17.4 writes it into revision C files)
+  is read and applied in the primitive's frame before the pad places it, so a pad that uses
+  such a primitive is turned, mirrored and offset as defined
+  ([spec §6.1](spec/README.md#61-prisms)).
+
 ## [1.1.0] - 2026-10-07
 
 Board colours, the missing shapes, text, optional layers and panels. The glTF profile goes from

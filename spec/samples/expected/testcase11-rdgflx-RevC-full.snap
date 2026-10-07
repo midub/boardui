@@ -4,7 +4,7 @@ source: crates/boardui-convert/tests/conformance.rs
 source: IPC-2581 rev C, step testcase11-rdgflx-RevC, USERDEF
 thickness: 0.9195 mm
 counts: 2995 features, 268232 vertices, 528992 triangles, 116 nets, 78 components, 312 pins (312 checked against pads)
-warnings: 21 from the reader, 10 from the converter
+warnings: 19 from the reader, 10 from the converter
   - layer `COVERLAY_FLEX_1` is not in the stack-up and was skipped
   - layer `ADHESIVE_FLEX_1` is not in the stack-up and was skipped
   - layer `ADHESIVE_FLEX_2` is not in the stack-up and was skipped

@@ -1,0 +1,34 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step board, FABRICATION
+thickness: 1.6000 mm
+counts: 13 features, 480 vertices, 948 triangles, 6 nets, 3 components, 6 pins (6 checked against pads)
+warnings: 0 from the reader, 0 from the converter
+layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
+  1 features {"Sheet": 1}, 236 vertices, 508 triangles, top area 203.0723 mm²
+    row 0: Sheet net - area 203.0723 mm²
+layer layer/TOP Copper Top z 0.7650..0.8000 mm Default
+  10 features {"Pad": 10}, 228 vertices, 416 triangles, top area 16.9277 mm²
+    row 0: Pad net 0 area 2.0000 mm²
+    row 1: Pad net 1 area 2.0000 mm²
+    row 2: Pad net 2 area 2.0000 mm²
+    row 3: Pad net 3 area 2.0000 mm²
+    row 4: Pad net 4 area 1.4544 mm²
+    row 5: Pad net 5 area 1.4544 mm²
+    row 6: Pad net - area 1.8750 mm²
+    row 7: Pad net - area 1.8750 mm²
+    row 8: Pad net - area 1.1344 mm²
+    row 9: Pad net - area 1.1344 mm²
+layer layer/@core Dielectric Internal z -0.7650..0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 220.0000 mm²
+    row 0: Sheet net - area 220.0000 mm²
+layer layer/BOTTOM Copper Bottom z -0.8000..-0.7650 mm Default
+  0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.8200..-0.7650 mm Default synthesized
+  1 features {"Sheet": 1}, 8 vertices, 12 triangles, top area 220.0000 mm²
+    row 0: Sheet net - area 220.0000 mm²
+components: 3
+  U1 at (4.0000, 0.8000, -8.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder P_RECT
+  U2 at (10.0000, 0.8000, -8.0000) mm, rotation (0.0000, 0.7071, 0.0000, 0.7071), placeholder P_RECT
+  U3 at (16.0000, 0.8000, -8.0000) mm, rotation (0.0000, 0.2588, 0.0000, 0.9659), placeholder P_OVAL

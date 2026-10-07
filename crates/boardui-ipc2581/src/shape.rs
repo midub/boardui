@@ -72,6 +72,13 @@ pub enum Shape {
 pub struct StandardPrimitive {
     /// Shape and dimensions.
     pub kind: PrimitiveKind,
+    /// The primitive's own `Xform`, which turns the shape in its own frame before an element
+    /// that references it places it. Absent: identity.
+    ///
+    /// Rev B allows it on every standard primitive except `Contour` and `Moire`; rev C has
+    /// dropped it, but Allegro 17.4 still writes it into rev C files. The reader takes it on
+    /// every primitive except `Contour`.
+    pub xform: Xform,
     /// Stroke, if the primitive has a `LineDesc` or `LineDescRef`.
     pub line: Option<LineStyle>,
     /// Fill, if the primitive has a `FillDesc` or `FillDescRef`.
