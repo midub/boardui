@@ -39,7 +39,7 @@ import { BoardViewer, type ElementInfo, Widget } from '@boardui/angular';
   template: `
     <input type="file" accept=".xml" (change)="open($event)" />
     <bui-board-viewer style="height: 600px" (select)="selected.set($event)">
-      @if (loaded() && selected(); as info) {
+      @if (selected(); as info) {
         @if (info.kind === 'component') {
           <bui-widget [target]="info.id" anchor="top" [offset]="[0, -6]">
             <span class="tag">{{ info.id }}</span>
@@ -51,16 +51,12 @@ import { BoardViewer, type ElementInfo, Widget } from '@boardui/angular';
 })
 export class Board {
   readonly selected = signal<ElementInfo | null>(null);
-  readonly loaded = signal(false);
   private readonly viewer = viewChild.required(BoardViewer);
 
-  async open(event: Event) {
+  open(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    this.loaded.set(false);
     // Converts locally, in a Web Worker, then shows the board.
-    await this.viewer().element.loadIpc2581(file);
-    this.loaded.set(true);
+    if (file) this.viewer().element.loadIpc2581(file).catch(console.error);
   }
 }
 ```
@@ -76,6 +72,8 @@ export class Board {
 | `(hover)` | `bui-hover` | `ElementInfo \| null` (the event's `detail`) |
 | `(select)` | `bui-select` | `ElementInfo \| null` |
 | `(progress)` | `bui-progress` | `LoadProgress` of `loadIpc2581` |
+| `(load)` | `bui-load` | `ElementInfo` of the board (`info('board')`): a board was loaded and replaced the previous one |
+| `(unload)` | `bui-unload` | `ElementInfo` of the board that is about to be replaced; `(load)` follows |
 | `(error)` | `error` | `ErrorEvent` |
 | `element` | the element | `load`, `loadIpc2581`, `highlight`, `hide`, `select`, `focus`, `setView`, `layers`, `info`, `ids`, … |
 
@@ -103,10 +101,11 @@ events). `class` and `style` go on that element. Changing `target`, `anchor`, `o
 `occlusion` attaches it again (an inline `[offset]="[0, -6]"` compares by value); destroying it
 detaches it.
 
-The viewer can only attach widgets to an element of a loaded board, and it has no "loaded" event:
-create widgets after `load()` or `loadIpc2581()` has resolved, and remove them before loading
-another board (for example, keep them in a signal that a new load clears). A widget whose element
-isn't on the board isn't shown.
+The widget follows the board: it attaches once the viewer has loaded a board with its element
+(`bui-load`; at once if it already has), detaches just before that board is replaced
+(`bui-unload`, synchronously, while the old board is still there), and attaches again if the
+next board has the element too. Without a board, or while the board lacks the element, it isn't
+shown; its content stays as it is (Angular renders it as long as the `<bui-widget>` exists).
 
 ## The converter's worker and WASM with the Angular CLI
 

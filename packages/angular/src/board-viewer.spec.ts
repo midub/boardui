@@ -5,6 +5,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BoardViewer, Widget } from './index';
 
 const viewerClass = () => customElements.get('board-viewer') as typeof BoardViewerElement;
+const board = { id: 'board', kind: 'board', properties: { thickness: 0.0016 } } as ElementInfo;
+const fire = (target: Element, type: string, detail: unknown) =>
+  target.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
 
 @Component({
   imports: [BoardViewer, Widget],
@@ -18,6 +21,8 @@ const viewerClass = () => customElements.get('board-viewer') as typeof BoardView
       (hover)="events.push(['hover', $event])"
       (select)="events.push(['select', $event])"
       (progress)="events.push(['progress', $event])"
+      (load)="events.push(['load', $event])"
+      (unload)="events.push(['unload', $event])"
       (error)="events.push(['error', $event])"
     >
       @for (id of widgets(); track $index) {
@@ -135,24 +140,54 @@ describe('BoardViewer', () => {
     element.dispatchEvent(new CustomEvent('bui-hover', { detail: info }));
     element.dispatchEvent(new CustomEvent('bui-select', { detail: null }));
     element.dispatchEvent(new CustomEvent('bui-progress', { detail: progress }));
+    fire(element, 'bui-unload', board);
+    fire(element, 'bui-load', board);
     expect(host.events).toEqual([
       ['hover', info],
       ['select', null],
       ['progress', progress],
+      ['unload', board],
+      ['load', board],
     ]);
   });
 });
 
+/** Counts its instances: whether a widget's content was created again. */
+@Component({ selector: 'test-tag', template: '<b>tag {{ id }}</b>' })
+class Tag {
+  static count = 0;
+  readonly id = ++Tag.count;
+}
+
+@Component({
+  imports: [BoardViewer, Widget, Tag],
+  template: `
+    <bui-board-viewer>
+      <bui-widget target="cmp/R1"><test-tag /></bui-widget>
+    </bui-board-viewer>
+  `,
+})
+class Tagged {
+  readonly viewer = viewChild.required(BoardViewer);
+}
+
 describe('Widget', () => {
-  /** Stubs `attachWidget` (which needs a loaded board) as the viewer does it: slot and append. */
-  function stubAttach() {
+  /**
+   * Stubs the viewer's board (`loaded`, `attachWidget`) as the element behaves: widgets attach to
+   * elements of the loaded board, with slot and append; `load` replaces the board with events.
+   */
+  function stubBoard({ loaded = true } = {}) {
+    const prototype = viewerClass().prototype;
+    const state = { loaded, missing: new Set(['cmp/missing']) };
+    vi.spyOn(prototype, 'loaded', 'get').mockImplementation(() => state.loaded);
     const detach = vi.fn();
-    const attach = vi.spyOn(viewerClass().prototype, 'attachWidget').mockImplementation(function (
+    const attach = vi.spyOn(prototype, 'attachWidget').mockImplementation(function (
       this: BoardViewerElement,
       id,
       element,
     ) {
-      if (id === 'cmp/missing') throw new RangeError(`Unknown element: ${id}`);
+      if (!state.loaded) throw new Error('No board loaded');
+      if (state.missing.has(id)) throw new RangeError(`Unknown element: ${id}`);
       element.slot = 'widget';
       this.append(element);
       return () => {
@@ -160,11 +195,18 @@ describe('Widget', () => {
         element.remove();
       };
     });
-    return { attach, detach };
+    /** Loads a board that lacks `missing`: `bui-unload` for the current one, then `bui-load`. */
+    const load = (viewer: Element, missing: string[] = []) => {
+      if (state.loaded) fire(viewer, 'bui-unload', board);
+      state.loaded = true;
+      state.missing = new Set(['cmp/missing', ...missing]);
+      fire(viewer, 'bui-load', board);
+    };
+    return { attach, detach, load };
   }
 
   it('shows its content in a widget that follows the element', () => {
-    const { attach, detach } = stubAttach();
+    const { attach, detach } = stubBoard();
     const { fixture, host, element } = render();
     host.widgets.set(['cmp/R1']);
     fixture.detectChanges();
@@ -193,15 +235,54 @@ describe('Widget', () => {
   });
 
   it('shows nothing for an unknown element', () => {
-    stubAttach();
+    stubBoard();
     const { fixture, host, root } = render();
     host.widgets.set(['cmp/missing']);
     fixture.detectChanges();
     expect(root.querySelector('bui-widget')).toBeNull();
   });
 
+  it('attaches once a board is loaded, and again to the next board', () => {
+    const { attach, detach, load } = stubBoard({ loaded: false });
+    Tag.count = 0;
+    const fixture = TestBed.createComponent(Tagged);
+    fixture.detectChanges();
+    const viewer = fixture.componentInstance.viewer().element;
+    const widget = () => viewer.querySelector('[slot="widget"]');
+    expect(attach).not.toHaveBeenCalled();
+    expect(widget()).toBeNull();
+
+    load(viewer);
+    fixture.detectChanges();
+    expect(attach).toHaveBeenCalledTimes(1);
+    const tag = widget();
+    expect(tag?.textContent).toBe('tag 1');
+
+    // Detached while `bui-unload` runs, before the board is replaced; then attached again, with
+    // the same element and content.
+    let detached = 0;
+    viewer.addEventListener('bui-unload', () => (detached = detach.mock.calls.length), {
+      once: true,
+    });
+    load(viewer);
+    expect(detached).toBe(1);
+    fixture.detectChanges();
+    expect(attach).toHaveBeenCalledTimes(2);
+    expect(widget()).toBe(tag);
+
+    // A board without the element: not shown; the next one with it: shown again, as it was.
+    load(viewer, ['cmp/R1']);
+    fixture.detectChanges();
+    expect(detach).toHaveBeenCalledTimes(2);
+    expect(widget()).toBeNull();
+    load(viewer);
+    fixture.detectChanges();
+    expect(widget()).toBe(tag);
+    expect(tag?.textContent).toBe('tag 1');
+  });
+
   it('keeps the native select event of a field in a widget from the select output', () => {
-    stubAttach();
+    stubBoard();
     const { fixture, host, element } = render();
     host.widgets.set(['cmp/R1']);
     fixture.detectChanges();

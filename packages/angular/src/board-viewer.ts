@@ -21,9 +21,9 @@ function optionalBoolean(value: unknown): boolean | undefined {
 
 /**
  * `<board-viewer>` as an Angular component: `src`, `backend`, `autoRotate` and `xray` as signal
- * inputs, its events as the outputs `hover`, `select`, `progress` and `error`, and the element as
- * {@link element} for its methods. Its content is not rendered, except {@link Widget}s, which the
- * viewer shows over the board.
+ * inputs, its events as the outputs `hover`, `select`, `progress`, `load`, `unload` and `error`,
+ * and the element as {@link element} for its methods. Its content is not rendered, except
+ * {@link Widget}s, which the viewer shows over the board.
  *
  * The component's element is the box: it is `display: block` and 400 px high by default, and the
  * `<board-viewer>` inside fills it (style the inner `board-viewer` for its background).
@@ -68,6 +68,13 @@ export class BoardViewer implements OnInit {
   readonly select = output<ElementInfo | null>();
   /** Progress of `loadIpc2581` (`bui-progress`). */
   readonly progress = output<LoadProgress>();
+  /**
+   * A board was loaded and replaced the previous one (`bui-load`), from `src`, `load` or
+   * `loadIpc2581`: `info('board')`.
+   */
+  readonly load = output<ElementInfo>();
+  /** The board is about to be replaced (`bui-unload`); the next one follows with {@link load}. */
+  readonly unload = output<ElementInfo>();
   /** Loading {@link src} failed (`error`). */
   readonly error = output<ErrorEvent>();
 
@@ -80,6 +87,8 @@ export class BoardViewer implements OnInit {
     element.addEventListener('bui-hover', (e) => this.hover.emit(e.detail));
     element.addEventListener('bui-select', (e) => this.select.emit(e.detail));
     element.addEventListener('bui-progress', (e) => this.progress.emit(e.detail));
+    element.addEventListener('bui-load', (e) => this.load.emit(e.detail));
+    element.addEventListener('bui-unload', (e) => this.unload.emit(e.detail));
     element.addEventListener('error', (e) => this.error.emit(e));
     // Angular also listens for `(select)` as a DOM event on this component's element, and a text
     // field's `select` event bubbles: keep those of fields in widgets from reaching it.

@@ -2,10 +2,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   effect,
   inject,
   input,
+  signal,
 } from '@angular/core';
 import type { WidgetAnchor, WidgetOcclusion, WidgetOptions } from '@boardui/viewer';
 import { BoardViewer } from './board-viewer';
@@ -17,9 +19,10 @@ const optionsKey = (o: WidgetOptions) => JSON.stringify([o.anchor, o.offset, o.o
  * An HTML widget that follows a board element (`attachWidget`): the viewer positions this
  * component's element, with its content, over the board. Must be inside a {@link BoardViewer}.
  *
- * The viewer needs a loaded board that has the element: create widgets after the board has
- * loaded (e.g. after `await viewer.element.load(…)`) and remove them before loading another one.
- * A widget whose element is unknown isn't shown.
+ * The widget attaches once the viewer has loaded a board with the element (`bui-load`; at once if
+ * it already has), detaches just before that board is replaced (`bui-unload`), and attaches again
+ * if the next board has the element too; its content stays as it is. Without a board, or while
+ * the board lacks the element, the widget isn't shown.
  *
  * @example
  * ```html
@@ -45,10 +48,9 @@ export class Widget {
   /** What the widget does when the board hides its anchor; default `'fade'`. */
   readonly occlusion = input<WidgetOcclusion | undefined>();
 
-  readonly #viewer = inject(BoardViewer);
-  readonly #host: HTMLElement = inject(ElementRef).nativeElement;
-
   constructor() {
+    const viewer = inject(BoardViewer).element;
+    const host: HTMLElement = inject(ElementRef).nativeElement;
     const options = computed<WidgetOptions>(
       () => {
         const anchor = this.anchor();
@@ -62,15 +64,33 @@ export class Widget {
       },
       { equal: (a, b) => optionsKey(a) === optionsKey(b) },
     );
+    // Changes for every board the viewer loads (`bui-load`); `0` while it has none.
+    const board = signal(viewer.loaded ? 1 : 0);
+    const onLoad = () => board.update((n) => n + 1);
+    // Detaches before the board is replaced: an effect would run after the next board's
+    // `bui-load`, too late.
+    let detach: (() => void) | null = null;
+    const release = () => {
+      detach?.();
+      detach = null;
+    };
+    viewer.addEventListener('bui-load', onLoad);
+    viewer.addEventListener('bui-unload', release);
+    inject(DestroyRef).onDestroy(() => {
+      viewer.removeEventListener('bui-load', onLoad);
+      viewer.removeEventListener('bui-unload', release);
+    });
+
     effect((onCleanup) => {
-      let detach: () => void;
+      const target = this.target();
+      const opts = options();
+      if (!board()) return;
       try {
-        detach = this.#viewer.element.attachWidget(this.target(), this.#host, options());
+        detach = viewer.attachWidget(target, host, opts);
       } catch {
-        // No board, or no such element on it.
-        return;
+        // No such element on this board.
       }
-      onCleanup(detach);
+      onCleanup(release);
     });
   }
 }
