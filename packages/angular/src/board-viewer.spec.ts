@@ -1,6 +1,6 @@
 import { Component, signal, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import type { BoardViewerElement, ElementInfo, LoadProgress } from '@boardui/viewer';
+import type { BoardViewerElement, ElementInfo, LoadProgress, ModelSource } from '@boardui/viewer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BoardViewer, Widget } from './index';
 
@@ -19,6 +19,10 @@ const fire = (target: Element, type: string, detail: unknown) =>
       [backend]="backend()"
       [autoRotate]="spin()"
       [xray]="xray()"
+      [modelSources]="sources()"
+      [modelsShown]="models()"
+      (modelProgress)="events.push(['modelProgress', $event])"
+      (modelDone)="events.push(['modelDone', $event])"
       (hover)="events.push(['hover', $event])"
       (select)="events.push(['select', $event])"
       (progress)="events.push(['progress', $event])"
@@ -40,6 +44,8 @@ class Host {
   readonly backend = signal<'webgl' | undefined>(undefined);
   readonly spin = signal<boolean | undefined>(undefined);
   readonly xray = signal<boolean | undefined>(undefined);
+  readonly sources = signal<readonly ModelSource[] | undefined>(undefined);
+  readonly models = signal<boolean | undefined>(undefined);
   readonly widgets = signal<string[]>([]);
   readonly widgetClass = signal('tag');
   readonly viewer = viewChild.required(BoardViewer);
@@ -100,6 +106,26 @@ describe('BoardViewer', () => {
     const [name, event] = fixture.componentInstance.events[0] ?? [];
     expect(name).toBe('error');
     expect(event).toBeInstanceOf(ErrorEvent);
+  });
+
+  it('sets the model sources and whether models are shown, and emits the model events', () => {
+    const { fixture, host, element } = render();
+    const sources: ModelSource[] = [{ name: 'test', resolve: async () => null }];
+    expect(element.modelSources).toEqual([]);
+    host.sources.set(sources);
+    host.models.set(false);
+    fixture.detectChanges();
+    expect(element.modelSources).toEqual(sources);
+    expect(element.modelsShown).toBe(false);
+    host.models.set(undefined);
+    fixture.detectChanges();
+    expect(element.modelsShown).toBe(false);
+    fire(element, 'bui-model-progress', { loaded: 1 });
+    fire(element, 'bui-model-done', { loaded: 2 });
+    expect(host.events).toEqual([
+      ['modelProgress', { loaded: 1 }],
+      ['modelDone', { loaded: 2 }],
+    ]);
   });
 
   it('loads a new src once', () => {

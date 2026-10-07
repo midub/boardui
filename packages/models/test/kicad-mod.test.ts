@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: KiCad's path variables, e.g. ${KISYS3DMOD}
 import { Matrix4, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 import { KICAD_LIBRARIES } from '../src/kicad-libraries.js';

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@boardui/demo-shared": "workspace:*",
+    "@boardui/models": "workspace:*",
     "@boardui/react": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",

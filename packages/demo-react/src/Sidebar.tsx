@@ -15,6 +15,7 @@ import {
 import type { BoardViewerElement } from '@boardui/react';
 import { type ReactNode, useMemo, useState } from 'react';
 import type { BoardUi } from './board-ui.js';
+import { Models } from './Models.js';
 
 interface Props {
   viewer: BoardViewerElement;
@@ -82,6 +83,7 @@ export function Sidebar({ viewer, board, ui, xray, onXray }: Props): ReactNode {
           <kbd>x</kbd>
         </label>
       </Panel>
+      <Models />
       <Layers viewer={viewer} />
       <Nets viewer={viewer} ui={ui} />
       {board.conversion && warnings.length > 0 && (

@@ -164,7 +164,12 @@ describe('runtime models', () => {
   it('pass component metadata and BOM attributes to sources', async () => {
     const model = await board();
     const seen: ModelComponent[] = [];
-    await run(model, [source('s', (c) => (seen.push(c), null))]);
+    await run(model, [
+      source('s', (c) => {
+        seen.push(c);
+        return null;
+      }),
+    ]);
     const r1 = seen.find((c) => c.refDes === 'R1');
     expect(r1).toMatchObject({
       id: 'cmp/R1',

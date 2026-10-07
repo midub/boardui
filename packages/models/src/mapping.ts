@@ -137,7 +137,7 @@ export function mappingSource(
 /** Checks the shape of a mapping file. @throws on a malformed one. */
 export function checkMapping(file: unknown): MappingRule[] {
   const mapping = file as Partial<MappingFile> | null;
-  if (!mapping || mapping.version !== 1 || !Array.isArray(mapping.models)) {
+  if (mapping?.version !== 1 || !Array.isArray(mapping.models)) {
     throw new Error('Not a model mapping file (version 1 with "models")');
   }
   mapping.models.forEach((rule, i) => {

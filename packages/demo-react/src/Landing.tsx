@@ -82,7 +82,8 @@ export function Landing({
         <h1>Printed circuit boards in 3D</h1>
         <p className="lead">
           Drop an <strong>IPC-2581</strong> file to convert it to a glTF board and explore its
-          components, pins and nets. Conversion runs locally in WebAssembly: nothing is uploaded.
+          components, pins and nets. Conversion runs locally in WebAssembly: your file isn’t
+          uploaded. 3D models of KiCad library parts are fetched from gitlab.com by footprint name.
         </p>
         <button id="drop-zone" className="drop-zone" type="button" onClick={onPick}>
           <span className="drop-title">Drop a file here, or click to choose one</span>

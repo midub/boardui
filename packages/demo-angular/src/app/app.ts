@@ -25,7 +25,7 @@ import {
 import { BoardUi } from './board-ui';
 import { Details, TagCard } from './details';
 import { Landing, SamplePicker } from './landing';
-import { params, session, viewer } from './session';
+import { models, params, session, viewer } from './session';
 import { Sidebar } from './sidebar';
 import { Stats } from './stats';
 
@@ -41,7 +41,9 @@ import { Stats } from './stats';
         <img src="logo.svg" alt="" width="28" height="28" />
         <span>boardui</span>
       </a>
-      <span class="tagline">IPC-2581 boards in 3D, converted in your browser</span>
+      <span class="tagline">
+        IPC-2581 boards in 3D, converted in your browser; part models from gitlab.com
+      </span>
       <span class="spacer"></span>
       <label app-sample-picker (open)="openSample($event)"></label>
       <button id="open-button" class="primary" type="button" (click)="pick()">Open file…</button>
@@ -70,6 +72,11 @@ import { Stats } from './stats';
           [backend]="backend"
           [autoRotate]="spin()"
           [xray]="xray()"
+          [modelSources]="models.sources"
+          [modelsShown]="modelsShown()"
+          (load)="models.reset()"
+          (modelProgress)="models.update($event)"
+          (modelDone)="models.update($event)"
           (select)="ui.onSelect($event)"
           (hover)="ui.hover.set($event)"
         >
@@ -132,6 +139,8 @@ export class App {
   protected readonly dragging = signal(false);
   protected readonly backend = params.get('backend') === 'webgl' ? 'webgl' : undefined;
   protected readonly showStats = params.has('stats');
+  protected readonly models = models;
+  protected readonly modelsShown = signal(models.getState().shown);
   protected readonly hover = computed(() => {
     const info = this.ui.hover();
     return info ? summary(info) : null;
@@ -161,6 +170,7 @@ export class App {
 
   constructor() {
     const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(models.subscribe(() => this.modelsShown.set(models.getState().shown)));
     destroyRef.onDestroy(
       session.subscribe(() => {
         const state = session.getState();

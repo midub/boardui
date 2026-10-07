@@ -854,3 +854,15 @@ a.sample-card:hover {
     max-height: 45%;
   }
 }
+
+/* 3D models panel */
+.models-problems,
+.models-credits {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.models-credits a {
+  color: inherit;
+}

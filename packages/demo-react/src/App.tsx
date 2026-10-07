@@ -22,7 +22,7 @@ import { Details, TagCard, TooltipContent } from './Details.js';
 import { Landing, SamplePicker } from './Landing.js';
 import { Sidebar } from './Sidebar.js';
 import { Stats } from './Stats.js';
-import { params, session } from './session.js';
+import { models, params, session } from './session.js';
 
 const logo = `${import.meta.env.BASE_URL}logo.svg`;
 
@@ -48,6 +48,7 @@ function DemoSwitch(): ReactNode {
 
 export function App(): ReactNode {
   const state = useSyncExternalStore(session.subscribe, session.getState);
+  const modelsState = useSyncExternalStore(models.subscribe, models.getState);
   const viewerRef = useRef<BoardViewerElement>(null);
   const viewer = useCallback(() => viewerRef.current as BoardViewerElement, []);
   const ui = useBoardUi(viewer, state.generation);
@@ -124,7 +125,9 @@ export function App(): ReactNode {
           <img src={logo} alt="" width="28" height="28" />
           <span>boardui</span>
         </a>
-        <span className="tagline">IPC-2581 boards in 3D, converted in your browser</span>
+        <span className="tagline">
+          IPC-2581 boards in 3D, converted in your browser; part models from gitlab.com
+        </span>
         <span className="spacer" />
         <SamplePicker onOpen={(sample) => void session.openSample(sample)} />
         <button id="open-button" className="primary" type="button" onClick={pick}>
@@ -155,6 +158,11 @@ export function App(): ReactNode {
             backend={params.get('backend') === 'webgl' ? 'webgl' : undefined}
             autoRotate={spin}
             xray={xray}
+            modelSources={models.sources}
+            modelsShown={modelsState.shown}
+            onLoad={() => models.reset()}
+            onModelProgress={(e) => models.update(e.detail)}
+            onModelDone={(e) => models.update(e.detail)}
             onSelect={(e) => ui.onSelect(e.detail)}
             onHover={(e) => ui.setHover(e.detail)}
             onPointerMove={(e) => {

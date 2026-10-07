@@ -8,6 +8,7 @@ import type { ConvertResult, ModelsInput } from '@boardui/converter';
 import type { BoardViewerElement, LoadProgress } from '@boardui/viewer';
 import { classify, type InputFile } from './files.js';
 import { formatBytes } from './format.js';
+import type { DemoModels } from './models.js';
 import { SAMPLES, type Sample } from './samples.js';
 
 /** A loaded board. */
@@ -345,13 +346,14 @@ function setSampleParam(id: string | null): void {
 
 /**
  * `globalThis.demo` for tests and the console: the viewer, the samples, the last load's timings,
- * the board, and `open(sample)`.
+ * the board, `open(sample)`, and the runtime models' state.
  */
-export function exposeDemo(session: DemoSession): void {
+export function exposeDemo(session: DemoSession, models?: DemoModels): void {
   const demo = {
     get viewer() {
       return session.viewer;
     },
+    models: () => models?.getState() ?? null,
     samples: SAMPLES,
     get timings() {
       return session.timings;

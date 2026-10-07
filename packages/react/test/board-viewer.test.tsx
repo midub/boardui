@@ -45,6 +45,30 @@ describe('BoardViewer', () => {
     expect(element.xray).toBe(true);
   });
 
+  it('sets the model sources and whether models are shown', () => {
+    const ref = createRef<BoardViewerElement>();
+    const sources = [{ name: 'test', resolve: async () => null }];
+    const { rerender } = render(<BoardViewer ref={ref} modelSources={sources} />);
+    const element = ref.current as BoardViewerElement;
+    expect(element.modelSources).toEqual(sources);
+    expect(element.modelsShown).toBe(true);
+    rerender(<BoardViewer ref={ref} modelSources={[]} modelsShown={false} />);
+    expect(element.modelSources).toEqual([]);
+    expect(element.modelsShown).toBe(false);
+  });
+
+  it('forwards the model events', () => {
+    const ref = createRef<BoardViewerElement>();
+    const onModelProgress = vi.fn();
+    const onModelDone = vi.fn();
+    render(<BoardViewer ref={ref} onModelProgress={onModelProgress} onModelDone={onModelDone} />);
+    const element = ref.current as BoardViewerElement;
+    fire(element, 'bui-model-progress', { loaded: 1, complete: false });
+    fire(element, 'bui-model-done', { loaded: 2, complete: true });
+    expect(onModelProgress.mock.calls[0]?.[0].detail.loaded).toBe(1);
+    expect(onModelDone.mock.calls[0]?.[0].detail.complete).toBe(true);
+  });
+
   it('calls the latest event handlers with the typed details', () => {
     const ref = createRef<BoardViewerElement>();
     const first = vi.fn();
