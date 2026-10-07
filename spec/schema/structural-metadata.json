@@ -2,7 +2,7 @@
   "id": "boardui",
   "name": "boardui PCB metadata",
   "description": "EXT_structural_metadata schema embedded in every boardui asset. See spec/README.md §8.2. References between tables are UINT32 row indices; 4294967295 means none.",
-  "version": "0.5",
+  "version": "0.6",
   "enums": {
     "FeatureKind": {
       "valueType": "UINT8",
@@ -91,6 +91,11 @@
           "type": "ENUM",
           "enumType": "Fiducial",
           "noData": "NONE"
+        },
+        "text": {
+          "description": "The textString of the Text elements the feature draws, in document order, joined by line feeds. Omitted from tables without text.",
+          "type": "STRING",
+          "noData": ""
         },
         "instance": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 }
       }

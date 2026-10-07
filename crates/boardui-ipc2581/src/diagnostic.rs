@@ -142,6 +142,8 @@ pub enum RefKind {
     FillDesc,
     /// `EntryColor` in `DictionaryColor`.
     Color,
+    /// `EntryFont` in `DictionaryFont`.
+    Font,
     /// `Layer`.
     Layer,
     /// `Layer` or `StackupGroup`, as referenced by `StackupLayer@layerOrGroupRef`.
@@ -168,6 +170,7 @@ impl fmt::Display for RefKind {
             Self::LineDesc => "line descriptor",
             Self::FillDesc => "fill descriptor",
             Self::Color => "colour",
+            Self::Font => "font",
             Self::Layer => "layer",
             Self::LayerOrGroup => "layer or stack-up group",
             Self::Step => "step",

@@ -156,6 +156,7 @@ samples! {
     user_models => "user-models",
     colours => "colours",
     panel => "panel",
+    text => "text",
     testcase1 => "testcase1-RevC-Assembly",
     testcase3 => "testcase3-RevC-Assembly",
     testcase10 => "testcase10-RevC-Assembly",
@@ -338,6 +339,33 @@ fn package_drawings_belong_to_their_components() {
     }
 }
 
+/// Spec §6.13, §8.2: a `Text` in a package drawing's `Marking` is drawn with the drawing,
+/// and its feature has the string as `text`.
+#[test]
+fn package_marking_text_is_drawn() {
+    let (_, path) = samples()
+        .into_iter()
+        .find(|(n, _)| n == "text")
+        .expect("text");
+    let conversion = run(&path);
+    let (root, bin) = glb::read(&conversion.glb).expect("GLB");
+    let board: Board =
+        serde_json::from_value(root.extensions.board.clone().expect("board")).expect("board");
+    let entry = board
+        .layers
+        .iter()
+        .find(|l| l.name == "@assembly-top")
+        .expect("@assembly-top");
+    // U1's assembly drawing: its outline, then its REFDES marking.
+    let texts = strings(&root, bin, entry.feature_table, "text");
+    assert_eq!(texts, ["", "U1"]);
+    let kinds = column(&root, bin, entry.feature_table, "kind");
+    let marking = u32::from(FeatureKind::Marking.value());
+    assert!(kinds.iter().all(|&k| k == marking), "{kinds:?}");
+    let areas = feature_areas(&root, bin, entry.node);
+    assert!(areas.get(&1).is_some_and(|&a| a > 0.01e-6), "{areas:?}");
+}
+
 /// A `UINT32` or `ENUM` (`UINT8`) column of a property table. Missing columns read as
 /// `NO_ROW`.
 fn column(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<u32> {
@@ -390,7 +418,7 @@ fn floats(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<f64> {
         .collect()
 }
 
-/// A `STRING` column of a property table.
+/// A `STRING` column of a property table. A missing column reads as empty strings.
 fn strings(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<String> {
     let tables = &root
         .extensions
@@ -398,8 +426,17 @@ fn strings(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<Strin
         .as_ref()
         .expect("metadata")
         .property_tables;
-    let t = &tables[table.expect("table") as usize];
-    let p = &t.properties[name];
+    let Some(table) = table else {
+        return Vec::new();
+    };
+    let t = &tables[table as usize];
+    let Some(p) = t.properties.get(name) else {
+        return vec![String::new(); t.count as usize];
+    };
+    assert_eq!(
+        p.string_offset_type.as_deref().unwrap_or("UINT32"),
+        "UINT32"
+    );
     let bytes = view_bytes(root, bin, p.values).expect("values");
     let offsets = view_bytes(root, bin, p.string_offsets.expect("offsets")).expect("offsets");
     let offsets: Vec<usize> = offsets
@@ -481,6 +518,7 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
             .unwrap();
         }
     }
+    let strings = |table: Option<u32>, name: &str| strings(&root, bin, table, name);
     let entries = board
         .layers
         .iter()
@@ -514,6 +552,7 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         let nets = column(table, "net");
         let fiducials = column(table, "fiducial");
         let instances = column(table, "instance");
+        let texts = strings(table, "text");
         let mut histogram: BTreeMap<String, usize> = BTreeMap::new();
         for &k in &kinds {
             *histogram
@@ -548,9 +587,13 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
                     NO_ROW => String::new(),
                     i => format!(" instance {i}"),
                 };
+                let text = match texts[row].as_str() {
+                    "" => String::new(),
+                    text => format!(" text {text:?}"),
+                };
                 writeln!(
                     out,
-                    "    row {row}: {kind} net {net}{instance} area {:.4} mm²",
+                    "    row {row}: {kind} net {net}{instance} area {:.4} mm²{text}",
                     areas.get(&(row as u32)).copied().unwrap_or(0.0) * 1e6
                 )
                 .unwrap();

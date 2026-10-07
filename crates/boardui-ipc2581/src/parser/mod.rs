@@ -201,44 +201,56 @@ impl<R: BufRead> Parser<R> {
         let general_type = self.opt_str("type").unwrap_or_default();
         let mut properties = Vec::new();
         let mut color = None;
-        self.children("General", |p| match p.tag.name() {
-            "Property" => {
-                let property = SpecProperty {
-                    text: p.opt_str("text"),
-                    value: p.opt_str("value"),
-                    unit: p.opt_str("unit"),
-                };
-                p.leaf("Property")?;
-                properties.push(property);
-                Ok(())
+        self.children("General", |p| {
+            if p.color_group("General", &mut color)? {
+                return Ok(());
             }
-            "Color" | "ColorRef" | "ColorTerm" if color.is_some() => p.duplicate("General"),
-            "Color" => {
-                color = Some(SpecColor::Rgb(p.read_color()?));
-                Ok(())
+            match p.tag.name() {
+                "Property" => {
+                    let property = SpecProperty {
+                        text: p.opt_str("text"),
+                        value: p.opt_str("value"),
+                        unit: p.opt_str("unit"),
+                    };
+                    p.leaf("Property")?;
+                    properties.push(property);
+                    Ok(())
+                }
+                _ => p.unknown("General"),
             }
-            "ColorRef" => {
-                color = Some(SpecColor::Ref(p.read_ref(
-                    "ColorRef",
-                    "id",
-                    RefKind::Color,
-                )?));
-                Ok(())
-            }
-            "ColorTerm" => {
-                let name = p.req_str("name")?;
-                let comment = p.opt_str("comment");
-                p.leaf("ColorTerm")?;
-                color = Some(SpecColor::Term { name, comment });
-                Ok(())
-            }
-            _ => p.unknown("General"),
         })?;
         Ok(SpecGeneral {
             general_type,
             properties,
             color,
         })
+    }
+
+    /// Handles a `Color`, `ColorRef` or `ColorTerm` child. Returns `false` for other elements.
+    fn color_group(
+        &mut self,
+        parent: &'static str,
+        slot: &mut Option<SpecColor>,
+    ) -> Result<bool, Error> {
+        match self.tag.name() {
+            "Color" | "ColorRef" | "ColorTerm" if slot.is_some() => self.duplicate(parent)?,
+            "Color" => *slot = Some(SpecColor::Rgb(self.read_color()?)),
+            "ColorRef" => {
+                *slot = Some(SpecColor::Ref(self.read_ref(
+                    "ColorRef",
+                    "id",
+                    RefKind::Color,
+                )?));
+            }
+            "ColorTerm" => {
+                let name = self.req_str("name")?;
+                let comment = self.opt_str("comment");
+                self.leaf("ColorTerm")?;
+                *slot = Some(SpecColor::Term { name, comment });
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
     }
 
     fn read_cad_data(&mut self) -> Result<(), Error> {

@@ -58,9 +58,9 @@ pub use model::{
     StepRepeat, Units, WhereMeasured,
 };
 pub use shape::{
-    Arc, ButterflyShape, Color, Contour, Corners, FillDesc, FillProperty, FillStyle, Line,
-    LineDesc, LineEnd, LineProperty, LineStyle, Moire, Outline, Path, Point, PolyStep, Polygon,
-    Polyline, PrimitiveKind, RingShape, Shape, StandardPrimitive, Xform,
+    Arc, ButterflyShape, Color, Contour, Corners, EmbeddedFont, FillDesc, FillProperty, FillStyle,
+    Font, Glyph, Line, LineDesc, LineEnd, LineProperty, LineStyle, Moire, Outline, Path, Point,
+    PolyStep, Polygon, Polyline, PrimitiveKind, RingShape, Shape, StandardPrimitive, Text, Xform,
 };
 pub use table::Table;
 

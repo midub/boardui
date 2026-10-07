@@ -1535,7 +1535,7 @@ mod features {
     #[test]
     fn keeps_features_with_unsupported_shapes() {
         let d = step_doc(
-            r#"<LayerFeature layerRef="TOP"><Set><Features><Text textString="R1"/></Features></Set></LayerFeature>"#,
+            r#"<LayerFeature layerRef="TOP"><Set><Features><Squiggle/></Features></Set></LayerFeature>"#,
         )
         .unwrap();
         let lf = d
@@ -1552,13 +1552,13 @@ mod features {
         assert_eq!(
             f.shape,
             Shape::Unsupported {
-                element: "Text".to_owned()
+                element: "Squiggle".to_owned()
             }
         );
         assert_eq!(
             kinds(&d.diagnostics),
             [&DiagnosticKind::UnsupportedShape {
-                element: "Text".to_owned()
+                element: "Squiggle".to_owned()
             }]
         );
     }
@@ -1768,6 +1768,204 @@ mod features {
             <LayerFeature layerRef="BOTTOM"><Set net="C"/><Set net="A"/></LayerFeature>"#,
         );
         assert_eq!(s.nets(), ["B", "A", "C"]);
+    }
+}
+
+mod text {
+    use super::*;
+    use crate::{
+        EmbeddedFont, FeatureElement, Font, LineDesc, LineEnd, LineProperty, LineStyle, Point,
+        Shape, SpecColor, Text, Xform,
+    };
+
+    /// A font dictionary in millimetres: embedded font `E` with glyphs `A` and `é`, external
+    /// font `X`.
+    const FONTS: &str = r#"
+<DictionaryFont units="MILLIMETER">
+  <EntryFont id="E"><FontDefEmbedded name="plotter">
+    <LineDesc lineWidth="0.1" lineEnd="ROUND"/>
+    <Glyph charCode="41" lowerLeftX="0" lowerLeftY="-0.25" upperRightX="0.75" upperRightY="1">
+      <Line startX="0" startY="0" endX="0.3" endY="1"><LineDesc lineWidth="0.1" lineEnd="ROUND"/></Line>
+      <Polyline><PolyBegin x="0.3" y="1"/><PolyStepSegment x="0.6" y="0"/><LineDesc lineWidth="0.1" lineEnd="ROUND"/></Polyline>
+    </Glyph>
+    <Glyph charCode="00E9" lowerLeftX="0" lowerLeftY="-0.25" upperRightX="0.7" upperRightY="1">
+      <Arc startX="0.6" startY="0.3" endX="0.6" endY="0.29" centerX="0.3" centerY="0.3" clockwise="false"><LineDesc lineWidth="0.1" lineEnd="ROUND"/></Arc>
+    </Glyph>
+  </FontDefEmbedded></EntryFont>
+  <EntryFont id="X"><FontDefExternal name="Arial" urn="urn:font:arial"/></EntryFont>
+</DictionaryFont>"#;
+
+    fn text(xml: &str) -> (Text, Vec<DiagnosticKind>) {
+        let d = doc(
+            "INCH",
+            FONTS,
+            &format!(
+                r#"<Layer name="TOP" layerFunction="SILKSCREEN" side="TOP"/><Step name="S">
+                <LayerFeature layerRef="TOP"><Set><Features>{xml}</Features></Set></LayerFeature>
+                </Step>"#
+            ),
+        )
+        .unwrap();
+        let lf = d.ecad.steps.get("S").unwrap().layer_features.get("TOP");
+        let FeatureElement::Features(f) = &lf.unwrap().sets[0].features[0].element else {
+            panic!("not Features")
+        };
+        let Shape::Text(text) = &f.shape else {
+            panic!("not Text: {:?}", f.shape)
+        };
+        let kinds = kinds(&d.diagnostics).into_iter().cloned().collect();
+        ((**text).clone(), kinds)
+    }
+
+    #[test]
+    fn reads_text() {
+        let (t, warnings) = text(
+            r#"<Text textString="R&#xE9;1 &amp; C" fontSize="12">
+              <Xform rotation="90" mirror="true" xOffset="0.5"/>
+              <BoundingBox lowerLeftX="0" lowerLeftY="0" upperRightX="2" upperRightY="0.5"/>
+              <FontRef id="E"/>
+              <ColorTerm name="WHITE"/>
+            </Text>"#,
+        );
+        assert_eq!(warnings, []);
+        assert_eq!(
+            t,
+            Text {
+                string: "Ré1 & C".to_owned(),
+                font_size: Some(12),
+                xform: Xform {
+                    offset: Point {
+                        x: 0.5 * 25.4e-3,
+                        y: 0.0
+                    },
+                    rotation: 90.0,
+                    mirror: true,
+                    scale: 1.0,
+                },
+                lower_left: Point::default(),
+                upper_right: Point {
+                    x: 2.0 * 25.4e-3,
+                    y: 0.5 * 25.4e-3
+                },
+                font_ref: Some("E".to_owned()),
+                line: None,
+                color: Some(SpecColor::Term {
+                    name: "WHITE".to_owned(),
+                    comment: None
+                }),
+            }
+        );
+        // Not in the rev C schema, but read: a stroke for text in the bundled font.
+        let (t, warnings) = text(
+            r#"<Text textString="X"><BoundingBox lowerLeftX="0" lowerLeftY="0" upperRightX="1" upperRightY="1"/><LineDescRef id="L"/></Text>"#,
+        );
+        assert_eq!(warnings, [dangling(RefKind::LineDesc, "L")]);
+        assert_eq!((t.font_size, t.font_ref), (None, None));
+        assert_eq!(t.line, Some(LineStyle::Ref("L".to_owned())));
+        assert_eq!(t.xform, Xform::default());
+    }
+
+    #[test]
+    fn reads_fonts() {
+        let d = doc("INCH", FONTS, "").unwrap();
+        assert_eq!(d.diagnostics, []);
+        let Some(Font::Embedded(font)) = d.content.fonts.get("E") else {
+            panic!("not an embedded font")
+        };
+        let EmbeddedFont { name, line, glyphs } = font;
+        assert_eq!(name, "plotter");
+        assert_eq!(
+            line,
+            &Some(LineStyle::Desc(LineDesc {
+                width: mm(0.1),
+                end: LineEnd::Round,
+                property: LineProperty::Solid
+            }))
+        );
+        assert_eq!(glyphs.len(), 2);
+        let a = font.glyph('A').unwrap();
+        assert_eq!(a.char_code, 0x41);
+        assert_eq!(
+            (a.lower_left, a.upper_right),
+            (
+                Point {
+                    x: 0.0,
+                    y: mm(-0.25)
+                },
+                Point {
+                    x: mm(0.75),
+                    y: mm(1.0)
+                }
+            )
+        );
+        assert!(matches!(a.shapes[..], [Shape::Line(_), Shape::Polyline(_)]));
+        assert!(matches!(
+            font.glyph('é').unwrap().shapes[..],
+            [Shape::Arc(_)]
+        ));
+        assert_eq!(font.glyph('B'), None);
+        assert_eq!(
+            d.content.fonts.get("X"),
+            Some(&Font::External {
+                name: "Arial".to_owned(),
+                urn: "urn:font:arial".to_owned()
+            })
+        );
+    }
+
+    #[test]
+    fn text_in_user_primitives_and_markings() {
+        let d = doc(
+            "MILLIMETER",
+            r#"<DictionaryUser units="MILLIMETER"><EntryUser id="U"><UserSpecial>
+              <Text textString="A"><BoundingBox lowerLeftX="0" lowerLeftY="0" upperRightX="1" upperRightY="1"/></Text>
+            </UserSpecial></EntryUser></DictionaryUser>"#,
+            r#"<Step name="S"><Package name="P" type="OTHER">
+              <SilkScreen><Marking markingUsage="REFDES"><Location x="0" y="1"/>
+                <Text textString="R?"><BoundingBox lowerLeftX="0" lowerLeftY="0" upperRightX="1" upperRightY="1"/></Text>
+              </Marking></SilkScreen>
+            </Package></Step>"#,
+        )
+        .unwrap();
+        assert_eq!(d.diagnostics, []);
+        let Some(Shape::UserSpecial(shapes)) = d.content.user_primitives.get("U") else {
+            panic!("not a UserSpecial")
+        };
+        assert!(matches!(&shapes[..], [Shape::Text(t)] if t.string == "A"));
+        let package = d.ecad.steps.get("S").unwrap().packages.get("P").unwrap();
+        let marking = &package.silkscreen.as_ref().unwrap().markings[0];
+        assert!(matches!(&marking.shape, Shape::Text(t) if t.string == "R?"));
+    }
+
+    #[test]
+    fn malformed_text_and_fonts() {
+        let e = doc(
+            "MILLIMETER",
+            "",
+            r#"<Step name="S"><LayerFeature layerRef="TOP"><Set><Features><Text textString="A"/></Features></Set></LayerFeature></Step>"#,
+        )
+        .unwrap_err();
+        assert!(e.to_string().contains("`BoundingBox`"), "{e}");
+        for code in ["4", "XY", "123456789A", ""] {
+            let e = doc(
+                "MILLIMETER",
+                &format!(
+                    r#"<DictionaryFont units="MILLIMETER"><EntryFont id="E"><FontDefEmbedded name="f">
+                    <Glyph charCode="{code}" lowerLeftX="0" lowerLeftY="0" upperRightX="1" upperRightY="1"/>
+                    </FontDefEmbedded></EntryFont></DictionaryFont>"#
+                ),
+                "",
+            )
+            .unwrap_err();
+            assert!(
+                matches!(e.kind(), ErrorKind::InvalidValue { attribute, .. } if attribute == "charCode"),
+                "{code}: {e}"
+            );
+        }
+        let (_, warnings) = text(
+            r#"<Text textString="A"><BoundingBox lowerLeftX="0" lowerLeftY="0" upperRightX="1" upperRightY="1"/><FontRef id="nope"/></Text>"#,
+        );
+        assert_eq!(warnings, [dangling(RefKind::Font, "nope")]);
     }
 }
 

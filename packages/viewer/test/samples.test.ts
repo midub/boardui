@@ -54,13 +54,13 @@ describe('converter samples', () => {
   });
 });
 
-describe('fiducials', () => {
-  const load = async (name: string) => {
-    const bytes = readFileSync(path.join(samples, name, `${name}.glb`));
-    const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    return BoardModel.fromGltf(await loadGltf(glb));
-  };
+const load = async (name: string) => {
+  const bytes = readFileSync(path.join(samples, name, `${name}.glb`));
+  const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  return BoardModel.fromGltf(await loadGltf(glb));
+};
 
+describe('fiducials', () => {
   it('describes fiducials with their type (spec §8.2)', async () => {
     const model = await load('fiducials');
     expect(model.describe('feat/TOP/0')?.properties).toMatchObject({
@@ -75,11 +75,6 @@ describe('fiducials', () => {
 });
 
 describe('optional layers', () => {
-  const load = async (name: string) => {
-    const bytes = readFileSync(path.join(samples, name, `${name}.glb`));
-    const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    return BoardModel.fromGltf(await loadGltf(glb));
-  };
   const roles = (model: BoardModel) =>
     Object.fromEntries(
       model.layers
@@ -130,14 +125,8 @@ describe('optional layers', () => {
 });
 
 describe('panels (spec §6.14)', () => {
-  const load = async () => {
-    const bytes = readFileSync(path.join(samples, 'panel', 'panel.glb'));
-    const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    return BoardModel.fromGltf(await loadGltf(glb));
-  };
-
   it('lists and describes instances', async () => {
-    const model = await load();
+    const model = await load('panel');
     expect(model.ids('instance')).toEqual([
       'inst/strip-1',
       'inst/board-1',
@@ -163,7 +152,7 @@ describe('panels (spec §6.14)', () => {
   });
 
   it('gives features of instances their instance in the ID', async () => {
-    const model = await load();
+    const model = await load('panel');
     const top = model.layer('layer/TOP');
     if (!top) throw new Error('layer/TOP');
     // The panel's own fiducials, then the strip's, then the boards'.
@@ -182,7 +171,7 @@ describe('panels (spec §6.14)', () => {
   });
 
   it('highlights a net in its own board only', async () => {
-    const model = await load();
+    const model = await load('panel');
     const gnd = model.resolve('net/board-2/GND');
     if (!gnd) throw new Error('net/board-2/GND');
     expect(gnd.texels.length).toBeGreaterThan(3);
@@ -192,7 +181,7 @@ describe('panels (spec §6.14)', () => {
   });
 
   it('resolves an instance with the instances placed in it', async () => {
-    const model = await load();
+    const model = await load('panel');
     const strip = model.resolve('inst/strip-1');
     if (!strip) throw new Error('inst/strip-1');
     const ids = [...strip.texels].map((t) => model.idOfTexel(t));
@@ -205,5 +194,27 @@ describe('panels (spec §6.14)', () => {
     // Board 1 starts at x = 8 mm; its leftmost feature is the silkscreen at x = 8.925 mm.
     expect(strip.box?.min.x).toBeCloseTo(0.008925, 5);
     expect(strip.box?.max.z).toBeLessThan(-0.005);
+  });
+});
+
+describe('text', () => {
+  it('describes features with the strings of their text (spec §8.2)', async () => {
+    const model = await load('text');
+    expect(model.describe('feat/SILK/0')?.properties).toMatchObject({
+      kind: 'MARKING',
+      text: 'BOARD Ø2',
+    });
+    expect(model.describe('feat/SILK/2')?.properties).toMatchObject({
+      text: 'Ærøskøbing µ±0.1° Ω',
+    });
+    expect(model.describe('feat/TOP/0')?.properties).toMatchObject({ kind: 'TRACE', text: 'GND' });
+    expect(model.describe('feat/TOP/1')?.properties).toMatchObject({ kind: 'FILL', text: null });
+    // A package assembly drawing's Text marking (spec §6.13).
+    expect(model.describe('feat/@assembly-top/1')?.properties).toMatchObject({
+      kind: 'MARKING',
+      text: 'U1',
+    });
+    const other = await load('fiducials');
+    expect(other.describe('feat/TOP/0')?.properties).not.toHaveProperty('text');
   });
 });
