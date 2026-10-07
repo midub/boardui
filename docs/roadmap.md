@@ -31,6 +31,15 @@ Measured in M5 on a VM without a GPU: a 238k-feature board converts in 3.7 s nat
 
 Released as v1.1.0 (profile 0.6, still a draft): board colours from the file, the missing shapes (fiducials, `Hexagon`, `Moire`, hatched fills, dashed lines), `Text`, optional layers (paste, courtyard, assembly, documentation), panels (`StepRepeat`), and more samples from other exporters. See [CHANGELOG.md](../CHANGELOG.md).
 
+## Demos in React and Angular
+
+Decided on 2026-10-07: the vanilla demo is replaced by two feature-identical demos, one in React and one in Angular, each built on its framework's thin wrapper of `<board-viewer>` ([ADR 0009](adr/0009-viewer-three-js-web-component.md)). GitHub Pages serves them at `/boardui/react/` and `/boardui/angular/`; `/boardui/` redirects to `react/`, keeping the query and hash, so links such as the one above keep working. The framework-independent code, the build helpers and the e2e suite are shared (`packages/demo-shared`).
+
+| Step | Status |
+|---|---|
+| `@boardui/react`, shared demo code and e2e suite, React demo, Pages layout | done |
+| `@boardui/angular`, Angular demo | next |
+
 ## v2 backlog
 
 - Exploded layer view, cross-section (clipping plane), measuring

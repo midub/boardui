@@ -1,7 +1,10 @@
 name: Pages
 
-# Builds the demo (packages/demo) and deploys it to GitHub Pages: https://midub.github.io/boardui/
-# Pull requests that change this workflow or the shared setup only build it.
+# Builds the demos and deploys them to GitHub Pages, https://midub.github.io/boardui/: each demo app
+# at /boardui/<id>/ (the React demo, packages/demo-react, at /boardui/react/), and /boardui/, which
+# redirects to react/ keeping the query and hash. A demo is added to the site (e.g. angular/) by
+# adding it to DEMOS in packages/demo-shared/src/frameworks.ts.
+# Pull requests that change this workflow, the shared setup or the site builder only build it.
 on:
   push:
     branches: [master]
@@ -9,6 +12,7 @@ on:
     paths:
       - .github/workflows/pages.yml
       - .github/actions/setup-web/**
+      - packages/demo-shared/src/build/site.ts
   workflow_dispatch:
 
 permissions:
@@ -21,17 +25,20 @@ concurrency:
 
 jobs:
   build:
-    name: Build the demo
+    name: Build the demos
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       # The same setup as the CI Web job, which tests the build on every pull request.
       - uses: ./.github/actions/setup-web
-      # Also checks that dist/ contains no IPC consortium test data.
+      # Also checks that the demos' dist/ contain no IPC consortium test data.
       - run: pnpm build
+      # site/: site/<id>/ for every demo app (packages/demo-<id>/dist), and site/index.html, the
+      # redirect; checked again for IPC consortium test data.
+      - run: pnpm site
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: packages/demo/dist
+          path: site
 
   deploy:
     name: Deploy

@@ -1,0 +1,52 @@
+{
+  "name": "@boardui/demo-shared",
+  "private": true,
+  "version": "1.1.1",
+  "description": "The framework-independent parts of the boardui demos: samples, loading, panels, styles, build helpers and the e2e suite.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./sizes": {
+      "types": "./dist/sizes.d.ts",
+      "default": "./dist/sizes.js"
+    },
+    "./build": {
+      "types": "./dist/build/index.d.ts",
+      "default": "./dist/build/index.js"
+    },
+    "./vite": {
+      "types": "./dist/build/vite.d.ts",
+      "default": "./dist/build/vite.js"
+    },
+    "./style.css": "./src/style.css"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node dist/build/cli.js sizes dist && tsc -p tsconfig.json",
+    "test": "vitest run",
+    "site": "node dist/build/cli.js site ../../site",
+    "e2e": "playwright test"
+  },
+  "peerDependencies": {
+    "three": "catalog:"
+  },
+  "dependencies": {
+    "@boardui/converter": "workspace:*",
+    "@boardui/viewer": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@types/three": "catalog:",
+    "three": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

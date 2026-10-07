@@ -18,6 +18,9 @@ to WebGL2 where WebGPU is missing.
 of `loadIpc2581`. Neither package is published to npm in v1: the root README ("Embedding the
 viewer") shows how to install them from a source build.
 
+Importing the module defines the element in a browser. Without a DOM (server-side rendering) the
+import is safe and defines nothing. In React, use [`@boardui/react`](../react/README.md).
+
 ## API
 
 Element IDs follow spec §5 (`cmp/U3`, `pin/U3/1`, `net/GND`, `layer/TOP`, `feat/TOP/12`, `board`). In a panel, each placed board is an instance (`inst/board-2`), and its elements carry the instance: `cmp/board-2/U3`, `net/board-2/GND`, `feat/board-2/TOP/12` (spec §6.14). Resolving an instance gives its features and components, and those of the instances placed in it.

@@ -70,6 +70,13 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; outline:
 ::slotted(*) { position: absolute; left: 0; top: 0; pointer-events: auto; will-change: transform; }
 `;
 
+/**
+ * `HTMLElement`, or a stand-in where there is none (server-side rendering in Node), so that the
+ * module can be imported there; the element is only defined in a browser.
+ */
+const ElementBase: typeof HTMLElement =
+  globalThis.HTMLElement ?? (class {} as unknown as typeof HTMLElement);
+
 interface Loaded {
   model: BoardModel;
   state: ElementState;
@@ -102,7 +109,7 @@ interface Loaded {
  * Element IDs follow spec §5. Methods that take one ID throw a `RangeError` for an unknown ID;
  * methods that take several skip unknown ones. All need a loaded board.
  */
-export class BoardViewerElement extends HTMLElement {
+export class BoardViewerElement extends ElementBase {
   static readonly observedAttributes = ['src'];
 
   readonly #canvas = document.createElement('canvas');

@@ -4,3 +4,5 @@ dist/
 /packages/converter/wasm/
 *.tsbuildinfo
 .DS_Store
+/site/
+test-results/
