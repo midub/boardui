@@ -18,5 +18,5 @@ What it exercises:
 Known quirks of the export, recorded as findings in the pull request that added it:
 
 - The 29 bottom-side footprints at 0° or 180° (of 50) get a rotation that is 180° off. For the 17 that aren't symmetric, the pins land on other pads under KiCad's mirror order: 74 of 144 checked pins. The pads themselves are correct. The conformance test expects these 74 pins.
-- KiCad writes the keyhole cut-out only as lines and arcs on `Edge.Cuts`, not as a `Cutout` of the `Profile`.
-- The pad-less footprints have `pinOne="UNKNOWN"`, which the reader reports as a reference to an unknown pin; `XX2` sits outside the board.
+- KiCad writes the keyhole cut-out only as lines and arcs on `Edge.Cuts`, not as a `Cutout` of the `Profile`. The converter takes it from there, with a warning (spec §6.7).
+- The pad-less footprints have `pinOne="UNKNOWN"`; `XX2` sits outside the board. `nothing` has no pins, so its `pinOne` is not reported and `XX2` and `XX3` get no placeholder body (spec §6.8). `soldermask-removal` has pins, none named `UNKNOWN`, so the reader still reports its `pinOne` as a reference to an unknown pin.
