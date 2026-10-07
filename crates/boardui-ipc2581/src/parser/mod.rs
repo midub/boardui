@@ -291,15 +291,7 @@ impl<R: BufRead> Parser<R> {
                 Ok(())
             }
             "Span" if span.is_none() => {
-                let from_layer = p.req_ref("fromLayer")?;
-                let to_layer = p.req_ref("toLayer")?;
-                p.check_ref(RefKind::Layer, &from_layer);
-                p.check_ref(RefKind::Layer, &to_layer);
-                p.leaf("Span")?;
-                span = Some(Span {
-                    from_layer,
-                    to_layer,
-                });
+                span = Some(p.read_span()?);
                 Ok(())
             }
             "Span" => p.duplicate("Layer"),
@@ -312,6 +304,19 @@ impl<R: BufRead> Parser<R> {
             polarity,
             span,
             spec_refs,
+        })
+    }
+
+    /// Reads a `Span` of a `Layer` or `LayerHole`.
+    fn read_span(&mut self) -> Result<Span, Error> {
+        let from_layer = self.req_ref("fromLayer")?;
+        let to_layer = self.req_ref("toLayer")?;
+        self.check_ref(RefKind::Layer, &from_layer);
+        self.check_ref(RefKind::Layer, &to_layer);
+        self.leaf("Span")?;
+        Ok(Span {
+            from_layer,
+            to_layer,
         })
     }
 
@@ -352,6 +357,7 @@ impl<R: BufRead> Parser<R> {
                     tol_plus: p.opt_len("tolPlus")?,
                     tol_minus: p.opt_len("tolMinus")?,
                     sequence: p.opt_u32("sequence")?,
+                    material_type: p.opt_str("materialType"),
                     spec_refs: Vec::new(),
                 };
                 p.check_ref(RefKind::LayerOrGroup, &layer.layer_or_group_ref);

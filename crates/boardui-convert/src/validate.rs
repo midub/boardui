@@ -465,7 +465,13 @@ impl Validator<'_> {
             .layers
             .iter()
             .map(|l| (&l.id, &l.name, l.node, l.synthesized))
-            .chain(board.drills.iter().map(|d| (&d.id, &d.name, d.node, false)));
+            // A synthesized drill layer (spec §6.3) shows in its ID's unencoded `@`.
+            .chain(
+                board
+                    .drills
+                    .iter()
+                    .map(|d| (&d.id, &d.name, d.node, d.id.starts_with("layer/@"))),
+            );
         for (id, layer_name, index, synthesized) in entries {
             if *id != layer_id(layer_name, synthesized) || !well_formed(id) {
                 self.report.error(format!(

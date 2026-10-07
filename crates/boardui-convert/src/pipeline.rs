@@ -16,6 +16,7 @@ use glam::DAffine2;
 use crate::colours;
 use crate::components::{self, PadRef};
 use crate::outline::Cutouts;
+use crate::padstacks;
 use crate::panel::{self, Flip, Part};
 use crate::shapes::{ShapeConverter, erases, is_stroke, point, texts};
 use crate::stackup::{self, LayerClass, Stack, Synthesize};
@@ -36,6 +37,8 @@ struct DrillHole {
 
 struct Drill {
     name: String,
+    /// Whether the converter synthesized the drill layer (spec §6.3).
+    synthesized: bool,
     /// Stack indices of the span's upper and lower copper layer.
     from: usize,
     to: usize,
@@ -59,6 +62,9 @@ pub(crate) fn run(
     }
     let mut warnings = Warnings::default();
     let features_step = timings.step("stack-up, features, components");
+    let source = &doc.ecad;
+    let lowered = padstacks::lower(doc, tolerance.metres());
+    let doc: &ipc::Document = &lowered;
     let step = panel::select_step(doc, options)?;
     let (parts, instances) = panel::expand(&doc.ecad, step, &mut warnings);
     let mut stack = stackup::build(&doc.ecad, &mut warnings).map_err(ConvertError::Input)?;
@@ -226,7 +232,7 @@ pub(crate) fn run(
             skipped.join(", ")
         ));
     }
-    let drills = ctx.drills(doc, &stack);
+    let drills = ctx.drills(doc, source, &stack);
     // The board outline: the profiles of all parts, with their cut-outs (spec §6.7, §6.14).
     let cutouts = Cutouts::find(
         &doc.ecad,
@@ -446,6 +452,7 @@ pub(crate) fn run(
                 messages.into_iter().for_each(|m| warnings.push(m));
                 DrillAsset {
                     name: drill.name,
+                    synthesized: drill.synthesized,
                     from: top.name.clone(),
                     to: bottom.name.clone(),
                     mesh,
@@ -1021,8 +1028,9 @@ impl<'a> Context<'a> {
         row
     }
 
-    /// Drill and rout layers with their holes and slots (spec §6.3), from every part.
-    fn drills(&mut self, doc: &ipc::Document, stack: &Stack) -> Vec<Drill> {
+    /// Drill and rout layers with their holes and slots (spec §6.3), from every part. `source`
+    /// is the document before lowering its `PadStack`s: its layers aren't synthesized.
+    fn drills(&mut self, doc: &ipc::Document, source: &ipc::Ecad, stack: &Stack) -> Vec<Drill> {
         let copper = stack.copper();
         let (first, last) = (copper[0], *copper.last().expect("copper"));
         let mut drills = Vec::new();
@@ -1078,6 +1086,7 @@ impl<'a> Context<'a> {
             let (from, to) = span.unwrap_or((first, last));
             drills.push(Drill {
                 name: layer.name.clone(),
+                synthesized: source.layers.get(&layer.name).is_none(),
                 from,
                 to,
                 rows,
