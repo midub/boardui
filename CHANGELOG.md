@@ -23,6 +23,10 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
     writes a part's `VALUE` and `TOLERANCE` there; the BOM's `VALUE` wins);
   - text drawn as outlines takes its string from its set's `TEXT` attribute (KiCad), so the
     viewer's `info()` and the demos' details panel show the string of selected silkscreen text.
+- **Faster conversion of boards with several dielectric layers:** dielectrics crossed by the
+  same drills share one sheet, which is cut and triangulated once and moved to each layer's
+  heights; copper layers crossed by the same drills share one hole index. The output is
+  unchanged. testcase1-RevC-full (11 dielectrics) converts about 10 % faster in the browser.
 
 - **Component attributes (profile 0.8, still a draft):** the converter reads the BOM, the
   approved vendor list and the exporting software. Each component gets its BOM attributes
