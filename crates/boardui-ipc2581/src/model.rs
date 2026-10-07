@@ -14,10 +14,178 @@ pub struct Document {
     pub revision: String,
     /// `Content`: function mode, references and dictionaries.
     pub content: Content,
+    /// `LogisticHeader/Enterprise`s, by id.
+    pub enterprises: Table<Enterprise>,
+    /// `HistoryRecord`, if given.
+    pub history: Option<HistoryRecord>,
+    /// `Bom`s in document order.
+    pub boms: Vec<Bom>,
     /// `Ecad`: layers, stack-ups and steps.
     pub ecad: Ecad,
+    /// `Avl`: the approved vendor list, if given.
+    pub avl: Option<Avl>,
     /// Warnings about skipped or unresolved input.
     pub diagnostics: Vec<Diagnostic>,
+}
+
+/// `Enterprise` in `LogisticHeader`: a company, such as a part's manufacturer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Enterprise {
+    /// `id`.
+    pub id: String,
+    /// `name`, if given.
+    pub name: Option<String>,
+    /// `code`, for example a CAGE code or `NONE`, if given.
+    pub code: Option<String>,
+}
+
+/// `HistoryRecord`.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct HistoryRecord {
+    /// `software`: the exporting software in one string, if given.
+    pub software: Option<String>,
+    /// `FileRevision/SoftwarePackage`, if given.
+    pub software_package: Option<SoftwarePackage>,
+}
+
+/// `SoftwarePackage`: the software that wrote the file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SoftwarePackage {
+    /// `name`, for example `KiCad`.
+    pub name: String,
+    /// `revision`, for example `9.0.9`, if given.
+    pub revision: Option<String>,
+    /// `vendor`, for example `KiCad EDA`, if given.
+    pub vendor: Option<String>,
+    /// `model`, if given.
+    pub model: Option<String>,
+}
+
+/// `Bom`: a bill of materials.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Bom {
+    /// `name`.
+    pub name: String,
+    /// `BomItem`s in document order.
+    pub items: Vec<BomItem>,
+}
+
+/// `BomItem`: one part and the reference designators that use it.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct BomItem {
+    /// `OEMDesignNumberRef`: the part. It names an `AvlItem` and is usually the `part` of
+    /// the components. Revision A files omit it.
+    pub oem_design_number_ref: Option<String>,
+    /// `internalPartNumber`, if given. Revision A files name the part here.
+    pub internal_part_number: Option<String>,
+    /// `description`, if given.
+    pub description: Option<String>,
+    /// `category` as written, for example `ELECTRICAL`, if given.
+    pub category: Option<String>,
+    /// `RefDes` elements in document order.
+    pub ref_des: Vec<BomRefDes>,
+    /// The `Characteristics` children in document order.
+    pub characteristics: Vec<Characteristic>,
+}
+
+/// `RefDes` of a [`BomItem`]: a component that uses the part.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BomRefDes {
+    /// `name`: a `Component@refDes`.
+    pub name: String,
+    /// `packageRef`, if given.
+    pub package_ref: Option<String>,
+    /// `populate`: whether the part is placed, if given. KiCad writes `false` for parts that
+    /// are not populated or excluded from the BOM.
+    pub populate: Option<bool>,
+    /// `layerRef`, if given.
+    pub layer_ref: Option<String>,
+}
+
+/// A characteristic of a [`BomItem`]: `Measured`, `Ranged`, `Enumerated` or `Textual`.
+///
+/// Values are kept as written: they are shown, not computed with.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Characteristic {
+    /// `definitionSource`, for example `KICAD`, if given.
+    pub definition_source: Option<String>,
+    /// The `…CharacteristicName`, if given.
+    pub name: Option<String>,
+    /// The value.
+    pub value: CharacteristicValue,
+}
+
+/// The value of a [`Characteristic`], by element.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CharacteristicValue {
+    /// `Textual@textualCharacteristicValue`, if given.
+    Textual(Option<String>),
+    /// `Enumerated@enumeratedCharacteristicValue`, if given.
+    Enumerated(Option<String>),
+    /// `Measured`.
+    Measured {
+        /// `measuredCharacteristicValue`, if given.
+        value: Option<String>,
+        /// `engineeringUnitOfMeasure`, if given.
+        unit: Option<String>,
+        /// `engineeringNegativeTolerance`, if given.
+        negative_tolerance: Option<String>,
+        /// `engineeringPositiveTolerance`, if given.
+        positive_tolerance: Option<String>,
+    },
+    /// `Ranged`.
+    Ranged {
+        /// `rangedCharacteristicLowerValue`, if given.
+        lower: Option<String>,
+        /// `rangedCharacteristicUpperValue`, if given.
+        upper: Option<String>,
+        /// `engineeringUnitOfMeasure`, if given.
+        unit: Option<String>,
+        /// `engineeringNegativeTolerance`, if given.
+        negative_tolerance: Option<String>,
+        /// `engineeringPositiveTolerance`, if given.
+        positive_tolerance: Option<String>,
+    },
+}
+
+/// `Avl`: the approved vendor list.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Avl {
+    /// `name`.
+    pub name: String,
+    /// `AvlItem`s, by `OEMDesignNumber`.
+    pub items: Table<AvlItem>,
+}
+
+/// `AvlItem`: the manufacturer part numbers approved for a part.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AvlItem {
+    /// `OEMDesignNumber`: a `BomItem@OEMDesignNumberRef`.
+    pub oem_design_number: String,
+    /// `AvlVmpn`s in document order.
+    pub vmpns: Vec<AvlVmpn>,
+}
+
+/// `AvlVmpn`: a manufacturer part number with its vendor.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct AvlVmpn {
+    /// `qualified`, if given.
+    pub qualified: Option<bool>,
+    /// `chosen`, if given.
+    pub chosen: Option<bool>,
+    /// `AvlMpn`, if given.
+    pub mpn: Option<AvlMpn>,
+    /// `AvlVendor@enterpriseRef`: an [`Enterprise`], if given.
+    pub vendor: Option<String>,
+}
+
+/// `AvlMpn`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AvlMpn {
+    /// `name`: the manufacturer part number.
+    pub name: String,
+    /// `rank`, if given.
+    pub rank: Option<u32>,
 }
 
 /// `Content`.

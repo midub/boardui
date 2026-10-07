@@ -231,3 +231,58 @@ describe('text', () => {
     expect(other.describe('feat/TOP/0')?.properties).not.toHaveProperty('text');
   });
 });
+
+describe('BOM attributes (spec §8.2–§8.4)', () => {
+  it('describes components with their attributes and populate flag', async () => {
+    const model = await load('bom-attributes');
+    const r1 = model.describe('cmp/R1')?.properties;
+    expect(r1).toMatchObject({ refDes: 'R1', part: 'RES-10K', populate: 'YES' });
+    expect(r1?.attributes).toEqual({
+      Value: '10k',
+      LCSC: 'C25744',
+      Power: '0.1 W',
+      Temperature: '-55..155 CEL',
+      Tolerance: '1%',
+      Description: 'Resistor, 10 kOhm',
+      MPN: 'RC0603FR-0710KL',
+      Manufacturer: 'Yageo',
+    });
+    // In table order: characteristics first.
+    expect(Object.keys(r1?.attributes as object)).toEqual([
+      'Value',
+      'LCSC',
+      'Power',
+      'Temperature',
+      'Tolerance',
+      'Description',
+      'MPN',
+      'Manufacturer',
+    ]);
+    expect(model.describe('cmp/C1')?.properties).toMatchObject({
+      populate: 'NO',
+      attributes: {
+        Value: '100nF',
+        Description: 'from a characteristic: it wins',
+        MPN: 'GRM155R71C104KA88D',
+      },
+    });
+    const j1 = model.describe('cmp/J1')?.properties;
+    expect(j1).toMatchObject({ populate: null });
+    expect(j1).not.toHaveProperty('attributes');
+  });
+
+  it('names the exporting software in the board summary', async () => {
+    const model = await load('bom-attributes');
+    expect(model.describe('board')?.properties.source).toMatchObject({
+      software: { name: 'generate.py', revision: '1.0', vendor: 'boardui' },
+    });
+  });
+
+  it('leaves boards without a BOM as they were', async () => {
+    const model = await load('minimal-2layer');
+    const r1 = model.describe('cmp/R1')?.properties;
+    expect(r1).not.toHaveProperty('attributes');
+    expect(r1).not.toHaveProperty('populate');
+    expect(model.describe('board')?.properties.source).not.toHaveProperty('software');
+  });
+});

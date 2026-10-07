@@ -13,6 +13,7 @@ use boardui_gltf::{
 use boardui_ipc2581 as ipc;
 use glam::DAffine2;
 
+use crate::bom;
 use crate::colours;
 use crate::components::{self, PadRef};
 use crate::outline::Cutouts;
@@ -253,7 +254,7 @@ pub(crate) fn run(
             .ok()
             .filter(|r| !r.is_empty())
     });
-    let components = components::build(
+    let mut components = components::build(
         &parts,
         &stack,
         options.models.as_ref(),
@@ -262,6 +263,7 @@ pub(crate) fn run(
         &part_outlines,
         ctx.warnings,
     );
+    bom::Bom::new(doc).annotate(&mut components.components);
     let pins = std::mem::take(&mut ctx.pins);
     for message in ctx.shapes.take_warnings() {
         ctx.warnings.push(message);
@@ -493,6 +495,7 @@ pub(crate) fn run(
             step: Some(step.name.clone()),
             function_mode: doc.content.function_mode.clone(),
             sha256: sha256.to_owned(),
+            software: bom::software(doc),
         },
         tolerance: tolerance.metres(),
         plating_thickness: plating,

@@ -1,6 +1,6 @@
 import type { LayerState } from '@boardui/viewer';
 import { describe, expect, it } from 'vitest';
-import { layerRows, nextHighlightColor, searchNets, shortcut } from '../src/board.js';
+import { detailRows, layerRows, nextHighlightColor, searchNets, shortcut } from '../src/board.js';
 import { DEMOS, demoHref } from '../src/frameworks.js';
 import { SAMPLES, sampleLabel } from '../src/samples.js';
 import { StatsMeter } from '../src/stats.js';
@@ -29,6 +29,25 @@ describe('panels', () => {
     ]);
     const all = searchNets(nets, 'n');
     expect([all.matches.length, all.more]).toEqual([40, 5]);
+  });
+
+  it("lists a component's attributes after its properties", () => {
+    const rows = detailRows({
+      id: 'cmp/U2',
+      kind: 'component',
+      properties: {
+        refDes: 'U2',
+        part: '',
+        populate: 'YES',
+        attributes: { Value: 'nPM1300-QEXX', LCSC: 'C7466043', refDes: 'clash' },
+      },
+    });
+    expect(rows).toEqual([
+      ['refDes', 'U2'],
+      ['populate', 'YES'],
+      ['Value', 'nPM1300-QEXX'],
+      ['LCSC', 'C7466043'],
+    ]);
   });
 
   it('picks the first free highlight colour', () => {

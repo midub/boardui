@@ -16,12 +16,12 @@ step testcase10-RevC: datum Some(Point { x: 0.0, y: 0.0 })
   SS_TOP: {"(with componentRef)": 136, "Features/Polyline": 137}
   SS_BOT: {"(with componentRef)": 206, "Features/Polyline": 207}
   first component: Component { ref_des: "U1", package_ref: "BGA_25X25_1MM", layer_ref: "TOP", part: Some("BGA_25X25_1MM"), mount_type: Some(Smt), standoff: Some(0.0), height: Some(0.0038099999999999996), location: Point { x: 0.286499427, y: 0.349499301 }, xform: Xform { offset: Point { x: 0.0, y: 0.0 }, rotation: 270.0, mirror: false, scale: 1.0 } }
+software: Some(SoftwarePackage { name: "Allegro", revision: Some("allegro_17.4S019(7/14/2021)"), vendor: Some("Cadence"), model: None })
+bom: 7 items, 56 refdes (0 not populated), 34 characteristics
+  first item: BomItem { oem_design_number_ref: Some("BGA_25X25_1MM"), internal_part_number: None, description: None, category: Some("ELECTRICAL"), ref_des: [BomRefDes { name: "U1", package_ref: Some("BGA_25X25_1MM"), populate: Some(true), layer_ref: Some("TOP") }], characteristics: [Characteristic { definition_source: Some("ALLEGRO"), name: Some("DEVICE_TYPE"), value: Textual(Some("BGA_25X25_1MM")) }, Characteristic { definition_source: Some("ALLEGRO"), name: Some("COMP_CLASS"), value: Textual(Some("IC")) }] }
 diagnostics:
   line 3 (byte 204): ignored unknown attribute `roleRef` of `Content`
   line 11 (byte 459): skipped unknown element `BomRef` in `Content`
-  line 109 (byte 3863): skipped unknown element `LogisticHeader` in `IPC-2581`
-  line 114 (byte 4060): skipped unknown element `HistoryRecord` in `IPC-2581`
-  line 121 (byte 4466): skipped unknown element `Bom` in `IPC-2581`
   line 270 (byte 15916): ignored unknown attribute `pinOneOrientation` of `Package` (5 occurrences)
   line 281 (byte 16451): skipped unknown element `PickupPoint` in `Package` (5 occurrences)
   line 305 (byte 17507): ignored unknown attribute `type` of `Pin` (1164 occurrences)

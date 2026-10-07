@@ -172,6 +172,8 @@ pub(crate) fn build(
                 transform: transform(at, side, surface),
                 body,
                 instance: part.instance,
+                populate: None,
+                attributes: Vec::new(),
             });
         }
     }

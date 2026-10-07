@@ -2,9 +2,10 @@
 source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step RoyalBlue54L-Feather, ASSEMBLY
+software: KiCad 9.0.9 (KiCad EDA)
 thickness: 1.5800 mm
 counts: 4358 features, 457778 vertices, 914384 triangles, 95 nets, 71 components, 352 pins (313 checked against pads)
-warnings: 15 from the reader, 1 from the converter
+warnings: 11 from the reader, 1 from the converter
   - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
 layer layer/User.Comments Documentation Top z 0.9100..0.9200 mm Default hidden
   6 features {"Marking": 6}, 2676 vertices, 5304 triangles, top area 11.6457 mm²
@@ -63,8 +64,9 @@ drill layer/F.Cu_B.Cu layer/F.Cu..layer/B.Cu
 drill layer/F.Cu_B.Cu_1 layer/F.Cu..layer/B.Cu
   4 features {"Barrel": 4}, 672 vertices, 1344 triangles, top area 0.3657 mm²
 components: 71
-  H4 at (174.9800, 0.7900, 113.8700) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
-  C25 at (153.7100, 0.7900, 101.8100) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder C_0402_1005Metric_2
-  R5 at (169.7000, 0.7900, 112.0700) mm, rotation (0.0000, 1.0000, 0.0000, 0.0000), placeholder R_0402_1005Metric_3
-  J4 at (136.8800, 0.7900, 98.4580) mm, rotation (0.0000, 1.0000, 0.0000, 0.0000), placeholder JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal_4
-  U1 at (169.1200, 0.7900, 104.9800) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder BM15x-LGA-45_15.8x10mm_5
+bom: 56 with attributes, populate {None: 15, Some(false): 8, Some(true): 48}, names {"Description": 46, "LCSC": 50, "Sim.Pin": 1, "Value": 56}
+  H4 at (174.9800, 0.7900, 113.8700) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body, populate Some(false), attributes {"Value": "MountingHole"}
+  C25 at (153.7100, 0.7900, 101.8100) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder C_0402_1005Metric_2, populate Some(true), attributes {"Description": "Unpolarized capacitor, small symbol", "LCSC": "C307331", "Value": "100nF"}
+  R5 at (169.7000, 0.7900, 112.0700) mm, rotation (0.0000, 1.0000, 0.0000, 0.0000), placeholder R_0402_1005Metric_3, populate Some(true), attributes {"Description": "Resistor, small US symbol", "LCSC": "C25744", "Value": "10kR"}
+  J4 at (136.8800, 0.7900, 98.4580) mm, rotation (0.0000, 1.0000, 0.0000, 0.0000), placeholder JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal_4, populate Some(true), attributes {"LCSC": "C295747", "Value": "Conn_01x02_MountingPin"}
+  U1 at (169.1200, 0.7900, 104.9800) mm, rotation (0.0000, 0.7071, 0.0000, -0.7071), placeholder BM15x-LGA-45_15.8x10mm_5, populate Some(true), attributes {"LCSC": "C9900148376", "Value": "BM15x"}

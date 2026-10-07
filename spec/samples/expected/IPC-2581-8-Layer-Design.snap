@@ -2,9 +2,10 @@
 source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev B, step IPC-2581_8-Layer_Design, USERDEF
+software: Polar Instruments Ltd Speedstack 14.2.21123 (Polar Instruments Ltd)
 thickness: 1.6053 mm
 counts: 9 features, 0 vertices, 0 triangles, 0 nets, 0 components, 0 pins (0 checked against pads)
-warnings: 7 from the reader, 2 from the converter
+warnings: 5 from the reader, 2 from the converter
   - negative layers are drawn as positive
   - the step has no usable profile; the outline is the copper's bounding box
 layer layer/SOLDERMASK_TOP Soldermask Top z 0.7671..0.8280 mm File

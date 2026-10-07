@@ -5,6 +5,7 @@
 //! [`Parser::children`]. The model under construction lives in the parser so that references
 //! can be checked as soon as their targets are known.
 
+mod bom;
 mod content;
 mod refs;
 mod shape;
@@ -22,9 +23,9 @@ use quick_xml::Reader;
 
 use crate::diagnostic::Diagnostics;
 use crate::{
-    Content, DiagnosticKind, Document, Ecad, Error, ErrorKind, Layer, Position, RefKind, Span,
-    Spec, SpecColor, SpecGeneral, SpecProperty, Stackup, StackupGroup, StackupLayer, Step, Table,
-    Units,
+    Avl, Bom, Content, DiagnosticKind, Document, Ecad, Enterprise, Error, ErrorKind, HistoryRecord,
+    Layer, Position, RefKind, Span, Spec, SpecColor, SpecGeneral, SpecProperty, Stackup,
+    StackupGroup, StackupLayer, Step, Table, Units,
 };
 use refs::Deferred;
 use xml::{Next, Tag};
@@ -41,6 +42,10 @@ pub(crate) struct Parser<R> {
     /// Nesting depth of `UserSpecial` elements, bounded to keep recursion finite.
     nesting: usize,
     content: Content,
+    enterprises: Table<Enterprise>,
+    history: Option<HistoryRecord>,
+    boms: Vec<Bom>,
+    avl: Option<Avl>,
     specs: Table<Spec>,
     layers: Table<Layer>,
     stackups: Vec<Stackup>,
@@ -64,6 +69,10 @@ impl<R: BufRead> Parser<R> {
             scale: None,
             nesting: 0,
             content: Content::default(),
+            enterprises: Table::default(),
+            history: None,
+            boms: Vec::new(),
+            avl: None,
             specs: Table::default(),
             layers: Table::default(),
             stackups: Vec::new(),
@@ -104,7 +113,21 @@ impl<R: BufRead> Parser<R> {
                 ecad = Some(p.read_ecad()?);
                 Ok(())
             }
-            "Content" | "Ecad" => p.duplicate("IPC-2581"),
+            "LogisticHeader" => p.read_logistic_header(),
+            "HistoryRecord" if p.history.is_none() => {
+                p.history = Some(p.read_history_record()?);
+                Ok(())
+            }
+            "Bom" => {
+                let bom = p.read_bom()?;
+                p.boms.push(bom);
+                Ok(())
+            }
+            "Avl" if p.avl.is_none() => {
+                p.avl = Some(p.read_avl()?);
+                Ok(())
+            }
+            "Content" | "Ecad" | "HistoryRecord" | "Avl" => p.duplicate("IPC-2581"),
             _ => p.unknown("IPC-2581"),
         })?;
         if !has_content {
@@ -117,6 +140,9 @@ impl<R: BufRead> Parser<R> {
         Ok(Document {
             revision,
             content: self.content,
+            enterprises: self.enterprises,
+            history: self.history,
+            boms: self.boms,
             ecad: Ecad {
                 name,
                 units,
@@ -125,6 +151,7 @@ impl<R: BufRead> Parser<R> {
                 stackups: self.stackups,
                 steps: self.steps,
             },
+            avl: self.avl,
             diagnostics: self.diagnostics.into_vec(),
         })
     }

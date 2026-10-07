@@ -4,11 +4,13 @@
 //! The types mirror `spec/schema/BOARDUI_board.schema.json` and
 //! `spec/schema/component-extras.schema.json`: deserializing rejects unknown properties.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// The profile version written by this crate (spec §11).
-pub const PROFILE_VERSION: &str = "0.7";
+pub const PROFILE_VERSION: &str = "0.8";
 
 /// Root extension `BOARDUI_board`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -55,6 +57,23 @@ pub struct Source {
     pub function_mode: Option<String>,
     /// `sha256` of the source file, lowercase hex.
     pub sha256: String,
+    /// `software`: the software that wrote the source file, if it says (profile 0.8).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub software: Option<Software>,
+}
+
+/// `BOARDUI_board.source.software`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Software {
+    /// `name`, for example `KiCad`.
+    pub name: String,
+    /// `revision`, for example `9.0.9`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revision: Option<String>,
+    /// `vendor`, for example `KiCad EDA`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vendor: Option<String>,
 }
 
 /// An entry of `BOARDUI_board.layers`.
@@ -126,6 +145,9 @@ pub struct Tables {
     /// The `instances` table: the placed copies of a panel's steps (spec §6.14).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instances: Option<u32>,
+    /// The `attributes` table: the components' BOM attributes (profile 0.8).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attributes: Option<u32>,
 }
 
 /// `role` of a layer.
@@ -364,4 +386,39 @@ pub struct ComponentInfo {
     /// `instance`: the ID of the component's instance (spec §6.14), if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instance: Option<String>,
+    /// `populate`: whether the BOM places the part, if it says (profile 0.8).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub populate: Option<bool>,
+    /// `attributes`: the component's BOM attributes, by name; absent when it has none
+    /// (profile 0.8).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attributes: Option<BTreeMap<String, String>>,
+}
+
+/// The `Populate` enum of the embedded schema: the `populate` property of a component.
+pub mod populate {
+    /// `YES`: the BOM places the part.
+    pub const YES: u8 = 0;
+    /// `NO`: the BOM doesn't place the part (`RefDes@populate="false"`).
+    pub const NO: u8 = 1;
+    /// `UNKNOWN`: the component has no BOM entry, or it doesn't say.
+    pub const UNKNOWN: u8 = 255;
+
+    /// The enum value of an optional `populate` flag.
+    pub fn value(populate: Option<bool>) -> u8 {
+        match populate {
+            Some(true) => YES,
+            Some(false) => NO,
+            None => UNKNOWN,
+        }
+    }
+
+    /// The `populate` flag of an enum value; `None` for `UNKNOWN` and invalid values.
+    pub fn from_value(value: u8) -> Option<bool> {
+        match value {
+            YES => Some(true),
+            NO => Some(false),
+            _ => None,
+        }
+    }
 }

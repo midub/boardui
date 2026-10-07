@@ -2,9 +2,10 @@
 source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step testcase11-rdgflx-RevC, USERDEF
+software: Allegro allegro_17.4S019(7/14/2021) (Cadence)
 thickness: 0.9195 mm
 counts: 2995 features, 268232 vertices, 528992 triangles, 116 nets, 78 components, 312 pins (312 checked against pads)
-warnings: 19 from the reader, 10 from the converter
+warnings: 16 from the reader, 10 from the converter
   - layer `COVERLAY_FLEX_1` is not in the stack-up and was skipped
   - layer `ADHESIVE_FLEX_1` is not in the stack-up and was skipped
   - layer `ADHESIVE_FLEX_2` is not in the stack-up and was skipped
@@ -62,8 +63,9 @@ drill layer/DRILL_2-5 layer/INT_1..layer/INT_4
 drill layer/DRILL_1-6 layer/TOP..layer/BOTTOM
   87 features {"Barrel": 83, "Other": 4}, 4482 vertices, 8964 triangles, top area 2.1104 mm²
 components: 78
-  D3 at (93.9800, 0.4597, -29.5910) mm, rotation (1.0000, 0.0000, 0.0000, 0.0000), placeholder A_DIODE-157
-  RV1 at (98.2980, 0.4597, -40.3860) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder A_SOT363
-  RV2 at (95.2500, 0.4597, -66.6750) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder A_SOT363
-  R39 at (103.6320, 0.4597, -45.7200) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder 1206RF_WV_12D
-  C5 at (82.5500, 0.4597, -65.4050) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder 1206RF_WV_12D
+bom: 74 with attributes, populate {None: 4, Some(true): 74}, names {"COMP_CLASS": 74, "DEVICE_TYPE": 74, "TOL": 54, "VALUE": 60}
+  D3 at (93.9800, 0.4597, -29.5910) mm, rotation (1.0000, 0.0000, 0.0000, 0.0000), placeholder A_DIODE-157, populate Some(true), attributes {"COMP_CLASS": "DISCRETE", "DEVICE_TYPE": "20V-RCT", "VALUE": "20V"}
+  RV1 at (98.2980, 0.4597, -40.3860) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder A_SOT363, populate Some(true), attributes {"COMP_CLASS": "DISCRETE", "DEVICE_TYPE": "VRES", "VALUE": "10K"}
+  RV2 at (95.2500, 0.4597, -66.6750) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder A_SOT363, populate Some(true), attributes {"COMP_CLASS": "DISCRETE", "DEVICE_TYPE": "VRES", "VALUE": "10K"}
+  R39 at (103.6320, 0.4597, -45.7200) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder 1206RF_WV_12D, populate Some(true), attributes {"COMP_CLASS": "DISCRETE", "DEVICE_TYPE": "RES", "TOL": "5%", "VALUE": "3.3K"}
+  C5 at (82.5500, 0.4597, -65.4050) mm, rotation (0.0000, 0.0000, 1.0000, 0.0000), placeholder 1206RF_WV_12D, populate Some(true), attributes {"COMP_CLASS": "DISCRETE", "DEVICE_TYPE": "CAP", "TOL": "10%", "VALUE": ".001UF"}

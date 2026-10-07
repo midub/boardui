@@ -67,6 +67,8 @@ export interface BoardExtensionJson {
     step?: string;
     functionMode?: string;
     sha256: string;
+    /** The software that wrote the source file (spec §8.3, profile 0.8). */
+    software?: { name: string; revision?: string; vendor?: string };
   };
   tolerance: number;
   platingThickness: number;
@@ -74,7 +76,14 @@ export interface BoardExtensionJson {
   layers: BoardLayerJson[];
   drills: BoardDrillJson[];
   /** A table without rows is omitted (spec §8.2). */
-  tables: { nets?: number; components?: number; pins?: number; instances?: number };
+  tables: {
+    nets?: number;
+    components?: number;
+    pins?: number;
+    instances?: number;
+    /** Since profile 0.8. */
+    attributes?: number;
+  };
 }
 
 /**

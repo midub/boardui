@@ -1,6 +1,6 @@
 //! Profile validation (spec §10).
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
 
 use boardui_geom::{DVec2, GRID_STEP, Region};
@@ -9,7 +9,7 @@ use boardui_gltf::json::{FLOAT, Root, UNSIGNED_SHORT};
 use boardui_gltf::metadata::{NO_ROW, PropertyTable, SCHEMA_JSON};
 use boardui_gltf::{
     Board, ComponentExtras, EXTENSIONS, FeatureKind, Fiducial, Mount, PROFILE_VERSION, Role, Side,
-    encode_id_segment, glb, layer_id,
+    encode_id_segment, glb, layer_id, populate,
 };
 
 /// How bad an [`Issue`] is.
@@ -176,24 +176,28 @@ impl Validator<'_> {
             self.shared_table(&tables, board.tables.components, "components", "component");
         let pins = self.shared_table(&tables, board.tables.pins, "pins", "pin");
         let instances = self.shared_table(&tables, board.tables.instances, "instances", "instance");
+        let attributes =
+            self.shared_table(&tables, board.tables.attributes, "attributes", "attribute");
         let empty = Table {
             count: 0,
             columns: HashMap::new(),
         };
-        let (Some(nets), Some(components), Some(pins), Some(instances)) =
-            (nets, components, pins, instances)
+        let (Some(nets), Some(components), Some(pins), Some(instances), Some(attributes)) =
+            (nets, components, pins, instances, attributes)
         else {
             return;
         };
-        let (nets, components, pins, instances) = (
+        let (nets, components, pins, instances, attributes) = (
             nets.unwrap_or(&empty),
             components.unwrap_or(&empty),
             pins.unwrap_or(&empty),
             instances.unwrap_or(&empty),
+            attributes.unwrap_or(&empty),
         );
         let scopes = self.instances(instances);
         self.nets(nets, &scopes);
-        self.components(&board, components, &scopes);
+        let attributes = self.attributes(attributes, components.count);
+        self.components(&board, components, &scopes, &attributes);
         self.pins(pins, components, nets, &scopes);
         self.layers(&board, &tables, nets, components, pins, instances);
     }
@@ -659,7 +663,54 @@ impl Validator<'_> {
         }
     }
 
-    fn components(&mut self, board: &Board, components: &Table, scopes: &[String]) {
+    /// Checks the attributes table (spec §8.2) and returns the attributes of each component.
+    fn attributes(&mut self, table: &Table, components: usize) -> Vec<BTreeMap<String, String>> {
+        let mut out = vec![BTreeMap::new(); components];
+        let empty = Vec::new();
+        let owners = table.numbers("component").unwrap_or(&[]);
+        let names = table.strings("name").unwrap_or(&empty);
+        let values = table.strings("value").unwrap_or(&empty);
+        let mut previous = 0;
+        for row in 0..table
+            .count
+            .min(owners.len())
+            .min(names.len())
+            .min(values.len())
+        {
+            let owner = owners[row];
+            let (name, value) = (&names[row], &values[row]);
+            let Some(attributes) = out.get_mut(owner as usize) else {
+                self.report.error(format!(
+                    "attribute row {row} references component row {owner}, out of range"
+                ));
+                continue;
+            };
+            if owner < previous {
+                self.report.error(format!(
+                    "attribute row {row} is out of component order (spec §8.2)"
+                ));
+            }
+            previous = owner;
+            if name.is_empty() || value.is_empty() {
+                self.report
+                    .error(format!("attribute row {row} has an empty name or value"));
+            }
+            if attributes.insert(name.clone(), value.clone()).is_some() {
+                self.report.error(format!(
+                    "component row {owner} has attribute `{name}` more than once"
+                ));
+            }
+        }
+        out
+    }
+
+    fn components(
+        &mut self,
+        board: &Board,
+        components: &Table,
+        scopes: &[String],
+        attributes: &[BTreeMap<String, String>],
+    ) {
         let Some(group) = self.root.scenes.first().and_then(|_| {
             let board_node = self
                 .root
@@ -679,6 +730,7 @@ impl Validator<'_> {
         let packages = components.strings("package");
         let sides = components.numbers("side").unwrap_or(&[]);
         let mounts = components.numbers("mount");
+        let populates = components.numbers("populate");
         let nodes = components.numbers("node").unwrap_or(&[]);
         let mut seen = HashSet::new();
         let mut node_rows = HashMap::new();
@@ -713,6 +765,14 @@ impl Validator<'_> {
             if mount == Some(None) {
                 self.report
                     .error(format!("component `{id}` has an invalid mount"));
+            }
+            let populate = populates.map_or(Some(populate::UNKNOWN), |p| u8::try_from(p[row]).ok());
+            if !matches!(
+                populate,
+                Some(populate::YES | populate::NO | populate::UNKNOWN)
+            ) {
+                self.report
+                    .error(format!("component `{id}` has an invalid populate"));
             }
             let node = nodes[row];
             if !group.children.contains(&node) {
@@ -752,7 +812,10 @@ impl Validator<'_> {
                 && info.part == text(parts)
                 && info.package == text(packages)
                 && info.side == side
-                && info.mount.unwrap_or(Mount::Other) == mount.flatten().unwrap_or(Mount::Other);
+                && info.mount.unwrap_or(Mount::Other) == mount.flatten().unwrap_or(Mount::Other)
+                && info.populate == populate.and_then(populate::from_value)
+                && info.attributes.as_ref().is_none_or(|a| !a.is_empty())
+                && info.attributes.unwrap_or_default() == attributes[row];
             if !matches {
                 self.report.error(format!(
                     "extras.boardui of `{id}` do not match the components table"
@@ -1434,6 +1497,60 @@ mod tests {
         assert_error(&check(&root, &bin), "do not match the components table");
     }
 
+    /// Spec §8.2: the attributes table is in component order with unique names per
+    /// component, its references are in range, and component `extras` repeat it.
+    #[test]
+    fn attributes_must_be_well_formed() {
+        let xml =
+            include_bytes!("../../../spec/samples/hand-written/bom-attributes/bom-attributes.xml");
+        let glb = crate::convert(xml, &crate::Options::default()).unwrap().glb;
+        let (root, bin) = glb::read(&glb).unwrap();
+        let bin = bin.to_vec();
+        assert_eq!(check(&root, &bin), Vec::<String>::new());
+        let metadata = root.extensions.structural_metadata.as_ref().unwrap();
+        let table = &metadata.property_tables[board(&root).tables.attributes.unwrap() as usize];
+        let column = |name: &str| {
+            let view = &root.buffer_views[table.properties[name].values as usize];
+            view.byte_offset as usize
+        };
+        let (owners, count) = (column("component"), table.count as usize);
+
+        // The last row moves to component 0, after rows of a later component.
+        let mut bad = bin.clone();
+        let last = owners + 4 * (count - 1);
+        bad[last..last + 4].copy_from_slice(&0u32.to_le_bytes());
+        let errors = check(&root, &bad);
+        assert_error(&errors, "is out of component order");
+        assert_error(&errors, "do not match the components table");
+
+        let mut bad = bin.clone();
+        bad[owners..owners + 4].copy_from_slice(&999u32.to_le_bytes());
+        assert_error(
+            &check(&root, &bad),
+            "references component row 999, out of range",
+        );
+
+        // Two names of R1 become the same.
+        let names = &root.buffer_views[table.properties["name"].values as usize];
+        let at = names.byte_offset as usize;
+        let mut bad = bin.clone();
+        let power = bin[at..at + names.byte_length as usize]
+            .windows(5)
+            .position(|w| w == b"Power")
+            .unwrap();
+        bad[at + power..at + power + 5].copy_from_slice(b"Value");
+        assert_error(&check(&root, &bad), "has attribute `Value` more than once");
+
+        let mut root2 = root.clone();
+        let node = root2
+            .nodes
+            .iter_mut()
+            .find(|n| n.name.as_deref() == Some("C1"))
+            .unwrap();
+        node.extras.as_mut().unwrap()["boardui"]["populate"] = serde_json::json!(true);
+        assert_error(&check(&root2, &bin), "do not match the components table");
+    }
+
     #[test]
     fn references_must_be_in_range() {
         let (root, mut bin) = sample();
@@ -1529,6 +1646,7 @@ mod tests {
                     step: None,
                     function_mode: None,
                     sha256: "0".repeat(64),
+                    software: None,
                 },
                 tolerance: 5e-6,
                 plating_thickness: 25e-6,

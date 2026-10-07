@@ -18,7 +18,7 @@ mod writer;
 
 pub use board::{
     Board, BoardDrill, BoardLayer, ComponentExtras, ComponentInfo, FeatureKind, Fiducial, Mount,
-    PROFILE_VERSION, Role, Side, Source, Tables, ThicknessSource,
+    PROFILE_VERSION, Role, Side, Software, Source, Tables, ThicknessSource, populate,
 };
 pub use json::Root;
 pub use model::{Model, ModelError, ModelImage, ModelPrimitive, ModelTexture};

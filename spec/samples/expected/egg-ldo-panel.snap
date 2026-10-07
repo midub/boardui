@@ -2,9 +2,10 @@
 source: crates/boardui-convert/tests/conformance.rs
 ---
 source: IPC-2581 rev C, step egg250-panel, ASSEMBLY
+software: KiCad 9.0.9 (KiCad EDA)
 thickness: 1.5800 mm
 counts: 663 features, 64986 vertices, 126544 triangles, 20 nets, 101 components, 157 pins (106 checked against pads)
-warnings: 15 from the reader, 2 from the converter
+warnings: 11 from the reader, 2 from the converter
   - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
   - the profile of step `egg250-panel` has no cutouts; the closed contours inside it were cut out: 3 on layer `Edge.Cuts`
 layer layer/F.Courtyard Courtyard Top z 0.9000..0.9100 mm Default hidden
@@ -36,8 +37,9 @@ layer layer/B.Courtyard Courtyard Bottom z -0.9100..-0.9000 mm Default hidden
 drill layer/F.Cu_B.Cu layer/F.Cu..layer/B.Cu
   83 features {"Barrel": 32, "Other": 51}, 2432 vertices, 4864 triangles, top area 1.7908 mm²
 components: 101
-  KiKit_MB_4_2 at (149.7000, 0.7900, 36.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
-  KiKit_MB_3_1 at (142.0000, 0.7900, 42.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
-  KiKit_MB_10_3 at (149.7000, 0.7900, 52.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
-  R2 at (152.7000, 0.7900, 58.4300) mm, rotation (0.0000, 1.0000, 0.0000, 0.0000), placeholder ERJUP3_2
-  KiKit_MB_3_3 at (140.0000, 0.7900, 42.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body
+bom: 97 with attributes, populate {None: 4, Some(false): 57, Some(true): 40}, names {"Description": 40, "Height": 24, "Manufacturer_Name": 24, "Manufacturer_Part_Number": 24, "Mouser Part Number": 24, "Mouser Price/Stock": 24, "Value": 97}
+  KiKit_MB_4_2 at (149.7000, 0.7900, 36.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body, populate Some(false), attributes {"Value": "NPTH"}
+  KiKit_MB_3_1 at (142.0000, 0.7900, 42.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body, populate Some(false), attributes {"Value": "NPTH"}
+  KiKit_MB_10_3 at (149.7000, 0.7900, 52.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body, populate Some(false), attributes {"Value": "NPTH"}
+  R2 at (152.7000, 0.7900, 58.4300) mm, rotation (0.0000, 1.0000, 0.0000, 0.0000), placeholder ERJUP3_2, populate Some(true), attributes {"Description": "Anti-Sulfurated Thick Film Chip Resistors/ Anti-Surge Type, Power Rating (W): 0.25, Chip Size (LxW(EIA)) (mm): 1.6 x 0.8 (EIA:0603), Resistance Values (?): 5100, Resistance Tolerance (%): 5, T.C.R (?102/K): ?200", "Height": "0.55", "Manufacturer_Name": "Panasonic", "Manufacturer_Part_Number": "ERJ-UP3J512V", "Mouser Part Number": "667-ERJ-UP3J512V", "Mouser Price/Stock": "https://www.mouser.co.uk/ProductDetail/Panasonic/ERJ-UP3J512V?qs=GedFDFLaBXHjTKcVkCAP1g%3D%3D", "Value": "5.1k"}
+  KiKit_MB_3_3 at (140.0000, 0.7900, 42.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), no body, populate Some(false), attributes {"Value": "NPTH"}

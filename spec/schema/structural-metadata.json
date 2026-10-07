@@ -2,7 +2,7 @@
   "id": "boardui",
   "name": "boardui PCB metadata",
   "description": "EXT_structural_metadata schema embedded in every boardui asset. See spec/README.md §8.2. References between tables are UINT32 row indices; 4294967295 means none.",
-  "version": "0.7",
+  "version": "0.8",
   "enums": {
     "FeatureKind": {
       "valueType": "UINT8",
@@ -43,6 +43,14 @@
         { "name": "GOOD_PANEL", "value": 3 },
         { "name": "NONE", "value": 255 }
       ]
+    },
+    "Populate": {
+      "valueType": "UINT8",
+      "values": [
+        { "name": "YES", "value": 0 },
+        { "name": "NO", "value": 1 },
+        { "name": "UNKNOWN", "value": 255 }
+      ]
     }
   },
   "classes": {
@@ -62,7 +70,21 @@
         "side": { "type": "ENUM", "enumType": "Side", "required": true },
         "mount": { "type": "ENUM", "enumType": "Mount", "noData": "OTHER" },
         "node": { "type": "SCALAR", "componentType": "UINT32", "required": true },
-        "instance": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 }
+        "instance": { "type": "SCALAR", "componentType": "UINT32", "noData": 4294967295 },
+        "populate": {
+          "description": "Whether the BOM places the part (IPC-2581 RefDes@populate). UNKNOWN without a BOM entry. Omitted from tables without BOM entries.",
+          "type": "ENUM",
+          "enumType": "Populate",
+          "noData": "UNKNOWN"
+        }
+      }
+    },
+    "attribute": {
+      "description": "A BOM attribute of a component (spec §8.2): rows in component order, names unique per component, values not empty.",
+      "properties": {
+        "component": { "type": "SCALAR", "componentType": "UINT32", "required": true },
+        "name": { "type": "STRING", "required": true },
+        "value": { "type": "STRING", "required": true }
       }
     },
     "pin": {

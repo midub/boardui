@@ -238,6 +238,37 @@ fn summary(doc: &Document) -> String {
         let first = step.components.values().next().expect("components");
         writeln!(s, "  first component: {first:?}").unwrap();
     }
+    let software = doc
+        .history
+        .as_ref()
+        .and_then(|h| h.software_package.as_ref());
+    writeln!(s, "software: {software:?}").unwrap();
+    let items: Vec<_> = doc.boms.iter().flat_map(|b| &b.items).collect();
+    writeln!(
+        s,
+        "bom: {} items, {} refdes ({} not populated), {} characteristics",
+        items.len(),
+        items.iter().map(|i| i.ref_des.len()).sum::<usize>(),
+        items
+            .iter()
+            .flat_map(|i| &i.ref_des)
+            .filter(|r| r.populate == Some(false))
+            .count(),
+        items.iter().map(|i| i.characteristics.len()).sum::<usize>()
+    )
+    .unwrap();
+    if let Some(item) = items.first() {
+        writeln!(s, "  first item: {item:?}").unwrap();
+    }
+    if let Some(avl) = &doc.avl {
+        writeln!(
+            s,
+            "avl: {} items, {} vendor part numbers",
+            avl.items.len(),
+            avl.items.values().map(|i| i.vmpns.len()).sum::<usize>()
+        )
+        .unwrap();
+    }
     writeln!(s, "diagnostics:").unwrap();
     for d in &doc.diagnostics {
         writeln!(s, "  {d}").unwrap();

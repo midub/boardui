@@ -160,6 +160,10 @@ pub enum RefKind {
     Pin,
     /// `Spec` in `CadHeader`.
     Spec,
+    /// `Enterprise` in `LogisticHeader`.
+    Enterprise,
+    /// `AvlItem`, by `OEMDesignNumber`.
+    AvlItem,
 }
 
 impl fmt::Display for RefKind {
@@ -179,6 +183,8 @@ impl fmt::Display for RefKind {
             Self::Component => "component",
             Self::Pin => "pin",
             Self::Spec => "spec",
+            Self::Enterprise => "enterprise",
+            Self::AvlItem => "AVL item",
         })
     }
 }

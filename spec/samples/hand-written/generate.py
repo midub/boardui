@@ -40,6 +40,10 @@ class Doc:
         self.steps = []
         self.step_refs = None
         self.fonts = {}
+        # Root elements around `Ecad`: `LogisticHeader`, `HistoryRecord` and `Bom` before it,
+        # `Avl` after it.
+        self.before = []
+        self.after = []
 
     def u(self, mm):
         """A length in mm, formatted in the document's units."""
@@ -120,7 +124,7 @@ class Doc:
     <FunctionMode mode="{self.mode}"/>{step_refs}
     <DictionaryLineDesc {dict_units}>{lines}</DictionaryLineDesc>{fonts}
     <DictionaryStandard {dict_units}>{standard}</DictionaryStandard>{colors}
-  </Content>
+  </Content>{"".join(chr(10) + "  " + e for e in self.before)}
   <Ecad name="{name}">
     {header}
     <CadData>
@@ -130,7 +134,7 @@ class Doc:
 {chr(10).join("        " + s for s in self.step)}
       </Step>
     </CadData>
-  </Ecad>
+  </Ecad>{"".join(chr(10) + "  " + e for e in self.after)}
 </IPC-2581>
 """
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -1389,6 +1393,89 @@ def text():
     return d
 
 
+def bom_attributes():
+    """Component attributes from the BOM and AVL, the populate flag and the exporting software
+    (spec §8.2–§8.4).
+
+    `minimal-2layer` plus a capacitor and a connector. R1's characteristics show every kind
+    (a range, a unit), a repeated and an empty one; its AVL entry has a qualified part number
+    after a distributor's, from a named manufacturer. C1 is not populated, has a characteristic
+    named `Description` and a manufacturer without a name. J1 has no BOM entry. A second
+    `Bom` lists R1 again: the first entry counts.
+    """
+    d = minimal("MILLIMETER")
+    two_pin_package(d, "C0402")
+    for ref, part, y in (("C1", "CAP-100N", 1.2), ("J1", "CONN-2", 4.8)):
+        d.step.append(
+            f'<Component refDes="{ref}" packageRef="C0402" layerRef="TOP" part="{part}" '
+            f'mountType="SMT" standoff="0" height="{d.u(0.6)}"><Location {d.xy(3, y)}/></Component>'
+        )
+        sets = "".join(
+            f'<Set net="{ref}_{n}" padUsage="TERMINATION">{pad(d, 3 + px, y, "PAD", (ref, n))}</Set>'
+            for n, px in (("1", -0.75), ("2", 0.75))
+        )
+        d.step.append(f'<LayerFeature layerRef="TOP">{sets}</LayerFeature>')
+
+    def textual(name, value):
+        return (
+            f'<Textual definitionSource="KICAD" textualCharacteristicName="{name}" '
+            f'textualCharacteristicValue="{value}"/>'
+        )
+
+    date = "2026-10-07T12:00:00"
+    d.before += [
+        '<LogisticHeader><Role id="Owner" roleFunction="SENDER"/>'
+        '<Enterprise id="NONE" code="NONE"/><Enterprise id="VENDOR_0" name="Yageo" code="NONE"/>'
+        '<Enterprise id="VENDOR_1" name="LCSC" code="NONE"/>'
+        '<Person name="Owner" enterpriseRef="NONE" roleRef="Owner"/></LogisticHeader>',
+        f'<HistoryRecord number="1" origination="{date}" software="boardui" lastChange="{date}">'
+        '<FileRevision fileRevisionId="1" comment="">'
+        '<SoftwarePackage name="generate.py" revision="1.0" vendor="boardui">'
+        '<Certification certificationStatus="SELFTEST"/></SoftwarePackage>'
+        "</FileRevision></HistoryRecord>",
+        '<Bom name="BOM"><BomHeader assembly="board" revision="1"><StepRef name="board"/></BomHeader>'
+        '<BomItem OEMDesignNumberRef="RES-10K" quantity="1" pinCount="2" category="ELECTRICAL" '
+        'description="Resistor, 10 kOhm">'
+        '<RefDes name="R1" packageRef="R0603" populate="true" layerRef="TOP"/>'
+        '<Characteristics category="ELECTRICAL">'
+        + textual("Value", "10k")
+        + textual("LCSC", "C25744")
+        + textual("Value", "repeated: the first value counts")
+        + textual("Notes", "")
+        + '<Measured definitionSource="KICAD" measuredCharacteristicName="Power" '
+        'measuredCharacteristicValue="0.1" engineeringUnitOfMeasure="W" '
+        'engineeringNegativeTolerance="0" engineeringPositiveTolerance="0"/>'
+        '<Ranged definitionSource="KICAD" rangedCharacteristicName="Temperature" '
+        'rangedCharacteristicLowerValue="-55" rangedCharacteristicUpperValue="155" '
+        'engineeringUnitOfMeasure="CEL"/>'
+        '<Enumerated definitionSource="KICAD" enumeratedCharacteristicName="Tolerance" '
+        'enumeratedCharacteristicValue="1%"/>'
+        "</Characteristics></BomItem>"
+        '<BomItem OEMDesignNumberRef="CAP-100N" quantity="1" pinCount="2" category="ELECTRICAL" '
+        'description="Capacitor, 100 nF">'
+        '<RefDes name="C1" packageRef="C0402" populate="false" layerRef="TOP"/>'
+        '<Characteristics category="ELECTRICAL">'
+        + textual("Value", "100nF")
+        + textual("Description", "from a characteristic: it wins")
+        + "</Characteristics></BomItem></Bom>",
+        '<Bom name="SECOND"><BomHeader assembly="board" revision="2"><StepRef name="board"/></BomHeader>'
+        '<BomItem OEMDesignNumberRef="RES-OTHER" quantity="1" category="ELECTRICAL" '
+        'description="never used: R1 is in the first BOM">'
+        '<RefDes name="R1" populate="false"/><Characteristics category="ELECTRICAL"/></BomItem></Bom>',
+    ]
+    d.after.append(
+        f'<Avl name="AVL"><AvlHeader title="BOM" source="generate.py" author="boardui" datetime="{date}" version="1"/>'
+        '<AvlItem OEMDesignNumber="RES-10K">'
+        '<AvlVmpn qualified="false" chosen="false"><AvlMpn name="C25744"/><AvlVendor enterpriseRef="VENDOR_1"/></AvlVmpn>'
+        '<AvlVmpn qualified="true" chosen="false"><AvlMpn name="RC0603FR-0710KL" rank="1"/><AvlVendor enterpriseRef="VENDOR_0"/></AvlVmpn>'
+        "</AvlItem>"
+        '<AvlItem OEMDesignNumber="CAP-100N">'
+        '<AvlVmpn><AvlMpn name="GRM155R71C104KA88D"/><AvlVendor enterpriseRef="NONE"/></AvlVmpn>'
+        "</AvlItem></Avl>"
+    )
+    return d
+
+
 def box_model():
     """A 1.6 × 0.8 × 0.5 mm box as a .gltf with an embedded buffer, in metres."""
     (x, z, h) = (0.8e-3, 0.4e-3, 0.5e-3)
@@ -1510,6 +1597,7 @@ def main():
         "outline-cutouts": outline_cutouts(),
         "pinless-package": pinless_package(),
         "board-sized-package": board_sized_package(),
+        "bom-attributes": bom_attributes(),
     }
     for name, d in samples.items():
         d.write(HERE / name / f"{name}.xml", name, "panel" if name == "panel" else "board")
