@@ -9,10 +9,11 @@ The demo exists once per UI framework, each built on that framework's wrapper of
 | App | Package | URL |
 |---|---|---|
 | React | [`packages/demo-react`](../demo-react/README.md) (`@boardui/react`) | <https://midub.github.io/boardui/react/> |
+| Angular | [`packages/demo-angular`](../demo-angular/README.md) (`@boardui/angular`) | <https://midub.github.io/boardui/angular/> |
 
 `/boardui/` redirects to `react/`, keeping the query and hash, so links such as
-<https://midub.github.io/boardui/?sample=royalblue54l-feather&stats&spin> keep working. When there
-is more than one app, each links to the others in the top bar, keeping `?sample=…`.
+<https://midub.github.io/boardui/?sample=royalblue54l-feather&stats&spin> keep working. Each app
+links to the others in the top bar (React | Angular), keeping the query (`?sample=…`) and hash.
 
 This package (`@boardui/demo-shared`, private) holds everything that doesn't depend on the
 framework: the samples, opening boards, what the panels show, the page's styles, the build
@@ -74,7 +75,10 @@ viewer, the board and the last load's timings for tests and the console.
 1. `packages/demo-<id>`, served at `/boardui/<id>/` (its base href), building into `dist/`. It
    renders the page from `DemoSession` with the DOM of `packages/demo-react` (ids and classes),
    imports `@boardui/demo-shared/style.css`, puts the samples into its build (the Vite plugin, or
-   `cli.js stage dist` after the build) and runs `cli.js check-dist dist`.
+   `stageSamples` / `cli.js stage <dir>`) and runs `cli.js check-dist dist`. A build tool that
+   doesn't bundle `new Worker(new URL(…, import.meta.url))` and `.wasm` URLs in dependencies needs
+   the workers and the WASM module next to its scripts, as `packages/demo-angular` does
+   (`scripts/assets.mjs`).
 2. Add `{ id, name }` to `DEMOS` in `src/frameworks.ts`. Pages then deploys it at
    `site/<id>/` (`pnpm site`), the e2e suite runs against it as project `<id>`, and every app
    shows the switch.
@@ -104,11 +108,12 @@ opens the GLB it writes.
 - `pnpm e2e` (root, or `pnpm --filter @boardui/demo-shared e2e`): Playwright tests of the built
   site (`pnpm build && pnpm site`; `SITE_DIR=<dir>` for another one) in Chromium with software
   rendering (SwiftShader), as CI runs them in `mcr.microsoft.com/playwright:v1.63.0-noble`. Every
-  app is a project (`--project react`) and runs the same tests: every sample converts in the
-  browser (the IPC consortium test cases opened through the file input), opening files and GLBs,
-  models, errors, hover, selection, tags, layers, nets, x-ray, the stats overlay, the links between
-  the apps, and screenshots. The apps look the same, so they share the screenshots
-  (`e2e/*-snapshots/`, made in that image). Project `site` tests the redirect of `/boardui/`.
+  app is a project (`--project react`, `--project angular`) and runs the same tests: every sample
+  converts in the browser (the IPC consortium test cases opened through the file input), opening
+  files and GLBs, models, errors, hover, selection, tags, layers, nets, x-ray, the stats overlay,
+  the links between the apps, and screenshots. The apps look the same, so they share the screenshots
+  (`e2e/*-snapshots/`, made in that image); the switch, which marks each app's own framework, is
+  masked in them. Project `site` tests the redirect of `/boardui/`.
 - `REVIEW_OUT=<dir> [PERF_XML=<file>] pnpm e2e --project react e2e/review.spec.ts`: review images
   and timings (load, conversion, frame rate while orbiting), written to `<dir>`. `-g README` makes
   only the README's images (`docs/images/`, compressed with `pngquant --quality 60-85`).

@@ -39,6 +39,14 @@ class Host {
   readonly events: [string, unknown][] = [];
 }
 
+@Component({
+  imports: [BoardViewer],
+  template: '<bui-board-viewer autoRotate xray />',
+})
+class Attributes {
+  readonly viewer = viewChild.required(BoardViewer);
+}
+
 function render() {
   const fixture = TestBed.createComponent(Host);
   fixture.detectChanges();
@@ -110,6 +118,14 @@ describe('BoardViewer', () => {
     host.xray.set(false);
     fixture.detectChanges();
     expect(element.xray).toBe(false);
+  });
+
+  it('takes autoRotate and xray as attributes without a value', () => {
+    const fixture = TestBed.createComponent(Attributes);
+    fixture.detectChanges();
+    const { element } = fixture.componentInstance.viewer();
+    expect(element.autoRotate).toBe(true);
+    expect(element.xray).toBe(true);
   });
 
   it('emits the typed details of the element’s events', () => {

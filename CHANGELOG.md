@@ -11,6 +11,10 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   keeping the query, so `?sample=…` links keep working. Its framework-independent parts, build
   helpers and e2e tests are shared (`packages/demo-shared`) for the Angular demo that follows.
   Importing `@boardui/viewer` without a DOM (server-side rendering) no longer throws.
+- **Demo in Angular:** the same demo in Angular, at <https://midub.github.io/boardui/angular/>, on
+  the new `@boardui/angular` wrapper (a standalone `<bui-board-viewer>` with signal inputs and
+  typed outputs, `<bui-widget>` for Angular widgets). Both demos link to each other in the top
+  bar, keeping `?sample=…`.
 - A `Polygon`'s or `Cutout`'s own `Xform` (revisions B and C) is read and applied in the
   polygon's frame before the element that holds it is placed: in contours, profiles, outlines
   and features ([spec §6.1](spec/README.md#61-prisms)).

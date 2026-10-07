@@ -23,6 +23,7 @@ Widgets are HTML, so the viewer must live comfortably in a web page. The worry w
 ## Notes
 
 - 2026-10-07: the demo moves to React and Angular, one feature-identical app per framework, each built on its wrapper ([roadmap](../roadmap.md#demos-in-react-and-angular)). `@boardui/react` is the first wrapper: a `<BoardViewer>` component (the element's settings as props, its events as typed handlers, `ref` to the element) and `<Widget>`, which renders React children into a viewer widget. The decision stands: the element does the work, the wrappers stay thin and depend on it, not the other way round. For the wrappers, importing `@boardui/viewer` without a DOM (server-side rendering) no longer throws; the element is only defined in a browser.
+- 2026-10-07: `@boardui/angular` is the second wrapper: a standalone `<bui-board-viewer>` (signal inputs for the settings, typed outputs for the events, `element` for the methods) and `<bui-widget>`, whose own element becomes the viewer widget. The component creates the `<board-viewer>` and connects it only once its inputs are set, because the element reads `backend` when it connects and Angular connects template elements before it sets their bindings. Angular's application builder doesn't bundle the `new URL(…, import.meta.url)` workers and WASM module of dependencies, so an Angular app copies them next to its scripts (the Angular demo does it with esbuild); the packages are unchanged.
 
 ## Alternatives considered
 

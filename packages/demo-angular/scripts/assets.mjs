@@ -9,7 +9,7 @@
  *   application builder leaves them as they are, so the URLs point next to the app's scripts:
  *   - `worker.js` imports `converter/worker.js`, the converter's worker bundled, which loads
  *     `wasm/boardui_wasm_bg.wasm` (`../wasm/` from `converter/`);
- *   - `bvh.worker.js` is the viewer's BVH worker, bundled with three.js and three-mesh-bvh.
+ *   - `bvh.worker.js` is the viewer's BVH worker, bundled with three-mesh-bvh and three.js's core.
  */
 import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -31,6 +31,8 @@ await build({
   },
   outdir: out,
   bundle: true,
+  // The BVH worker uses three.js's core only; its main module doesn't tree-shake.
+  alias: { three: 'three/src/Three.Core.js' },
   format: 'esm',
   target: 'es2024',
   minify: true,

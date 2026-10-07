@@ -38,7 +38,7 @@ Decided on 2026-10-07: the vanilla demo is replaced by two feature-identical dem
 | Step | Status |
 |---|---|
 | `@boardui/react`, shared demo code and e2e suite, React demo, Pages layout | done |
-| `@boardui/angular`, Angular demo | next |
+| `@boardui/angular`, Angular demo, switch between the demos | done |
 
 ## v2 backlog
 
