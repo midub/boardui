@@ -57,7 +57,7 @@ function Board({ file }: { file: File }) {
 | `onHover` | `bui-hover` | `CustomEvent<ElementInfo \| null>` |
 | `onSelect` | `bui-select` | `CustomEvent<ElementInfo \| null>` |
 | `onProgress` | `bui-progress` | `CustomEvent<LoadProgress>` of `loadIpc2581` |
-| `onLoad` | `bui-load` | `CustomEvent<ElementInfo>`: a board was loaded and is shown (`src`, `load`, `loadIpc2581`); `detail` is `info('board')` |
+| `onLoad` | `bui-load` | `CustomEvent<ElementInfo>`: a board was loaded (`src`, `load`, `loadIpc2581`); `detail` is `info('board')` |
 | `onUnload` | `bui-unload` | `CustomEvent<ElementInfo>`: the board is about to be replaced; the next `onLoad` follows at once |
 | `onError` | `error` | `ErrorEvent` |
 | `ref` | the element | `load`, `loadIpc2581`, `highlight`, `hide`, `select`, `focus`, `setView`, `layers`, `info`, `ids`, … |

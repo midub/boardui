@@ -34,8 +34,8 @@ export interface BoardViewerProps
   /** Progress of `loadIpc2581` (`bui-progress`). */
   onProgress?: ((event: CustomEvent<LoadProgress>) => void) | undefined;
   /**
-   * A board was loaded and is shown (`bui-load`), from `src`, `load` or `loadIpc2581`; `detail`
-   * is `info('board')`.
+   * A board was loaded and replaced the previous one (`bui-load`), from `src`, `load` or
+   * `loadIpc2581`; `detail` is `info('board')`.
    */
   onLoad?: ((event: CustomEvent<ElementInfo>) => void) | undefined;
   /** The board is about to be replaced (`bui-unload`); the next one follows with `onLoad`. */

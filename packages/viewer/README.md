@@ -51,8 +51,9 @@ Events (`bubbles`, `composed`): `bui-hover` when the element under the pointer c
 `bui-select` when the user clicks an element or empty space; `detail` is `info(id)`, or `null`.
 `bui-progress` reports `loadIpc2581`: `{ stage: 'convert' | 'load', step, fraction }`.
 
-`bui-load` comes when a board has been loaded and is shown, from `src`, `load` or `loadIpc2581`
-(before their promise resolves): widgets, highlights and `info()` work on it from then on.
+`bui-load` comes when a board has been loaded and put in place of the previous one, from `src`,
+`load` or `loadIpc2581` (before their promise resolves): widgets, highlights and `info()` work
+on it from then on.
 `bui-unload` comes just before another board replaces it, while it is still in place; the new
 board's `bui-load` follows at once. `detail` is the board's `info('board')` for both. A failed
 load dispatches neither (`src` dispatches `error`, the methods reject) and keeps the current

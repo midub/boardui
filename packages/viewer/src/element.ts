@@ -52,8 +52,8 @@ export interface BoardViewerEventMap extends HTMLElementEventMap {
   /** Progress of {@link BoardViewerElement.loadIpc2581}. */
   'bui-progress': CustomEvent<LoadProgress>;
   /**
-   * A board was loaded and is shown (`src`, `load` or `loadIpc2581`); widgets, highlights and
-   * `info()` work on it now. `detail` is `info('board')`.
+   * A board was loaded (`src`, `load` or `loadIpc2581`) and replaced the previous one; widgets,
+   * highlights and `info()` work on it now. `detail` is `info('board')`.
    */
   'bui-load': CustomEvent<ElementInfo>;
   /**
@@ -113,7 +113,7 @@ interface Loaded {
  * `backend="webgl"` (use the WebGL2 backend even where WebGPU is available; read when the
  * element connects).
  *
- * Every board that is loaded dispatches `bui-load` once it is shown, and `bui-unload` just
+ * Every board that is loaded dispatches `bui-load` once it is in place, and `bui-unload` just
  * before another board replaces it; a failed load dispatches neither and keeps the current board.
  *
  * The soldermask is translucent (spec §6.5): the pointer picks, and widgets see, through it.
@@ -210,7 +210,7 @@ export class BoardViewerElement extends ElementBase {
   /**
    * Loads a boardui asset, replacing the current board. Highlights, hidden elements and the
    * selection are reset; widgets stay attached. Dispatches `bui-unload` for the current board
-   * just before it is replaced, and `bui-load` once the new one is shown (before the returned
+   * just before it is replaced, and `bui-load` once the new one is in place (before the returned
    * promise resolves). If another load starts first, this one is dropped: it resolves without
    * events.
    *
