@@ -5,6 +5,10 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
 
 ## [Unreleased]
 
+- **Licence: AGPL-3.0-only or a commercial licence** (was MIT). boardui stays open source;
+  closed-source products, and web applications that don't publish their source, need a
+  commercial licence ([LICENSING.md](LICENSING.md), [ADR 0015](docs/adr/0015-agpl-plus-commercial-licence.md)).
+  v1.1.1 and earlier stay MIT. Contributions need the [Contributor License Agreement](CLA.md).
 - **Fewer converter warnings (profile 0.9, still a draft):** the reader no longer warns about
   data that exporters commonly write but that neither shapes the board nor describes its parts:
   `Content@roleRef`, `BomRef`, `AvlRef`, `FunctionMode@level`, `Stackup@stackupStatus`,

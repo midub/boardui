@@ -134,7 +134,9 @@ export function Landing({
         </div>
       </div>
       <p className="footnote">
-        boardui is open source (MIT):{' '}
+        boardui is open source (AGPL-3.0,{' '}
+        <a href="https://github.com/midub/boardui/blob/master/LICENSING.md">commercial licence</a>{' '}
+        available):{' '}
         <a href="https://github.com/midub/boardui">converter, viewer and profile spec</a>.
       </p>
     </div>

@@ -34,7 +34,7 @@ Prebuilt binaries are attached to every [release](https://github.com/midub/board
 | macOS Intel | `boardui-<version>-x86_64-apple-darwin.tar.gz` |
 | Windows x86_64 | `boardui-<version>-x86_64-pc-windows-msvc.zip` |
 
-Each archive holds the `boardui` binary, `LICENSE` and this README; `SHA256SUMS` lists their checksums. For example, on Linux:
+Each archive holds the `boardui` binary, `LICENSE`, `LICENSING.md` and this README; `SHA256SUMS` lists their checksums. For example, on Linux:
 
 ```sh
 v=1.1.1 t=x86_64-unknown-linux-musl
@@ -177,9 +177,15 @@ The demos run locally as Pages serves them with `pnpm build && pnpm site && node
 
 CI (`.github/workflows/ci.yml`) runs all of the above plus the conformance suite. Pushes to `master` deploy the demos to GitHub Pages (`pages.yml`: the React demo at `/boardui/react/`, the Angular demo at `/boardui/angular/`, and <https://midub.github.io/boardui/>, which redirects to the React demo), and `v*` tags build the release binaries (`release.yml`).
 
+## Contributing
+
+Issues and pull requests are welcome; pull requests need a signed [Contributor License Agreement](CLA.md). See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
-[MIT](LICENSE), except the sample boards in `spec/samples` that say otherwise:
+boardui is dual-licensed: [AGPL-3.0-only](LICENSE), or a commercial licence for use without the AGPL's obligations, for example in a closed-source product. For a commercial licence, write to <michal@michaldub.cz>. [LICENSING.md](LICENSING.md) explains both. Releases up to v1.1.1 were published under the MIT licence and stay available under it.
+
+Third-party parts keep their own licences (listed in [LICENSING.md](LICENSING.md#third-party-parts)), and so do the sample boards in `spec/samples` that say so:
 
 - [`kicad-royalblue54l-feather`](spec/samples/kicad-royalblue54l-feather/README.md): CERN-OHL-P v2, see its `LICENSE`.
 - [`ipc-testcases`](spec/samples/ipc-testcases/README.md): the IPC-2581 Consortium's test cases are not in the repository, the demo or the release archives; the repository and the demo link to them on <https://www.ipc2581.com>. `python3 spec/samples/ipc-testcases/fetch.py` fetches them as test data.

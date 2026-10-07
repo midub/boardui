@@ -141,8 +141,9 @@ export class SampleCard {
       </div>
     </div>
     <p class="footnote">
-      boardui is open source (MIT):
-      <a href="https://github.com/midub/boardui">converter, viewer and profile spec</a>.
+      boardui is open source (AGPL-3.0,
+      <a href="https://github.com/midub/boardui/blob/master/LICENSING.md">commercial licence</a>
+      available): <a href="https://github.com/midub/boardui">converter, viewer and profile spec</a>.
     </p>
   `,
 })
