@@ -337,6 +337,72 @@ def hexagon_moire():
     return d
 
 
+def primitive_xform():
+    """Standard primitives with their own `Xform` (rev B; Allegro 17.4 writes it in rev C
+    files): it turns the primitive in its own frame, before the pad places it (spec §6.1).
+
+    Top row: 2-pin parts at 0°, 90° and 45° whose pads carry the part's rotation and use a
+    rectangle or oval turned upright by its own `Xform`, so every pad lies across the pin axis.
+    Bottom row: a rectangle chamfered at its upper-right corner, mirrored by its own `Xform`
+    (chamfer upper left), and an oval moved 0.5 mm along its X axis, each in a pad at 0° and 90°.
+    """
+    d = Doc()
+    d.line_desc("OUTLINE", 0.1)
+    d.primitive(
+        "RECT_R90",
+        f'<RectCenter width="{d.u(2.0)}" height="{d.u(1.0)}"><Xform rotation="90"/></RectCenter>',
+    )
+    d.primitive(
+        "OVAL_R270",
+        f'<Oval width="{d.u(2.0)}" height="{d.u(0.8)}"><Xform rotation="270"/></Oval>',
+    )
+    d.primitive(
+        "CHAM_MIRROR",
+        f'<RectCham width="{d.u(2.0)}" height="{d.u(1.0)}" chamfer="{d.u(0.5)}" '
+        'upperLeft="false" lowerRight="false" lowerLeft="false"><Xform mirror="true"/></RectCham>',
+    )
+    d.primitive(
+        "OVAL_OFFSET",
+        f'<Oval width="{d.u(1.6)}" height="{d.u(0.8)}"><Xform xOffset="{d.u(0.5)}"/></Oval>',
+    )
+    two_layers(d, drill=False)
+    profile(d, 20, 11)
+    for name, shape in (("P_RECT", "RECT_R90"), ("P_OVAL", "OVAL_R270")):
+        d.step.append(
+            f'<Package name="{name}" type="OTHER" pinOne="1" height="{d.u(0.6)}">'
+            f'<Outline><Polygon>{d.rect(-2.2, -1.4, 2.2, 1.4)}</Polygon><LineDescRef id="OUTLINE"/></Outline>'
+            f'<Pin number="1"><Location {d.xy(-1.5, 0)}/><StandardPrimitiveRef id="{shape}"/></Pin>'
+            f'<Pin number="2"><Location {d.xy(1.5, 0)}/><StandardPrimitiveRef id="{shape}"/></Pin>'
+            "</Package>"
+        )
+    sets = []
+    for ref, package, shape, x, y, rot in (
+        ("U1", "P_RECT", "RECT_R90", 4, 8, 0),
+        ("U2", "P_RECT", "RECT_R90", 10, 8, 90),
+        ("U3", "P_OVAL", "OVAL_R270", 16, 8, 45),
+    ):
+        xform = f'<Xform rotation="{rot:g}"/>' if rot else ""
+        d.step.append(
+            f'<Component refDes="{ref}" packageRef="{package}" layerRef="TOP" part="P" '
+            f'mountType="SMT" standoff="0" height="{d.u(0.6)}">{xform}<Location {d.xy(x, y)}/></Component>'
+        )
+        for n, px in (("1", -1.5), ("2", 1.5)):
+            qx, qy = placed(x, y, rot, False, px, 0)
+            sets.append(
+                f'<Set net="{ref}_{n}" padUsage="TERMINATION">'
+                f"{pad(d, qx, qy, shape, (ref, n), rotation=rot)}</Set>"
+            )
+    for shape, x, rot in (
+        ("CHAM_MIRROR", 3, 0),
+        ("CHAM_MIRROR", 7, 90),
+        ("OVAL_OFFSET", 12, 0),
+        ("OVAL_OFFSET", 16, 90),
+    ):
+        sets.append(f'<Set padUsage="TERMINATION">{pad(d, x, 3, shape, rotation=rot)}</Set>')
+    d.step.append(f'<LayerFeature layerRef="TOP">{"".join(sets)}</LayerFeature>')
+    return d
+
+
 def hatch_fill():
     """HATCH and MESH fills are lines clipped to the area, plus the outline (spec §6.1)."""
     d = Doc()
@@ -1113,6 +1179,7 @@ def main():
         "zero-width-lines": zero_width_lines(),
         "fiducials": fiducials(),
         "hexagon-moire": hexagon_moire(),
+        "primitive-xform": primitive_xform(),
         "hatch-fill": hatch_fill(),
         "line-styles": line_styles(),
         "slots": slots(),

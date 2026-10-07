@@ -12,6 +12,7 @@ Each sample is an IPC-2581 input plus the expected boardui asset. Together they 
 | [`zero-width-lines`](hand-written/zero-width-lines/) | hand-written | a silkscreen polyline and line with zero-width `LineDesc`s, drawn as hairlines; §6.1 |
 | [`fiducials`](hand-written/fiducials/) | hand-written | `GlobalFiducial`, `LocalFiducial`, `BadBoardMark` and `GoodPanelMark` as `FIDUCIAL` copper features with their type, opening the synthesized soldermask; §6.2, §6.5, §8.2 |
 | [`hexagon-moire`](hand-written/hexagon-moire/) | hand-written | `Hexagon` (corner up, plain, rotated and hollow) and a `Moire` with a crosshair; §6.1 |
+| [`primitive-xform`](hand-written/primitive-xform/) | hand-written | standard primitives with their own `Xform` (rev B, written by Allegro 17.4 into rev C files): rectangles and ovals turned upright in pads that carry their part's rotation, a mirrored chamfered rectangle and an offset oval, each in a pad at 0° and 90°; §6.1 |
 | [`hatch-fill`](hand-written/hatch-fill/) | hand-written | a `HATCH` polygon with its outline, and a `MESH` circle; §6.1 |
 | [`line-styles`](hand-written/line-styles/) | hand-written | `SOLID`, `DOTTED`, `DASHED`, `CENTER` and `PHANTOM` lines, a dashed arc, a dotted outline, and an `ERASE` line cutting a plane; §6.1 |
 | [`slots`](hand-written/slots/) | hand-written | a plated slot with pads and a non-plated slot; §6.3 |

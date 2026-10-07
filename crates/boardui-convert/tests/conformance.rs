@@ -145,6 +145,7 @@ samples! {
     zero_width_lines => "zero-width-lines",
     fiducials => "fiducials",
     hexagon_moire => "hexagon-moire",
+    primitive_xform => "primitive-xform",
     hatch_fill => "hatch-fill",
     line_styles => "line-styles",
     slots => "slots",
