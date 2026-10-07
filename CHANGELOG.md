@@ -8,9 +8,10 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
 - **Faster x-ray and first frame on big boards (viewer):** meshes that render alike share their
   materials, x-ray mode swaps materials prepared after loading instead of rebuilding every
   shader, and the components' placeholder bodies are drawn as a few merged meshes instead of one
-  instanced mesh per package. On testcase1 (1,656 components) an x-ray toggle takes 2–15 ms of
-  main-thread JavaScript instead of 1.5–1.6 s, loading 1.6 s instead of 3.4 s, and the first frame
-  has 21 draw calls instead of 223.
+  instanced mesh per package. On testcase1 (1,656 components) an x-ray toggle takes a few
+  milliseconds of main-thread JavaScript instead of 1.5–1.6 s, loading 1.6 s instead of 3.4 s, and
+  the first frame has 21 draw calls instead of 223; on the KiCad sample royalblue54l-feather with
+  its runtime models, a toggle takes 2–7 ms instead of 0.4–0.7 s.
 - **Licence: AGPL-3.0-only or a commercial licence** (was MIT). boardui stays open source;
   closed-source products, and web applications that don't publish their source, need a
   commercial licence ([LICENSING.md](LICENSING.md), [ADR 0015](docs/adr/0015-agpl-plus-commercial-licence.md)).

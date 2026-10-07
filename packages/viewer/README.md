@@ -165,8 +165,8 @@ component) is switched off or the element is hidden with `hide`.
   (`src/materials.ts`; runtime models by the material's content, as their loaders make copies of a
   small palette), so three builds each shader once instead of once per mesh. Each has a normal and
   an x-ray variant: `setXray` swaps the meshes' materials and changes none, and the other mode is
-  compiled (`compileAsync`) in idle time after loading and after runtime models arrive, so toggling
-  x-ray rebuilds nothing.
+  compiled (`compileAsync`) in idle time after loading, after runtime models arrive and after a
+  layer is shown, so toggling x-ray rebuilds nothing.
 - **Components.** The asset's component meshes (placeholder bodies, pin-1 markers, embedded user
   models) are merged into one static mesh per material, in board coordinates, with each vertex's
   state texel, so a board draws its bodies with a few meshes however many packages it has; the

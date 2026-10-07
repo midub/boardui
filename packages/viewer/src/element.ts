@@ -385,11 +385,13 @@ export class BoardViewerElement extends ElementBase {
 
   /** Shows or hides a layer or drill layer. */
   setLayerVisible(id: string, visible: boolean): void {
-    const layer = this.#model().layer(id);
+    const loaded = this.#require();
+    const layer = loaded.model.layer(id);
     if (!layer) throw new RangeError(`Unknown layer: ${id}`);
     layer.group.visible = visible;
     this.#visibility++;
     this.#requestRender();
+    if (visible) this.#prepare(loaded);
   }
 
   /**
