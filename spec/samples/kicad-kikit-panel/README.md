@@ -15,4 +15,5 @@ What it exercises:
 - A panel as KiCad sees it: one `Step` (`type="BOARD"`) holding four copies of the board with renumbered references, rails, tabs and mouse bites. There is no `StepRepeat`.
 - Fiducials and tooling holes as ordinary components (six `KiKit_FID_*` with package `Fiducial`, three `KiKit_TO_*`), and the mouse-bite holes as 48 non-plated footprints (`KiKit_MB_*`).
 - Castellated pads on the module edges and panel text drawn as silkscreen outlines.
+- The `Profile` is the panel's outer outline only. The gaps between boards, tabs and rails are three closed contours of 312 lines on `Edge.Cuts`, which the converter cuts out (spec §6.7). The mouse bites and tooling holes have no pads and get no placeholder body (spec §6.8).
 - Visual reference: `kicad-cli pcb render --side top egg250-panel.kicad_pcb`.

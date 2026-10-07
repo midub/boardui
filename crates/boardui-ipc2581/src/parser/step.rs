@@ -195,7 +195,10 @@ impl<R: BufRead> Parser<R> {
             }
             _ => p.unknown("Package"),
         })?;
+        // A package without pins (a logo, a placeholder) has no pin 1 to point at; KiCad
+        // writes `pinOne="UNKNOWN"` for it.
         if let Some(pin_one) = &package.pin_one
+            && !package.pins.is_empty()
             && package.pins.get(pin_one).is_none()
         {
             self.diagnostics.warn(

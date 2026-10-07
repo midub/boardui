@@ -15,6 +15,7 @@ use glam::DAffine2;
 
 use crate::colours;
 use crate::components::{self, PadRef};
+use crate::outline::Cutouts;
 use crate::panel::{self, Flip, Part};
 use crate::shapes::{ShapeConverter, erases, is_stroke, point, texts};
 use crate::stackup::{self, LayerClass, Stack, Synthesize};
@@ -226,19 +227,35 @@ pub(crate) fn run(
         ));
     }
     let drills = ctx.drills(doc, &stack);
+    // The board outline: the profiles of all parts, with their cut-outs (spec §6.7, §6.14).
+    let cutouts = Cutouts::find(
+        &doc.ecad,
+        &doc.content,
+        &parts,
+        &mut ctx.shapes,
+        tolerance,
+        ctx.warnings,
+    );
+    let profiles: Vec<Option<Shape>> = parts
+        .iter()
+        .map(|p| cutouts.profile(p, &mut ctx.shapes))
+        .collect();
+    let part_outlines: Vec<Option<Region>> = par::map(&profiles, |_, shape| {
+        shape
+            .as_ref()?
+            .to_region(tolerance)
+            .ok()
+            .filter(|r| !r.is_empty())
+    });
     let components = components::build(
         &parts,
         &stack,
         options.models.as_ref(),
         &mut ctx.shapes,
         &pads,
+        &part_outlines,
         ctx.warnings,
     );
-    // The board outline: the profiles of all parts (spec §6.14).
-    let profiles: Vec<Shape> = parts
-        .iter()
-        .filter_map(|p| ctx.shapes.contour(p.step.profile.as_ref()?, p.frame))
-        .collect();
     let pins = std::mem::take(&mut ctx.pins);
     for message in ctx.shapes.take_warnings() {
         ctx.warnings.push(message);
@@ -291,10 +308,7 @@ pub(crate) fn run(
     };
 
     // Board outline and soldermask openings.
-    let mut profiles: Vec<Region> = profiles
-        .iter()
-        .filter_map(|s| s.to_region(tolerance).ok())
-        .collect();
+    let mut profiles: Vec<Region> = part_outlines.into_iter().flatten().collect();
     let outline = match profiles.len() {
         0 => None,
         1 => profiles.pop(),

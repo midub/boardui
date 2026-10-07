@@ -16,4 +16,4 @@ What it exercises:
 - Board colours from the KiCad stack-up (`EntryColor`).
 - Visual reference: `kicad-cli pcb render --side top miao.kicad_pcb`.
 
-Known quirk: the castellated pads belong to a footprint (`U3`, `xiao_drop-in_gpio_plus_4_castellated`) whose outline is the whole board, so its placeholder box covers the board.
+Known quirk: the castellated pads belong to a footprint (`U3`, `xiao_drop-in_gpio_plus_4_castellated`) whose outline is the whole board. It gets no placeholder body, because the body would cover more than half of the board (spec §6.8).

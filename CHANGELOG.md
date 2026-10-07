@@ -9,6 +9,14 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   is read and applied in the primitive's frame before the pad places it, so a pad that uses
   such a primitive is turned, mirrored and offset as defined
   ([spec §6.1](spec/README.md#61-prisms)).
+- KiCad board cut-outs: when a step's `Profile` has no `Cutout`, the closed contours of its
+  `BOARD_OUTLINE` layer (`Edge.Cuts`) inside the profile are cut out of the board, with a
+  warning. KiCad writes inner cut-outs and the gaps of a KiKit panel only there
+  ([spec §6.7](spec/README.md#67-dielectric-and-outline)).
+- Placeholder bodies: none for components without pads and without a height (logos, mounting
+  holes, mouse bites), nor for one without a height whose outline covers more than half of its
+  board (a carrier's module footprint); the components stay in the metadata. A package without pins no
+  longer gives a warning for its `pinOne` ([spec §6.8](spec/README.md#68-components)).
 
 ## [1.1.0] - 2026-10-07
 

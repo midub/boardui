@@ -376,7 +376,8 @@ pub struct Package {
     pub package_type: Option<String>,
     /// `height`, if given.
     pub height: Option<f64>,
-    /// `pinOne`: number of pin 1, if given.
+    /// `pinOne`: number of pin 1, if given. A package without pins may name any; it is not
+    /// checked.
     pub pin_one: Option<String>,
     /// `Outline`: the body outline, if given.
     pub outline: Option<Outline>,
