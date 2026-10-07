@@ -370,7 +370,7 @@ def primitive_xform():
     for name, shape in (("P_RECT", "RECT_R90"), ("P_OVAL", "OVAL_R270")):
         d.step.append(
             f'<Package name="{name}" type="OTHER" pinOne="1" height="{d.u(0.6)}">'
-            f'<Outline><Polygon>{d.rect(-2.2, -1.4, 2.2, 1.4)}</Polygon><LineDescRef id="OUTLINE"/></Outline>'
+            f'<Outline><Polygon>{d.rect(-0.9, -0.6, 0.9, 0.6)}</Polygon><LineDescRef id="OUTLINE"/></Outline>'
             f'<Pin number="1"><Location {d.xy(-1.5, 0)}/><StandardPrimitiveRef id="{shape}"/></Pin>'
             f'<Pin number="2"><Location {d.xy(1.5, 0)}/><StandardPrimitiveRef id="{shape}"/></Pin>'
             "</Package>"
