@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
   BoxGeometry,
   type BufferGeometry,
@@ -12,6 +14,7 @@ import { BoardModel } from '../src/board-model.js';
 import { loadGltf } from '../src/load.js';
 import { decodeParts, encodeParts, ModelCache } from '../src/model-cache.js';
 import {
+  type ModelBoard,
   type ModelComponent,
   type ModelLoader,
   type ModelRef,
@@ -22,7 +25,7 @@ import {
 import { type ModelStatus, RuntimeModels } from '../src/runtime-models.js';
 import { smallBoardGlb } from './fixture/boards.js';
 
-/** The small fixture board; C1's body is made a user model, R1 gets BOM attributes. */
+/** The small fixture board; C1's body is made a user model. */
 async function board(): Promise<BoardModel> {
   const gltf = await loadGltf(smallBoardGlb());
   gltf.scene.traverse((object: Object3D) => {
@@ -33,9 +36,6 @@ async function board(): Promise<BoardModel> {
         mesh.material = (mesh.material as Material).clone();
         (mesh.material as Material).name = 'user/model';
       });
-    }
-    if (object.name === 'R1') {
-      (object.userData.boardui as Record<string, unknown>).attributes = { MPN: 'RC0402' };
     }
   });
   return BoardModel.fromGltf(gltf);
@@ -162,22 +162,40 @@ describe('runtime models', () => {
   });
 
   it('pass component metadata and BOM attributes to sources', async () => {
-    const model = await board();
     const seen: ModelComponent[] = [];
-    await run(model, [
-      source('s', (c) => {
+    const boards: ModelBoard[] = [];
+    const record: ModelSource = {
+      name: 's',
+      resolve: async (c, b) => {
         seen.push(c);
+        boards.push(b);
         return null;
-      }),
-    ]);
-    const r1 = seen.find((c) => c.refDes === 'R1');
-    expect(r1).toMatchObject({
+      },
+    };
+    await run(await board(), [record]);
+    expect(seen.find((c) => c.refDes === 'R1')).toMatchObject({
       id: 'cmp/R1',
       side: 'TOP',
       mount: 'SMT',
-      attributes: { MPN: 'RC0402' },
+      attributes: {},
     });
-    expect(seen.find((c) => c.refDes === 'U1')?.attributes).toEqual({});
+    // The bom-attributes sample (profile 0.8) has an attributes table.
+    seen.length = 0;
+    const bytes = readFileSync(
+      fileURLToPath(
+        new URL(
+          '../../../spec/samples/hand-written/bom-attributes/bom-attributes.glb',
+          import.meta.url,
+        ),
+      ),
+    );
+    const glb = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    await run(await BoardModel.fromGltf(await loadGltf(glb)), [record]);
+    expect(seen.find((c) => c.refDes === 'R1')?.attributes).toMatchObject({
+      MPN: 'RC0603FR-0710KL',
+      LCSC: 'C25744',
+    });
+    expect(boards.at(-1)?.profileVersion).toBe('0.8');
   });
 
   it('replace placeholder bodies and pin-1 markers on the same state texels, and revert', async () => {
