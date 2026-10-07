@@ -13,6 +13,7 @@ const fire = (target: Element, type: string, detail: unknown) =>
   imports: [BoardViewer, Widget],
   template: `
     <bui-board-viewer
+      #viewer="buiBoardViewer"
       id="viewer"
       [src]="src()"
       [backend]="backend()"
@@ -31,6 +32,7 @@ const fire = (target: Element, type: string, detail: unknown) =>
         </bui-widget>
       }
     </bui-board-viewer>
+    <output>{{ viewer.element.localName }}</output>
   `,
 })
 class Host {
@@ -64,11 +66,13 @@ afterEach(() => {
 });
 
 describe('BoardViewer', () => {
-  it('creates <board-viewer> in its element and gives access to it', () => {
+  it('creates <board-viewer> in its element and gives access to it (exportAs too)', () => {
     const { root, element } = render();
     expect(element).toBeInstanceOf(viewerClass());
     expect(root.querySelector('bui-board-viewer#viewer > board-viewer')).toBe(element);
     expect(element.isConnected).toBe(true);
+    // In the template too (`exportAs`).
+    expect(root.querySelector('output')?.textContent).toBe('board-viewer');
   });
 
   it('sets src and backend before the element connects', async () => {
