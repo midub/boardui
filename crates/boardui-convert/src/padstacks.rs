@@ -19,7 +19,7 @@ use crate::stackup::{self, Stack};
 ///   its own features, or of a synthesized `@drill-<from>-<to>` if there is none. If that
 ///   layer already has a hole of the same diameter at the same centre (Altium writes its
 ///   holes on a `Drill Guide` layer too), the drill layer's hole stays the only one and takes
-///   the padstack's net if its `Set` has none.
+///   the padstack's net if its `Set` has no net and no other feature.
 pub(crate) fn lower(doc: &ipc::Document, tolerance: f64) -> Cow<'_, ipc::Document> {
     if doc.ecad.steps.values().all(|s| s.pad_stacks.is_empty()) {
         return Cow::Borrowed(doc);
