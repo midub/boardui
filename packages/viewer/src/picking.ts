@@ -8,6 +8,7 @@ import {
 } from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
 import type { BoardModel, LayerModel } from './board-model.js';
+import { STATE_ATTRIBUTE } from './state.js';
 
 /** The element found by {@link Picker.pick}. */
 export interface PickHit {
@@ -20,7 +21,7 @@ export interface PickHit {
 
 /**
  * Finds the element under a ray. Layer meshes are searched with a `three-mesh-bvh` BVH each,
- * built on first use; component batches use three's instanced-mesh ray cast.
+ * built on first use; component batches search their instances (see `bodies.ts`).
  */
 export class Picker {
   readonly #model: BoardModel;
@@ -55,20 +56,19 @@ export class Picker {
       if (!layer.group.visible) continue;
       for (const mesh of layer.meshes) {
         if (this.#pending.has(mesh.geometry)) continue;
-        const ids = mesh.geometry.getAttribute('_feature_id_0');
+        const texels = mesh.geometry.getAttribute(STATE_ATTRIBUTE);
         for (const hit of this.bvh(mesh).raycast(ray, FrontSide)) {
-          if (hit.face) consider(layer.stateOffset + ids.getX(hit.face.a), hit.point, hit.distance);
+          if (hit.face) consider(texels.getX(hit.face.a), hit.point, hit.distance);
         }
       }
     }
     if (this.#model.componentGroup.visible) {
       this.#raycaster.ray.copy(ray);
-      for (const { mesh, rows } of this.#model.componentBatches) {
-        for (const hit of this.#raycaster.intersectObject(mesh, false)) {
-          const row = rows[hit.instanceId ?? -1];
-          if (row !== undefined)
-            consider(this.#model.componentOffset + row, hit.point, hit.distance);
-        }
+      const offset = this.#model.componentOffset;
+      for (const batch of this.#model.componentBatches) {
+        batch.raycast(this.#raycaster, (row, point, distance) =>
+          consider(offset + row, point, distance),
+        );
       }
     }
     return best;

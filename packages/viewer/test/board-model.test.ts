@@ -252,20 +252,14 @@ describe('ID resolution', () => {
 });
 
 describe('components', () => {
-  it('are batched per shared geometry and material, with instance → row mapping', () => {
+  it('are merged per material, with instance → row mapping', () => {
     const batches = model.componentBatches.map((b) => [
       (b.mesh.material as Material).name,
-      b.mesh.count,
       [...b.rows].map((r) => model.components.get('refDes', r)).join(' '),
     ]);
     expect(batches).toEqual([
-      ['boardui/body', 2, 'R1 R2'],
-      ['boardui/pin1', 2, 'R1 R2'],
-      ['boardui/body', 1, 'U1'],
-      ['boardui/pin1', 1, 'U1'],
-      ['boardui/body', 1, 'C1'],
-      ['boardui/body', 1, 'J1'],
-      ['boardui/pin1', 1, 'J1'],
+      ['boardui/body', 'R1 R2 U1 C1 J1'],
+      ['boardui/pin1', 'R1 R2 U1 J1'],
     ]);
   });
 });
