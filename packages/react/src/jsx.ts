@@ -20,6 +20,8 @@ export interface BoardViewerElementProps
   'onbui-hover'?: ((event: CustomEvent<ElementInfo | null>) => void) | undefined;
   'onbui-select'?: ((event: CustomEvent<ElementInfo | null>) => void) | undefined;
   'onbui-progress'?: ((event: CustomEvent<LoadProgress>) => void) | undefined;
+  'onbui-load'?: ((event: CustomEvent<ElementInfo>) => void) | undefined;
+  'onbui-unload'?: ((event: CustomEvent<ElementInfo>) => void) | undefined;
 }
 
 declare module 'react' {

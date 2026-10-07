@@ -1,5 +1,5 @@
-import type { WidgetAnchor, WidgetOcclusion } from '@boardui/viewer';
-import { type ReactNode, useContext, useLayoutEffect, useState } from 'react';
+import type { BoardViewerElement, WidgetAnchor, WidgetOcclusion } from '@boardui/viewer';
+import { type ReactNode, useContext, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BoardViewerContext } from './board-viewer.js';
 
@@ -19,13 +19,33 @@ export interface WidgetProps {
 }
 
 /**
+ * Changes whenever the viewer shows another board: `0` while it has none, then a new number for
+ * every board it loads (`bui-load`).
+ */
+function useBoard(viewer: BoardViewerElement | null): number {
+  const [board, setBoard] = useState(0);
+  useLayoutEffect(() => {
+    if (!viewer) return;
+    const update = () => {
+      const loaded = viewer.loaded;
+      setBoard((n) => (loaded ? n + 1 : 0));
+    };
+    update();
+    viewer.addEventListener('bui-load', update);
+    return () => viewer.removeEventListener('bui-load', update);
+  }, [viewer]);
+  return board;
+}
+
+/**
  * Renders its children in an HTML widget that follows a board element (`attachWidget`): a `<div>`
  * that the viewer positions over the board, with the children portalled into it. Must be inside a
  * {@link BoardViewer}.
  *
- * The viewer needs a loaded board that has the element: mount widgets after the board has loaded
- * (e.g. after `await viewer.load(…)`) and unmount them before loading another one. A widget whose
- * element is unknown shows nothing.
+ * The widget attaches once the viewer has loaded a board with the element (`bui-load`; at once if
+ * it already has), detaches just before that board is replaced (`bui-unload`), and attaches again
+ * if the next board has the element too; its children then stay mounted. Without a board, or
+ * while the board lacks the element, the widget renders nothing.
  */
 export function Widget({
   target,
@@ -36,6 +56,9 @@ export function Widget({
   children,
 }: WidgetProps): ReactNode {
   const viewer = useContext(BoardViewerContext);
+  const board = useBoard(viewer);
+  // One element for the widget's lifetime, so that its children survive attaching it again.
+  const element = useRef<HTMLDivElement | null>(null);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   // Arrays as dependencies by value.
   const anchorKey = typeof anchor === 'object' ? anchor.join() : anchor;
@@ -43,25 +66,35 @@ export function Widget({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: anchor and offset by value (keys).
   useLayoutEffect(() => {
-    if (!viewer) return;
-    const element = document.createElement('div');
-    let detach: () => void;
-    try {
-      detach = viewer.attachWidget(target, element, {
-        ...(anchor !== undefined ? { anchor } : {}),
-        ...(offset !== undefined ? { offset } : {}),
-        ...(occlusion !== undefined ? { occlusion } : {}),
-      });
-    } catch {
-      // No board, or no such element in it.
+    let detach: (() => void) | null = null;
+    if (viewer && board) {
+      element.current ??= document.createElement('div');
+      try {
+        detach = viewer.attachWidget(target, element.current, {
+          ...(anchor !== undefined ? { anchor } : {}),
+          ...(offset !== undefined ? { offset } : {}),
+          ...(occlusion !== undefined ? { occlusion } : {}),
+        });
+      } catch {
+        // No such element on this board.
+      }
+    }
+    if (!viewer || !detach) {
+      setHost(null);
       return;
     }
-    setHost(element);
-    return () => {
-      detach();
-      setHost(null);
+    setHost(element.current);
+    // Before the board is replaced; the next board's `bui-load` runs this effect again.
+    const release = () => {
+      detach?.();
+      detach = null;
     };
-  }, [viewer, target, anchorKey, offsetKey, occlusion]);
+    viewer.addEventListener('bui-unload', release);
+    return () => {
+      viewer.removeEventListener('bui-unload', release);
+      release();
+    };
+  }, [viewer, board, target, anchorKey, offsetKey, occlusion]);
 
   useLayoutEffect(() => {
     if (host) host.className = className ?? '';

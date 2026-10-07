@@ -30,6 +30,7 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 |---|---|
 | `load(urlOrBytes)` | Loads a GLB (URL, `ArrayBuffer` or `Uint8Array`). Rejects non-boardui assets. |
 | `loadIpc2581(file, options)` | Converts IPC-2581 locally with `@boardui/converter` (WASM in a worker) and loads the result. `options`: `models`, `tolerance`, `platingThickness`, `step`, `signal`, `onProgress`. Resolves with the conversion (`glb` for download, `warnings`, `stats`, `timings`). |
+| `loaded` | Whether a board is loaded: `true` from its `bui-load` on (also while the next board loads). |
 | `whenPickable()` | Resolves when hover and picking cover the whole board (see "Picking" below). |
 | `layers` | Layers and drill layers, top to bottom, with their current visibility. |
 | `setLayerVisible(id, visible)` | Defaults come from `BOARDUI_board.layers[].visible`: inner copper, paste and drawing layers (courtyard, assembly, documentation) start hidden; drill layers start visible. |
@@ -38,7 +39,8 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 | `hide({ ids } \| { net })` | Hides elements. Returns a function that shows them again. |
 | `select(id \| null)`, `selection` | Selects any element; a net selects all its copper, and a component (also on hover) its drawings, such as its assembly outline. |
 | `focus(id)` | Flies the camera to an element. (`focus()` / `focus(options)` still focus the element.) |
-| `setView('top' \| 'bottom' \| 'iso')` | Frames the board from above, from below (mirrored, as when flipping a board), or obliquely. |
+| `setView('top' \| 'bottom' \| 'iso')` | Frames what is shown (see `frame()`) from above, from below (mirrored, as when flipping a board), or obliquely. |
+| `frame()` | Frames what is shown, keeping the view direction: visible layers and drill layers, and the components, without elements hidden with `hide`. Hidden layers don't count, so drawings far off the board on a hidden documentation layer don't widen the view. Showing or hiding layers doesn't move the camera; call `frame()` or `setView` to frame the new set. |
 | `attachWidget(id, element, { anchor, offset, occlusion })` | Shows an HTML element above the board, following a board element. Returns a detach function. |
 | `info(id)` | `{ id, kind, properties }`, with references to other elements as IDs. |
 | `ids(kind)` | All IDs of a kind: `'layer'`, `'component'`, `'pin'`, `'net'` or `'instance'`. |
@@ -48,6 +50,21 @@ Build them from names with `encodeIdSegment`, e.g. `'net/' + encodeIdSegment('/S
 Events (`bubbles`, `composed`): `bui-hover` when the element under the pointer changes, and
 `bui-select` when the user clicks an element or empty space; `detail` is `info(id)`, or `null`.
 `bui-progress` reports `loadIpc2581`: `{ stage: 'convert' | 'load', step, fraction }`.
+
+`bui-load` comes when a board has been loaded and is shown, from `src`, `load` or `loadIpc2581`
+(before their promise resolves): widgets, highlights and `info()` work on it from then on.
+`bui-unload` comes just before another board replaces it, while it is still in place; the new
+board's `bui-load` follows at once. `detail` is the board's `info('board')` for both. A failed
+load dispatches neither (`src` dispatches `error`, the methods reject) and keeps the current
+board; a load that a newer one overtook is dropped without events. Moving or reconnecting the
+element keeps its board, without events. A new board is framed obliquely, by what is shown.
+
+```js
+viewer.addEventListener('bui-load', () => {
+  const detach = viewer.attachWidget('cmp/U3', tag);
+  viewer.addEventListener('bui-unload', detach, { once: true });
+});
+```
 
 Attributes: `src` loads a GLB (failures dispatch `error`); `backend="webgl"` forces the WebGL2
 backend (read when the element connects).

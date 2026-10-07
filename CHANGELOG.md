@@ -16,6 +16,14 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   and features ([spec §6.1](spec/README.md#61-prisms)).
 - KiCad's `pinOne="UNKNOWN"` (no pad numbered like a pin 1) counts as not given: no warning
   for mounting holes, fiducials and the like, unless a pin is numbered `UNKNOWN`.
+- **Viewer load events:** `<board-viewer>` dispatches `bui-load` when a board is loaded and shown
+  (`src`, `load`, `loadIpc2581`) and `bui-unload` just before another board replaces it; `loaded`
+  tells whether it has a board. In `@boardui/react`, `<BoardViewer>` has `onLoad` and `onUnload`,
+  and `<Widget>` attaches on its own once its board is loaded, detaches before the board is
+  replaced and attaches again to the next board if it has the element.
+- **Framing by what is shown:** the initial view, `setView` and the new `frame()` frame the
+  visible layers and components only, so drawings on a hidden layer (e.g. fomu-pvt's `Eco1.User`
+  documentation layer) no longer widen the view.
 
 ## [1.1.1] - 2026-10-07
 
