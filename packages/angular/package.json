@@ -1,0 +1,49 @@
+{
+  "name": "@boardui/angular",
+  "version": "1.1.1",
+  "private": true,
+  "description": "Angular wrapper for <board-viewer>: a standalone component with signal inputs and typed outputs, and widgets rendered by Angular.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midub/boardui.git",
+    "directory": "packages/angular"
+  },
+  "type": "module",
+  "module": "./dist/fesm2022/boardui-angular.mjs",
+  "typings": "./dist/types/boardui-angular.d.ts",
+  "sideEffects": [
+    "**/boardui-angular.mjs"
+  ],
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "ng build",
+    "test": "ng test --watch=false"
+  },
+  "peerDependencies": {
+    "@angular/core": "^22.0.0",
+    "three": "catalog:"
+  },
+  "dependencies": {
+    "@boardui/viewer": "workspace:*",
+    "tslib": "catalog:"
+  },
+  "devDependencies": {
+    "@angular/build": "catalog:",
+    "@angular/cli": "catalog:",
+    "@angular/common": "catalog:",
+    "@angular/compiler": "catalog:",
+    "@angular/compiler-cli": "catalog:",
+    "@angular/core": "catalog:",
+    "@angular/platform-browser": "catalog:",
+    "@types/three": "catalog:",
+    "jsdom": "catalog:",
+    "ng-packagr": "catalog:",
+    "rxjs": "catalog:",
+    "three": "catalog:",
+    "typescript": "catalog:angular",
+    "vitest": "catalog:"
+  }
+}

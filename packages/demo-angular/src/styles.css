@@ -1,0 +1,8 @@
+@import "@boardui/demo-shared/style.css";
+
+/* <bui-board-viewer> is the box that its <board-viewer> fills: here, the whole stage. */
+#viewer {
+  position: absolute;
+  inset: 0;
+  height: auto;
+}
