@@ -17,8 +17,8 @@ use crate::Warnings;
 use crate::panel::Part;
 use crate::shapes::{ShapeConverter, closed, direction, point};
 
-/// Segment ends this close are joined into one contour. KiCad chains `Edge.Cuts` with the
-/// same distance.
+/// Segment ends this close are joined into one contour: KiCad joins `Edge.Cuts` ends up to
+/// 10 µm apart, and its export rounds coordinates (to 2.5 µm with 4 decimals in inches).
 pub(crate) const CHAIN_GAP: f64 = 20e-6;
 /// A contour is a cut-out only if it stays this far inside the profile: the contour that
 /// traces the profile itself is not one.

@@ -181,7 +181,7 @@ Each dielectric layer is one sheet feature (kind `SHEET`): the step profile, inc
 
 **Cut-outs on a board outline layer.** KiCad writes the `Profile` as its outer polygon alone and draws the board's inner contours (holes, slots, the gaps of a panel) only on its `BOARD_OUTLINE` layer, `Edge.Cuts`, as separate `Line`s and `Arc`s. When a step's profile has no `Cutout`, the converter takes them from the step's `BOARD_OUTLINE` layers:
 
-- lines, arcs and open `Polyline`s are chained into closed contours in any order and direction, joining ends less than 20 µm apart (KiCad's own chaining distance); closed shapes (`Polygon`, `Outline`, a closed `Polyline`, a standard primitive) are contours as they are;
+- lines, arcs and open `Polyline`s are chained into closed contours in any order and direction, joining ends up to 20 µm apart (KiCad joins ends up to 10 µm apart, and its export rounds coordinates); closed shapes (`Polygon`, `Outline`, a closed `Polyline`, a standard primitive) are contours as they are;
 - a contour that lies at least 20 µm inside the profile is cut out of it. The contour that traces the profile itself, contours across or touching its edge and open chains are not;
 - the converter warns once per step with the number of cut-outs taken from each layer.
 
