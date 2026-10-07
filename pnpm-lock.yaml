@@ -231,6 +231,9 @@ catalogs:
     ng-packagr:
       specifier: ^22.2.0
       version: 22.2.4
+    occt-import-js:
+      specifier: 0.0.23
+      version: 0.0.23
     react:
       specifier: ^19.3.0
       version: 19.3.0
@@ -447,6 +450,31 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.3.2(@types/node@24.19.1)(esbuild@0.28.2)(less@4.9.1(supports-color@8.1.1))(sass-embedded@1.105.1)(sass@1.105.1)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@24.19.1)(jsdom@30.1.2)(vite@8.3.2(@types/node@24.19.1)(esbuild@0.28.2)(less@4.9.1(supports-color@8.1.1))(sass-embedded@1.105.1)(sass@1.105.1))
+
+  packages/models:
+    dependencies:
+      '@boardui/viewer':
+        specifier: workspace:*
+        version: link:../viewer
+      occt-import-js:
+        specifier: 'catalog:'
+        version: 0.0.23
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.1
+      '@types/three':
+        specifier: 'catalog:'
+        version: 0.186.0
+      three:
+        specifier: 'catalog:'
+        version: 0.186.1
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
       vitest:
         specifier: 'catalog:'
         version: 5.0.3(@types/node@24.19.1)(jsdom@30.1.2)(vite@8.3.2(@types/node@24.19.1)(esbuild@0.28.2)(less@4.9.1(supports-color@8.1.1))(sass-embedded@1.105.1)(sass@1.105.1))
@@ -2784,6 +2812,9 @@ packages:
   obug@3.0.0:
     resolution: {integrity: sha512-5vvB5+W7ePv+p3uqxi+RcW1XAzLW0/hxt3/4X4Lc4qHudzOhmBiBwOY6DRob4WnanAEGvNcLjF+KNOufrUoEQw==}
     engines: {node: '>=12.20.0'}
+
+  occt-import-js@0.0.23:
+    resolution: {integrity: sha512-RFfYQXYFX5C1mB1Aywm0ShcUKzXOr/VzTnlzhBSDJOR6YCAPt1HYCzeXWg1vwwjn/cUxwqRNhhtf1dlewoZYCQ==}
 
   onetime@7.0.0:
     resolution: {integrity: sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ==}
@@ -5353,6 +5384,8 @@ snapshots:
   obug@2.2.1: {}
 
   obug@3.0.0: {}
+
+  occt-import-js@0.0.23: {}
 
   onetime@7.0.0:
     dependencies:

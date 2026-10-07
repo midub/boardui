@@ -8,7 +8,6 @@ import {
   BufferGeometry,
   Color,
   Group,
-  InstancedMesh,
   type Material,
   Matrix4,
   Mesh,
@@ -23,6 +22,7 @@ import {
   DRAWING_ROLES,
   readBoardExtension,
 } from './board-extension.js';
+import { ComponentBatch, ComponentBodies } from './bodies.js';
 import { FeatureRanges } from './feature-ranges.js';
 import { type ElementKind, featureId, idKind, parseFeatureId } from './ids.js';
 import {
@@ -66,12 +66,7 @@ export interface LayerModel {
   readonly color: string | undefined;
 }
 
-/** Component meshes that share geometry and material, drawn as one instanced mesh. */
-export interface ComponentBatch {
-  readonly mesh: InstancedMesh;
-  /** Component row of each instance. */
-  readonly rows: Uint32Array;
-}
+export { ComponentBatch } from './bodies.js';
 
 /** An element resolved to its state texels and bounding box (spec §9). */
 export interface ResolvedElement {
@@ -110,7 +105,8 @@ export class BoardModel {
   readonly componentOffset: number;
   /** Number of state texels: every feature and every component. */
   readonly stateCount: number;
-  readonly componentBatches: readonly ComponentBatch[];
+  /** The components' bodies: the asset's, and runtime models. */
+  readonly bodies: ComponentBodies;
 
   readonly #layerById = new Map<string, LayerModel>();
   readonly #rows: Record<'component' | 'pin' | 'net' | 'instance', Map<string, number>>;
@@ -118,7 +114,6 @@ export class BoardModel {
   readonly #pinTexels: RowIndex;
   readonly #componentTexels: RowIndex;
   readonly #instanceTexels: RowIndex;
-  readonly #componentBounds: Box3[];
   /** Rows of {@link attributes} per component row (spec §8.2). */
   readonly #attributeRows: number[][];
   /** Feature rows per layer, by {@link sourceKey}. */
@@ -156,14 +151,28 @@ export class BoardModel {
     this.#componentTexels = this.#indexFeatures('component', components.count);
     this.#instanceTexels = this.#indexFeatures('instance', instances.count);
 
-    this.#componentBounds = Array.from({ length: components.count }, () => new Box3());
     this.#attributeRows = Array.from({ length: components.count }, () => []);
     for (let row = 0; row < attributes.count; row++) {
       this.#attributeRows[attributes.get('component', row) as number]?.push(row);
     }
-    this.componentBatches = this.#batchComponents(nodes);
+    this.bodies = this.#batchComponents(nodes);
     this.componentGroup.name = 'components';
     this.root.add(this.componentGroup);
+    this.updateBounds();
+  }
+
+  /** The drawn component batches: the asset's, and runtime models while they are shown. */
+  get componentBatches(): readonly ComponentBatch[] {
+    return this.bodies.batches;
+  }
+
+  /** A component's BOM attributes by name (spec §8.2, profile 0.8); `{}` if it has none. */
+  componentAttributes(row: number): Record<string, string> {
+    return this.#attributes(row) ?? {};
+  }
+
+  /** Recomputes {@link bounds}, for example after runtime models replaced placeholders. */
+  updateBounds(): void {
     this.root.updateMatrixWorld(true);
     this.bounds.setFromObject(this.root);
   }
@@ -295,7 +304,7 @@ export class BoardModel {
       case 'component': {
         const row = this.#rows.component.get(id);
         if (row === undefined) return null;
-        const bounds = this.#componentBounds[row] as Box3;
+        const bounds = this.bodies.bounds(row);
         const box = bounds.isEmpty()
           ? this.#featureBox(this.#componentTexels.get(row))
           : bounds.clone();
@@ -327,9 +336,9 @@ export class BoardModel {
       }
     }
     if (this.componentGroup.visible) {
-      this.#componentBounds.forEach((box, row) => {
-        if (!hidden(this.componentOffset + row)) target.union(box);
-      });
+      for (let row = 0; row < this.components.count; row++) {
+        if (!hidden(this.componentOffset + row)) target.union(this.bodies.bounds(row));
+      }
     }
     return target;
   }
@@ -438,10 +447,7 @@ export class BoardModel {
     for (const layer of this.layers) {
       for (const mesh of layer.meshes) mesh.geometry.dispose();
     }
-    for (const batch of this.componentBatches) {
-      batch.mesh.geometry.dispose();
-      batch.mesh.dispose();
-    }
+    this.bodies.dispose();
   }
 
   #feature(id: string): readonly [LayerModel, number] | null {
@@ -496,7 +502,7 @@ export class BoardModel {
       const instance = this.components.get('instance', c);
       if (typeof instance === 'number' && inside(instance)) {
         texels.push(this.componentOffset + c);
-        box.union(this.#componentBounds[c] as Box3);
+        box.union(this.bodies.bounds(c));
       }
     }
     return {
@@ -589,15 +595,28 @@ export class BoardModel {
     return new RowIndex(offsets, values);
   }
 
-  /** Groups component meshes by geometry and material into instanced meshes (spec §6.8). */
-  #batchComponents(nodes: ReadonlyMap<number, Object3D>): ComponentBatch[] {
+  /**
+   * Groups component meshes by geometry and material into instanced meshes (spec §6.8), and
+   * finds the components whose body is a placeholder: meshes on the node itself with the
+   * materials `boardui/body` and `boardui/pin1` only.
+   */
+  #batchComponents(nodes: ReadonlyMap<number, Object3D>): ComponentBodies {
     const groups = new Map<string, { source: Mesh; matrices: Matrix4[]; rows: number[] }>();
-    for (let row = 0; row < this.components.count; row++) {
+    const count = this.components.count;
+    const matrices: (Matrix4 | null)[] = new Array(count).fill(null);
+    const replaceable = new Uint8Array(count);
+    for (let row = 0; row < count; row++) {
       const node = nodes.get(this.components.get('node', row) as number);
-      node?.traverse((object) => {
+      if (!node) continue;
+      matrices[row] = node.matrixWorld.clone();
+      let placeholder = true;
+      let meshes = 0;
+      node.traverse((object) => {
         const mesh = object as Mesh;
         if (!mesh.isMesh || (mesh as { isSkinnedMesh?: boolean }).isSkinnedMesh) return;
         const material = mesh.material as Material;
+        meshes++;
+        if (!PLACEHOLDER.test(material.name)) placeholder = false;
         const key = `${mesh.geometry.uuid}/${material.uuid}`;
         let group = groups.get(key);
         if (!group) {
@@ -607,27 +626,23 @@ export class BoardModel {
         group.matrices.push(mesh.matrixWorld.clone());
         group.rows.push(row);
       });
+      replaceable[row] = placeholder && meshes > 0 ? 1 : 0;
     }
-    const box = new Box3();
-    const stored = new Matrix4();
-    return [...groups.values()].map(({ source, matrices, rows }) => {
-      const geometry = source.geometry;
-      geometry.computeBoundingBox();
-      const mesh = new InstancedMesh(geometry, source.material, matrices.length);
-      matrices.forEach((matrix, i) => {
-        mesh.setMatrixAt(i, matrix);
-        // Bound what is drawn: the instance matrix as stored, in float32.
-        mesh.getMatrixAt(i, stored);
-        box.copy(geometry.boundingBox as Box3).applyMatrix4(stored);
-        this.#componentBounds[rows[i] as number]?.union(box);
-      });
-      mesh.computeBoundingBox();
-      mesh.computeBoundingSphere();
-      this.componentGroup.add(mesh);
-      return { mesh, rows: Uint32Array.from(rows) };
-    });
+    const batches = [...groups.values()].map(
+      ({ source, matrices, rows }) =>
+        new ComponentBatch(
+          source.geometry,
+          source.material as Material,
+          Uint32Array.from(rows),
+          matrices,
+        ),
+    );
+    return new ComponentBodies(this.componentGroup, batches, matrices, replaceable);
   }
 }
+
+/** Materials of placeholder bodies and pin-1 markers (spec §6.8, §7), with colour suffixes. */
+const PLACEHOLDER = /^boardui\/(body|pin1)(\/|$)/;
 
 /**
  * Key of a feature in its layer: its instance row (`null` for the converted step's own) and its

@@ -6,8 +6,11 @@ import { BvhBuilder, WORKER_MIN_TRIANGLES } from './bvh-builder.js';
 import { type ViewPreset, viewDirection } from './camera.js';
 import { type BoardSource, loadGltf } from './load.js';
 import { BoardMaterials, XRAY_COPPER_OPACITY, XRAY_OPACITY } from './materials.js';
+import { ModelCache } from './model-cache.js';
+import type { ModelSource } from './model-sources.js';
 import { Picker } from './picking.js';
 import { BoardRenderer, type RenderStats } from './renderer.js';
+import { type ModelMemory, type ModelStatus, RuntimeModels } from './runtime-models.js';
 import { ElementState } from './state.js';
 import { OCCLUSION_INTERVAL, WidgetLayer, type WidgetOptions } from './widgets.js';
 
@@ -61,6 +64,16 @@ export interface BoardViewerEventMap extends HTMLElementEventMap {
    * The board is still loaded while listeners run. `detail` is `info('board')`.
    */
   'bui-unload': CustomEvent<ElementInfo>;
+  /**
+   * Runtime models are loading for the loaded board ({@link BoardViewerElement.modelSources}):
+   * sent after each batch of models swapped in. `detail` is a snapshot of the status.
+   */
+  'bui-model-progress': CustomEvent<ModelStatus>;
+  /**
+   * Every component with a placeholder body has been tried; `detail` is the final status. Not
+   * sent when a load, unload or new sources stop the run first.
+   */
+  'bui-model-done': CustomEvent<ModelStatus>;
 }
 
 /** Constant depth bias of the soldermask, in units of the depth buffer's resolution. */
@@ -154,6 +167,12 @@ export class BoardViewerElement extends ElementBase {
   #press: { x: number; y: number } | null = null;
   #settleUntil = 0;
   readonly #lastView = new Matrix4();
+  #modelSources: readonly ModelSource[] = [];
+  #modelsShown = true;
+  #modelRun: RuntimeModels | null = null;
+  #modelCache: ModelCache | null = null;
+  /** Models loaded for the current board, so that switching sources or reloading reuses them. */
+  readonly #modelMemory: ModelMemory = new Map();
 
   constructor() {
     super();
@@ -255,10 +274,15 @@ export class BoardViewerElement extends ElementBase {
         }
       }
     }
-    for (const { mesh, rows } of model.componentBatches) {
-      mesh.material = materials.components(mesh.material as Material, rows, model.componentOffset);
+    for (const { mesh, rowAttribute } of model.componentBatches) {
+      mesh.material = materials.components(
+        mesh.material as Material,
+        rowAttribute,
+        model.componentOffset,
+      );
     }
     materials.setXray(this.#xray);
+    model.bodies.showModels(this.#modelsShown);
     const pickLayers = model.layers.filter(
       (layer) => !('role' in layer.info) || layer.info.role !== 'SOLDERMASK',
     );
@@ -278,6 +302,7 @@ export class BoardViewerElement extends ElementBase {
     this.#showLoaded();
     loaded.pickable = this.#prepareBvhs(loaded);
     this.#dispatch('bui-load', model.describe('board') as ElementInfo);
+    if (this.#loaded === loaded) this.#startModels(loaded);
   }
 
   /**
@@ -355,6 +380,43 @@ export class BoardViewerElement extends ElementBase {
     layer.group.visible = visible;
     this.#visibility++;
     this.#requestRender();
+  }
+
+  /**
+   * Where runtime models come from, tried in order for every component with a placeholder body
+   * (e.g. `kicadSource()` and `mappingSource(url)` of `@boardui/models`). After each load the
+   * models are fetched in the background and replace the placeholders as they arrive
+   * (`bui-model-progress`, `bui-model-done`); `bui-load` doesn't wait for them. Setting it starts
+   * over for the loaded board. Default: none.
+   */
+  get modelSources(): readonly ModelSource[] {
+    return this.#modelSources;
+  }
+
+  set modelSources(sources: readonly ModelSource[]) {
+    this.#modelSources = [...sources];
+    if (this.#loaded) this.#startModels(this.#loaded);
+  }
+
+  /**
+   * Whether runtime models are shown (default) or the placeholder bodies they replace. Models
+   * embedded by the converter (`--models`) are always shown.
+   */
+  get modelsShown(): boolean {
+    return this.#modelsShown;
+  }
+
+  set modelsShown(on: boolean) {
+    this.#modelsShown = on;
+    const loaded = this.#loaded;
+    if (!loaded) return;
+    loaded.model.bodies.showModels(on);
+    this.#modelsChanged(loaded);
+  }
+
+  /** Status of the runtime models of the loaded board, or `null` without sources or board. */
+  get modelStatus(): ModelStatus | null {
+    return this.#modelRun ? structuredClone(this.#modelRun.status) : null;
   }
 
   /** Whether x-ray mode is on. */
@@ -560,6 +622,8 @@ export class BoardViewerElement extends ElementBase {
   #unload(): void {
     if (!this.#loaded) return;
     this.#dispatch('bui-unload', this.#loaded.model.describe('board') as ElementInfo);
+    this.#modelRun?.abort();
+    this.#modelRun = null;
     this.#loaded.bvhs?.dispose();
     this.#widgetBoxes.clear();
     this.#widgetVisibility.clear();
@@ -580,6 +644,57 @@ export class BoardViewerElement extends ElementBase {
     // Zoom limits and clipping cover the whole board, hidden layers too.
     renderer.setBounds(loaded.model.bounds);
     renderer.frame(this.#shownBounds(loaded), viewDirection('iso'), false);
+  }
+
+  /**
+   * Starts loading runtime models for the loaded board, after removing those of an earlier run.
+   */
+  #startModels(loaded: Loaded): void {
+    this.#modelRun?.abort();
+    this.#modelRun = null;
+    const { model, materials } = loaded;
+    const removed = model.bodies.clearModels();
+    for (const batch of removed) materials.release(batch.mesh.material as Material);
+    if (removed.length) this.#modelsChanged(loaded);
+    if (!this.#modelSources.length) return;
+    this.#modelCache ??= new ModelCache();
+    const run: RuntimeModels = new RuntimeModels({
+      model,
+      sources: this.#modelSources,
+      cache: this.#modelCache,
+      memory: this.#modelMemory,
+      apply: (key, geometry, rows, matrices) => {
+        if (this.#modelRun !== run) return;
+        for (const batch of model.bodies.removeModel(key)) {
+          materials.release(batch.mesh.material as Material);
+        }
+        for (const batch of model.bodies.setModel(key, geometry.parts, rows, matrices)) {
+          batch.mesh.material = materials.components(
+            batch.mesh.material as Material,
+            batch.rowAttribute,
+            model.componentOffset,
+          );
+        }
+        materials.setXray(this.#xray);
+      },
+      report: (status) => {
+        if (this.#modelRun !== run) return;
+        this.#modelsChanged(loaded);
+        const type = status.complete ? 'bui-model-done' : 'bui-model-progress';
+        this.#dispatch(type, structuredClone(status));
+      },
+    });
+    this.#modelRun = run;
+    void run.run();
+  }
+
+  /** Bodies changed (runtime models swapped in or out): bounds, widgets and the frame follow. */
+  #modelsChanged({ model }: Loaded): void {
+    model.updateBounds();
+    this.#renderer?.setBounds(model.bounds);
+    this.#widgetBoxes.clear();
+    this.#visibility++;
+    this.#requestRender();
   }
 
   /** Bounding box of what is shown; the whole board if nothing is. */
@@ -690,10 +805,16 @@ export class BoardViewerElement extends ElementBase {
     this.#dispatch(type, id ? this.info(id) : null);
   }
 
-  #dispatch<K extends 'bui-hover' | 'bui-select' | 'bui-progress' | 'bui-load' | 'bui-unload'>(
-    type: K,
-    detail: BoardViewerEventMap[K]['detail'],
-  ): void {
+  #dispatch<
+    K extends
+      | 'bui-hover'
+      | 'bui-select'
+      | 'bui-progress'
+      | 'bui-load'
+      | 'bui-unload'
+      | 'bui-model-progress'
+      | 'bui-model-done',
+  >(type: K, detail: BoardViewerEventMap[K]['detail']): void {
     this.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
   }
 

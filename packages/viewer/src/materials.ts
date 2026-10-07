@@ -3,7 +3,7 @@
  * element state texture (see `state.ts`). The same graph runs on WebGPU and on the WebGL2
  * fallback of `WebGPURenderer`.
  */
-import { DataTexture, InstancedBufferAttribute, type Material, NearestFilter } from 'three';
+import { DataTexture, type InstancedBufferAttribute, type Material, NearestFilter } from 'three';
 import {
   attribute,
   instancedBufferAttribute,
@@ -77,9 +77,16 @@ export class BoardMaterials {
   }
 
   /** Material for a component batch; `rows` holds each instance's component row. */
-  components(source: Material, rows: Uint32Array, offset: number): NodeMaterial {
-    const attribute = new InstancedBufferAttribute(Float32Array.from(rows), 1);
-    return this.#create(source, instancedBufferAttribute<'float'>(attribute, 'float').add(offset));
+  components(source: Material, rows: InstancedBufferAttribute, offset: number): NodeMaterial {
+    return this.#create(source, instancedBufferAttribute<'float'>(rows, 'float').add(offset));
+  }
+
+  /** Disposes a material made by this object, e.g. of a removed runtime model. */
+  release(material: Material): void {
+    const index = this.#entries.findIndex((entry) => entry.material === material);
+    if (index < 0) return;
+    this.#entries.splice(index, 1);
+    material.dispose();
   }
 
   /** Makes every board material translucent, or restores it. */
