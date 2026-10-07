@@ -263,9 +263,11 @@ export class RuntimeModels {
   async #fetchAndParse(ref: ModelRef): Promise<ModelGeometry | null> {
     const loader = modelLoader(ref.format);
     if (!loader) throw new Error(`No loader for ${ref.format} models`);
-    const { cache } = this.#options;
+    // Only immutable models go into the persistent cache: it never revalidates, so a model whose
+    // URL keeps its content changeable is left to the HTTP cache.
+    const cache = ref.immutable ? this.#options.cache : null;
     const signal = this.signal;
-    const cached = await cache.get(ref.key, loader.cacheVersion);
+    const cached = await cache?.get(ref.key, loader.cacheVersion);
     if (cached?.kind === 'missing') return null;
     if (cached?.kind === 'parsed') {
       this.status.cached++;
@@ -279,7 +281,7 @@ export class RuntimeModels {
         this.status.requests++;
         const response = await fetch(ref.url, { signal });
         if (response.status === 404 || response.status === 410) {
-          if (ref.immutable) void cache.putMissing(ref.key);
+          void cache?.putMissing(ref.key);
           return null;
         }
         if (!response.ok) throw new Error(`${ref.url}: HTTP ${response.status}`);
@@ -287,18 +289,22 @@ export class RuntimeModels {
       } else if (ref.load) {
         data = await ref.load(signal);
         if (!data) {
-          if (ref.immutable) void cache.putMissing(ref.key);
+          void cache?.putMissing(ref.key);
           return null;
         }
       } else {
         throw new Error(`Model ${ref.key} has neither url nor load`);
       }
       this.status.bytes += data.byteLength;
-      if (loader.cacheVersion === undefined) void cache.putFile(ref.key, data);
     }
     const geometry = await loader.load(data, { ref, signal });
-    if (loader.cacheVersion !== undefined) {
-      void cache.putParsed(ref.key, loader.cacheVersion, geometry.parts);
+    // A model without triangles would hide the placeholder and show nothing: a failure, so the
+    // next source gets its turn.
+    if (!triangles(geometry)) throw new Error(`Model ${ref.key} has no triangles`);
+    if (loader.cacheVersion === undefined) {
+      if (cached?.kind !== 'file') void cache?.putFile(ref.key, data);
+    } else {
+      void cache?.putParsed(ref.key, loader.cacheVersion, geometry.parts);
     }
     return geometry;
   }

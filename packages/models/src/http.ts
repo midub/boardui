@@ -140,3 +140,35 @@ export class FileCache {
     }
   }
 }
+
+/**
+ * One read per key, shared by everyone who asks while it runs. A failed or aborted read is
+ * dropped, so the next caller reads again. The read runs on the first caller's signal: when that
+ * caller is cancelled (a new run of the viewer replaces the old one), the others start their own.
+ */
+export class SharedReads<T> {
+  readonly #reads = new Map<string, { promise: Promise<T>; signal: AbortSignal }>();
+
+  async get(
+    key: string,
+    signal: AbortSignal,
+    read: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    for (;;) {
+      let entry = this.#reads.get(key);
+      if (!entry) {
+        const created = { promise: read(signal), signal };
+        entry = created;
+        this.#reads.set(key, created);
+        created.promise.catch(() => {
+          if (this.#reads.get(key) === created) this.#reads.delete(key);
+        });
+      }
+      try {
+        return await entry.promise;
+      } catch (error) {
+        if (entry.signal === signal || signal.aborted || !entry.signal.aborted) throw error;
+      }
+    }
+  }
+}

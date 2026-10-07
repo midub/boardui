@@ -112,4 +112,19 @@ describe('mappingSource', () => {
     await expect(source.resolve(component(), board, signal)).rejects.toThrow(/mapping/);
     expect(await source.resolve(component(), board, signal)).not.toBeNull();
   });
+
+  it('loads the mapping again when the run that started the load is cancelled', async () => {
+    const fetch = (async (_url: string, init?: RequestInit) => {
+      await Promise.resolve();
+      init?.signal?.throwIfAborted();
+      return new Response(JSON.stringify(mapping));
+    }) as unknown as typeof globalThis.fetch;
+    const source = mappingSource('https://models.example/models.json', { fetch });
+    const old = new AbortController();
+    const first = source.resolve(component(), board, old.signal);
+    const second = source.resolve(component(), board, signal);
+    old.abort();
+    await expect(first).rejects.toThrow();
+    expect(await second).not.toBeNull();
+  });
 });

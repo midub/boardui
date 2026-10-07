@@ -9,7 +9,13 @@ import type {
   ModelRef,
   ModelSource,
 } from '@boardui/viewer';
-import { type CacheStorageLike, FileCache, Limiter, type RequestStats } from './http.js';
+import {
+  type CacheStorageLike,
+  FileCache,
+  Limiter,
+  type RequestStats,
+  SharedReads,
+} from './http.js';
 import { KICAD_LIBRARIES } from './kicad-libraries.js';
 import {
   type KicadModel,
@@ -86,31 +92,23 @@ export function kicadSource(options: KicadSourceOptions = {}): KicadSource {
   const libraries = [...(options.libraries ?? KICAD_LIBRARIES)];
   const limiter = new Limiter(options.concurrency ?? 4, options.fetch);
   const cache = new FileCache(KICAD_CACHE_NAME, options.cache);
-  const parsed = new Map<string, Promise<KicadModel[] | null>>();
+  const parsed = new SharedReads<KicadModel[] | null>();
 
   const fileUrl = (project: string, path: string, tag: string) =>
     `${base}/projects/${encodeURIComponent(project)}/repository/files/${encodeURIComponent(path)}/raw?ref=${encodeURIComponent(tag)}`;
 
   /** The models of a footprint, or `null` if it doesn't exist; each file is read once. */
-  const footprintModels = (url: string, signal: AbortSignal): Promise<KicadModel[] | null> => {
-    let models = parsed.get(url);
-    if (!models) {
-      models = (async () => {
-        let data = await cache.get(url);
-        if (data === undefined) {
-          data = await limiter.fetch(url, signal);
-          void cache.put(url, data);
-        } else {
-          limiter.stats.cached++;
-        }
-        return data === null ? null : parseKicadModels(new TextDecoder().decode(data));
-      })();
-      parsed.set(url, models);
-      // A failed or aborted read is tried again next time.
-      models.catch(() => parsed.delete(url));
-    }
-    return models;
-  };
+  const footprintModels = (url: string, signal: AbortSignal): Promise<KicadModel[] | null> =>
+    parsed.get(url, signal, async (readSignal) => {
+      let data = await cache.get(url);
+      if (data === undefined) {
+        data = await limiter.fetch(url, readSignal);
+        void cache.put(url, data);
+      } else {
+        limiter.stats.cached++;
+      }
+      return data === null ? null : parseKicadModels(new TextDecoder().decode(data));
+    });
 
   return {
     name: 'KiCad',

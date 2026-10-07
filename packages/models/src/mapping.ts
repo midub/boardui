@@ -9,6 +9,7 @@ import type {
   ModelRef,
   ModelSource,
 } from '@boardui/viewer';
+import { SharedReads } from './http.js';
 
 /** What a rule matches; every given field must match (`*` and `?` are wildcards). */
 export interface MappingMatch {
@@ -83,23 +84,18 @@ export function mappingSource(
   const base = isFile
     ? (options.baseUrl ?? globalThis.location?.href ?? 'http://localhost/')
     : new URL(String(mapping), globalThis.location?.href).href;
-  let rules: Promise<MappingRule[]> | null = null;
-  const load = (signal: AbortSignal): Promise<MappingRule[]> => {
-    rules ??= (async () => {
+  const rules = new SharedReads<MappingRule[]>();
+  const load = (signal: AbortSignal): Promise<MappingRule[]> =>
+    rules.get(base, signal, async (readSignal) => {
       const file = isFile
         ? mapping
         : ((await (async () => {
-            const response = await fetcher(base, { signal });
+            const response = await fetcher(base, { signal: readSignal });
             if (!response.ok) throw new Error(`${base}: HTTP ${response.status}`);
             return response.json();
           })()) as MappingFile);
       return orderRules(checkMapping(file));
-    })();
-    rules.catch(() => {
-      rules = null;
     });
-    return rules;
-  };
   const name =
     options.name ??
     (isFile ? 'Models' : decodeURIComponent(base.split(/[?#]/)[0]?.split('/').pop() || 'Models'));

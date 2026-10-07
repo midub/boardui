@@ -43,7 +43,8 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
 
 - **Runtime 3D models:** after a board loads, `<board-viewer>` replaces placeholder bodies with
   real models from pluggable sources (`modelSources`, `modelsShown`, `bui-model-progress`,
-  `bui-model-done`), instanced like placeholders and cached in Cache Storage. The new
+  `bui-model-done`), instanced like placeholders; immutable ones (KiCad's) are cached in Cache
+  Storage. The new
   `@boardui/models` has `kicadSource` (KiCad's libraries, fetched from gitlab.com by footprint
   name), `mappingSource` (a model mapping file on your own server, with wildcards, `refDes` and
   attribute matches, URLs and templates) and the STEP (OpenCascade in a worker, loaded on first

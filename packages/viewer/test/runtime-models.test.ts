@@ -335,6 +335,57 @@ describe('runtime models', () => {
     const { status } = await run(model, [s]);
     expect(status.failures[0]?.message).toMatch(/No loader for nope/);
   });
+
+  it('take a model without triangles for a failure and ask the next source', async () => {
+    registerModelLoader('empty', { load: async () => ({ parts: [] }) });
+    const empty: ModelSource = {
+      name: 'empty',
+      resolve: async (c) =>
+        c.refDes === 'U1'
+          ? {
+              key: 'nothing',
+              format: 'empty',
+              immutable: true,
+              load: async () => new ArrayBuffer(1),
+            }
+          : null,
+    };
+    const caches = memoryCaches();
+    const { status } = await run(
+      await board(),
+      [empty, source('s', (c) => (c.refDes === 'U1' ? 'u1' : null))],
+      new ModelCache(caches),
+    );
+    expect(status.sources).toEqual([
+      { name: 'empty', loaded: 0, missing: 0, failed: 1 },
+      { name: 's', loaded: 1, missing: 0, failed: 0 },
+    ]);
+    expect(status.failures[0]?.message).toMatch(/no triangles/);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(await new ModelCache(caches).get('nothing', undefined)).toBeNull();
+  });
+
+  it('keep models that may change out of the persistent cache', async () => {
+    const caches = memoryCaches();
+    const loads: string[] = [];
+    const s: ModelSource = {
+      name: 's',
+      resolve: async (c) => ({
+        key: `box-${c.package}`,
+        format: 'test',
+        load: async () => {
+          loads.push(c.refDes);
+          return new TextEncoder().encode('1').buffer;
+        },
+      }),
+    };
+    await run(await board(), [s], new ModelCache(caches));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(loads).toHaveLength(3);
+    const b = await run(await board(), [s], new ModelCache(caches));
+    expect(loads).toHaveLength(6);
+    expect(b.status).toMatchObject({ loaded: 4, cached: 0 });
+  });
 });
 
 describe('the model cache', () => {

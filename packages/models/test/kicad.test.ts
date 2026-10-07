@@ -116,6 +116,18 @@ describe('kicadSource', () => {
     expect(server.maxActive()).toBe(4);
   });
 
+  it('reads a footprint again when the run that started the read is cancelled', async () => {
+    const server = gitlab({ 'C_0402_1005Metric.kicad_mod': FOOTPRINT });
+    const source = kicadSource({ fetch: server.fetch, cache: null });
+    const old = new AbortController();
+    const first = source.resolve(C25, kicad9, old.signal);
+    const second = source.resolve(C25, kicad9, signal);
+    old.abort();
+    await expect(first).rejects.toThrow();
+    expect((await second)?.key).toBe('kicad/9.0.9.1/Capacitor_SMD.3dshapes/C_0402_1005Metric.step');
+    expect(server.requests).toHaveLength(1);
+  });
+
   it('remembers footprints, missing ones too, in Cache Storage', async () => {
     const caches = memoryCaches();
     const first = gitlab({ 'C_0402_1005Metric.kicad_mod': FOOTPRINT });

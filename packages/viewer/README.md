@@ -98,13 +98,13 @@ viewer.addEventListener('bui-model-done', (e) => console.log(e.detail.loaded, 'm
   component (`id`, `refDes`, `part`, `package`, `side`, `mount`, `attributes` from
   `extras.boardui.attributes`, `{}` without) and the board (`profileVersion`, `source` with
   `software` from profile 0.8), and returns a `ModelRef` or `null`. The first model that resolves
-  and loads wins; `null`, a rejection, a missing file (HTTP 404) or a parse error falls through to
-  the next source; with none the placeholder stays.
-- **`ModelRef`**: `key` (dedupe, sharing, cache: it must change when the content does), `url` or
+  and loads wins; `null`, a rejection, a missing file (HTTP 404), a parse error or a model
+  without triangles falls through to the next source; with none the placeholder stays.
+- **`ModelRef`**: `key` (dedupe, sharing, cache), `url` or
   `load(signal)` (bytes, or `null` for missing), `format` (`glb`, `gltf`, `step`, `obj` or any
   registered one), `transform` into the package frame (`offsetMm`, `rotationDeg`, `scale` with
-  the mapping file's semantics, spec §6.9, or a column-major `matrix`), `immutable` (a missing
-  file is remembered too) and `attribution`.
+  the mapping file's semantics, spec §6.9, or a column-major `matrix`), `immutable` (the content
+  behind the key never changes, so the model goes into the persistent cache) and `attribution`.
 - **Loaders** turn bytes into parts (`{ geometry, material }`, Y up in metres):
   `registerModelLoader(format, loader)`. GLB and glTF are built in (default scene flattened, node
   transforms baked in). A loader with `cacheVersion` (STEP) has its parsed geometry cached instead
@@ -118,9 +118,11 @@ viewer.addEventListener('bui-model-done', (e) => console.log(e.detail.loaded, 'm
   they arrive, in batches of scene updates (at most one per 150 ms). Eight components are
   resolved at a time, each key is loaded once, and the next load, unload or `modelSources` stops
   the run.
-- **Cache.** Fetched files, and the parsed geometry of loaders with `cacheVersion`, go into Cache
-  Storage (`boardui-models-v1`, by key; secure contexts only), so a board's second load makes no
-  model requests and parses no STEP. Cache errors are ignored. Models stay in memory while the
+- **Cache.** Immutable models (the file, or the parsed geometry of loaders with `cacheVersion`)
+  and immutable missing files go into Cache Storage (`boardui-models-v1`, by key; secure contexts
+  only), so a board's second load makes no requests for them and parses no STEP. This cache never
+  revalidates; other models are fetched again on every load, through the HTTP cache. Cache errors
+  are ignored. Models stay in memory while the
   element lives, pruned to those of the current board.
 
 Events: `bui-model-progress` after each batch, and `bui-model-done` when every component has been

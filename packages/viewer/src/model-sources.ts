@@ -81,8 +81,7 @@ export interface ModelTransform {
 export interface ModelRef {
   /**
    * Identifies the model's content: components with the same key share one load and one
-   * geometry, and the persistent cache stores the model under it. Include a version (a tag, a
-   * hash) when the content behind a URL can change.
+   * geometry, and the persistent cache stores an {@link immutable} model under it.
    */
   readonly key: string;
   readonly format: ModelFormat;
@@ -96,8 +95,9 @@ export interface ModelRef {
   /** Into the package frame; default identity (the model follows spec §6.9's conventions). */
   readonly transform?: ModelTransform;
   /**
-   * The content never changes (e.g. a file at a git tag): a missing file (HTTP 404) is
-   * remembered in the persistent cache too.
+   * The content behind the key never changes (e.g. a file at a git tag): the model, or its
+   * absence (HTTP 404), goes into the persistent cache, which never asks again. Other models are
+   * fetched on every load, through the browser's HTTP cache.
    */
   readonly immutable?: boolean;
   readonly attribution?: ModelAttribution;

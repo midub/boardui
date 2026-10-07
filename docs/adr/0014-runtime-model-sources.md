@@ -22,7 +22,8 @@ some name, then a file.
   §8.4) and the board (with its exporting software, §8.3) to a `ModelRef`: a key, a URL or a
   loader, a format and a transform into the package frame. The viewer tries its sources in order,
   falls through on misses and failures, never replaces models embedded by the converter, and
-  caches what it fetched (and parsed) in Cache Storage. The mechanism and the glTF loader are in
+  caches immutable models (fetched and parsed) in Cache Storage; others go through the HTTP
+  cache, since the persistent cache never revalidates. The mechanism and the glTF loader are in
   `@boardui/viewer`; sources and other formats are separate.
 - **STEP in the browser** via occt-import-js (OpenCascade compiled to WebAssembly, LGPL-2.1), in
   a Web Worker loaded on first use, in a separate package (`@boardui/models`). The converter

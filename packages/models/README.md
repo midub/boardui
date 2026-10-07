@@ -35,7 +35,7 @@ module-level or `useMemo`); in Angular: `<bui-board-viewer [modelSources]="sourc
 Reads STEP (AP203, AP214, AP242) with face colours in a worker (`dist/step.worker.js`), which
 loads the WebAssembly module `occt/occt-import-js.wasm` (7.6 MB, 3.1 MB gzipped) with the first
 STEP file and stops after `idleTimeout` (15 s) without work. The viewer caches the tessellated
-result in Cache Storage, so a board's second load parses no STEP.
+result of immutable models (KiCad's) in Cache Storage, so a board's second load parses no STEP.
 
 | Option | Default | |
 |---|---|---|
@@ -119,8 +119,9 @@ converter reads:
   missing file (404) means this source has no model for the component, and the viewer asks the
   next source. To try several URL patterns, use several sources.
 - `offsetMm`, `rotationDeg`, `scale` as in spec §6.9.
-- The key is the URL: change the URL (a version in the path or query) when a model changes, since
-  the viewer caches by key.
+- The key is the URL. A server can change its files, so the viewer keeps these models out of its
+  persistent cache: each load fetches them again through the browser's HTTP cache (send
+  `Cache-Control` to save requests) and parses STEP again.
 
 The converter reads the same file and skips, with a warning, the rules that only the viewer can
 apply (wildcards, `refDes`, `attributes` or several fields, URLs, templates, STEP and OBJ).
@@ -148,7 +149,8 @@ export function myServer(base: string): ModelSource {
 
 Use `load(signal)` instead of `url` to fetch the bytes yourself (rate limits, authentication;
 resolve `null` for a missing file), `transform` to place a model that doesn't follow spec §6.9's
-conventions, and `immutable: true` if missing files stay missing.
+conventions, and `immutable: true` if the content behind the key never changes (the viewer then
+keeps the model, or its absence, in its persistent cache and never asks again).
 
 **EasyEDA (a sketch, not implemented):** LCSC parts carry their LCSC number as a BOM attribute
 (`attributes.LCSC`, e.g. `C139797`). An EasyEDA source would look the part up in EasyEDA's
