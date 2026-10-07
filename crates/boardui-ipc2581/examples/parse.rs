@@ -3,6 +3,8 @@
 //! ```text
 //! cargo run --release -p boardui-ipc2581 --example parse -- spec/samples/ipc-testcases/testcase1-RevC-Assembly.xml
 //! ```
+//!
+//! (`python3 spec/samples/ipc-testcases/fetch.py` fetches the IPC consortium test cases.)
 
 use std::fs::File;
 use std::io::BufReader;

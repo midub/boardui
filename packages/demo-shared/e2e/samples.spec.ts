@@ -1,11 +1,16 @@
 // "The demo converts every sample in the browser" (roadmap M5): each sample is downloaded,
 // converted by the WASM converter in a worker and shown. The IPC consortium test cases aren't part
 // of the demo (it only links to them), so they are opened through the file input from
-// `spec/samples`, as a user who downloaded them would.
-import { fileURLToPath } from 'node:url';
+// `spec/samples/ipc-testcases` (once fetched), as a user who downloaded them would.
 import { expect, type Page, test } from '@playwright/test';
-import { SAMPLES, TEST_CASES, testCasePath } from '../src/samples.js';
-import { collectErrors, type DemoGlobal, openBoard, waitForBoard } from './helpers.js';
+import { SAMPLES, TEST_CASES } from '../src/samples.js';
+import {
+  collectErrors,
+  type DemoGlobal,
+  openBoard,
+  testCaseFile,
+  waitForBoard,
+} from './helpers.js';
 
 /** Checks the conversion of the board on the page and records its numbers. */
 async function checkConversion(page: Page, name: string): Promise<void> {
@@ -46,13 +51,10 @@ for (const sample of SAMPLES) {
 
 for (const testCase of TEST_CASES) {
   test(`converts ${testCase.id} in the browser (opened as a file)`, async ({ page }) => {
+    const file = testCaseFile(testCase.file);
     const errors = collectErrors(page);
     await page.goto('./');
-    await page
-      .locator('#file-input')
-      .setInputFiles(
-        fileURLToPath(new URL(`../../../spec/samples/${testCasePath(testCase)}`, import.meta.url)),
-      );
+    await page.locator('#file-input').setInputFiles(file);
     await waitForBoard(page);
     await checkConversion(page, testCase.file.replace(/\.xml$/, ''));
     expect(errors).toEqual([]);

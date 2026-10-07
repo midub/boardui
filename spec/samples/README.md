@@ -4,6 +4,8 @@ Each sample is an IPC-2581 input plus the expected boardui asset. Together they 
 
 ## Corpus
 
+The IPC consortium test cases (`ipc-testcases/`) aren't in the repository: the consortium publishes no licence for them, so the repository links to them, and `python3 spec/samples/ipc-testcases/fetch.py` fetches them from the consortium ([`ipc-testcases/README.md`](ipc-testcases/README.md)). Without them, their tests are skipped.
+
 | Sample | Source | Exercises |
 |---|---|---|
 | [`minimal-2layer`](hand-written/minimal-2layer/) | hand-written | one resistor, two pads, one trace, one via; the smallest conformant asset |
@@ -78,5 +80,5 @@ The Khronos step fails on any error or warning except `UNRESERVED_EXTENSION_PREF
 ## Rules
 
 - Only add boards whose licence allows redistribution, and record the source and licence next to each sample.
-- The IPC consortium test cases are test data only. Don't ship them in published packages, release archives or the demos: the demos only link to them, and their builds fail if the output contains one (`packages/demo-shared/src/build/check-dist.ts`).
+- The IPC consortium test cases are test data only, and the repository doesn't host them: don't commit them (git ignores `ipc-testcases/*.xml`), and don't ship them in published packages, release archives or the demos. [`ipc-testcases/sources.json`](ipc-testcases/sources.json) lists where the consortium publishes each one and its SHA-256; the demos link to the consortium's archives, and their builds fail if the output contains a test case (`packages/demo-shared/src/build/check-dist.ts`).
 - Keep hand-written samples minimal: one spec rule per file.

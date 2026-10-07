@@ -16,8 +16,12 @@ jobs:
   rust:
     name: Rust
     runs-on: ubuntu-latest
+    env:
+      BOARDUI_REQUIRE_IPC_TESTCASES: 1
     steps:
       - uses: actions/checkout@v7
+      # The IPC consortium test cases, for the parser's sample tests and the conformance suite.
+      - uses: ./.github/actions/ipc-testcases
       # Installs the toolchain pinned in rust-toolchain.toml (incl. the wasm32 target).
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
@@ -29,8 +33,11 @@ jobs:
   conformance:
     name: Conformance
     runs-on: ubuntu-latest
+    env:
+      BOARDUI_REQUIRE_IPC_TESTCASES: 1
     steps:
       - uses: actions/checkout@v7
+      - uses: ./.github/actions/ipc-testcases
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v7
@@ -61,7 +68,8 @@ jobs:
       # Rust, wasm-bindgen, wasm-opt, pnpm, Node, `pnpm install` (shared with pages.yml).
       - uses: ./.github/actions/setup-web
       - run: pnpm lint
-      # Also checks that the demos' dist/ contain no IPC consortium test data.
+      # Also checks that the demos' dist/ contain no IPC consortium test data (by the hashes in
+      # spec/samples/ipc-testcases/sources.json: this job doesn't need the files).
       - run: pnpm build
       - run: pnpm test
       # The Pages site (site/: every demo app and the redirect of /boardui/), as pages.yml deploys
@@ -80,12 +88,16 @@ jobs:
     name: Demos (Playwright)
     needs: web
     runs-on: ubuntu-latest
+    env:
+      BOARDUI_REQUIRE_IPC_TESTCASES: 1
     # The screenshots in packages/demo-shared/e2e/*-snapshots are made in this image.
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
       options: --ipc=host
     steps:
       - uses: actions/checkout@v7
+      # The IPC consortium test cases, which the suite opens through the file input.
+      - uses: ./.github/actions/ipc-testcases
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:

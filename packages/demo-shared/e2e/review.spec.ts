@@ -2,9 +2,8 @@
 // PERF_XML=<file> also converts that file (e.g. the ~200k-feature synthetic board) and
 // records its timings. Results go to <dir>/*.png and <dir>/perf-*.json.
 import { writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { expect, type Page, test } from '@playwright/test';
-import { openBoard, screenPoint, settle, viewerCall } from './helpers.js';
+import { openBoard, screenPoint, settle, testCaseFile, viewerCall } from './helpers.js';
 
 const out = process.env.REVIEW_OUT ?? '';
 const perfXml = process.env.PERF_XML;
@@ -113,16 +112,11 @@ test('landing page', async ({ page }) => {
 });
 
 test('testcase1: progress, views, timings', async ({ page }) => {
+  // Test case 1 isn't part of the demo (it links to it): open the fetched file.
+  const file = testCaseFile('testcase1-RevC-Assembly.xml');
   await recordLongTasks(page);
   await page.goto('./?stats');
-  // Test case 1 isn't part of the demo (it links to it): open the file from spec/samples.
-  await page
-    .locator('#file-input')
-    .setInputFiles(
-      fileURLToPath(
-        new URL('../../../spec/samples/ipc-testcases/testcase1-RevC-Assembly.xml', import.meta.url),
-      ),
-    );
+  await page.locator('#file-input').setInputFiles(file);
   await expect(page.locator('#progress-title')).toContainText('Converting', { timeout: 60_000 });
   await expect(page.locator('#progress-step')).toContainText(/overlaps|sheets|extruding/, {
     timeout: 60_000,

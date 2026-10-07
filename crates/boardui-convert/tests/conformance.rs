@@ -7,9 +7,14 @@
 //!   hand-written samples.
 //! - `BOARDUI_CONFORMANCE_OUT=<dir>` writes every converted GLB to `<dir>` (relative to the
 //!   workspace root), for the Khronos validator step in CI.
+//! - The repository only links to the IPC consortium test cases:
+//!   `python3 spec/samples/ipc-testcases/fetch.py` fetches them. A test case's test is skipped
+//!   with a message if its file is missing, or fails if `BOARDUI_REQUIRE_IPC_TESTCASES` is set
+//!   (CI sets it).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use boardui_convert::{Conversion, ModelLibrary, Options, convert, validate};
@@ -43,6 +48,32 @@ fn samples() -> Vec<(String, PathBuf)> {
             (name, p)
         })
         .collect()
+}
+
+/// The files of the IPC consortium test cases (`spec/samples/ipc-testcases/sources.json`).
+fn ipc_test_cases() -> Vec<String> {
+    let manifest =
+        std::fs::read(samples_dir().join("ipc-testcases/sources.json")).expect("manifest");
+    let manifest: serde_json::Value = serde_json::from_slice(&manifest).expect("manifest JSON");
+    manifest["files"]
+        .as_array()
+        .expect("files")
+        .iter()
+        .map(|f| f["file"].as_str().expect("file").to_owned())
+        .collect()
+}
+
+/// A sample that isn't there: skips the test if it is an IPC consortium test case that isn't
+/// fetched, unless `BOARDUI_REQUIRE_IPC_TESTCASES` is set; fails otherwise.
+fn missing(name: &str) {
+    let file = format!("{name}.xml");
+    assert!(ipc_test_cases().contains(&file), "sample {name} not found");
+    let message =
+        format!("{file} is not fetched: run `python3 spec/samples/ipc-testcases/fetch.py`");
+    let required = std::env::var_os("BOARDUI_REQUIRE_IPC_TESTCASES");
+    assert!(required.is_none_or(|v| v.is_empty()), "{message}");
+    // Not `eprintln!`: the test harness hides what that prints in a passing test.
+    writeln!(std::io::stderr(), "skipped: {message}").expect("stderr");
 }
 
 /// Samples whose source puts some component pins off their pads, with the number of such
@@ -117,20 +148,23 @@ macro_rules! samples {
         $(
             #[test]
             fn $test() {
-                let (_, path) = samples()
-                    .into_iter()
-                    .find(|(n, _)| n == $name)
-                    .expect(concat!("sample ", $name));
-                check($name, &path);
+                match samples().into_iter().find(|(n, _)| n == $name) {
+                    Some((_, path)) => check($name, &path),
+                    None => missing($name),
+                }
             }
         )*
 
-        /// Every sample in `spec/samples` has a test above.
+        /// Every sample in `spec/samples`, and every IPC consortium test case, has a test above.
         #[test]
         fn all_samples_are_tested() {
             let tested = [$($name),*];
             for (name, _) in samples() {
                 assert!(tested.contains(&name.as_str()), "sample {name} has no test");
+            }
+            for file in ipc_test_cases() {
+                let name = file.strip_suffix(".xml").expect(".xml");
+                assert!(tested.contains(&name), "test case {name} has no test");
             }
         }
     };
