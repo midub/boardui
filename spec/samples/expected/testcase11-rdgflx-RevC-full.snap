@@ -44,15 +44,15 @@ layer layer/DIELECTRIC_INDEX_14 Dielectric Internal z 0.0686..0.1956 mm File
   1 features {"Sheet": 1}, 6208 vertices, 13136 triangles, top area 10766.8032 mm²
 layer layer/FLEX_1 Copper Internal z 0.0381..0.0686 mm File hidden
   240 features {"Fill": 6, "Pad": 6, "Trace": 51, "Via": 177}, 34196 vertices, 68444 triangles, top area 3014.9127 mm²
-layer layer/DIELECTRIC_INDEX_16 Dielectric Internal z -0.0381..0.0381 mm File
+layer layer/DIELECTRIC_INDEX_16 Dielectric Internal z -0.0381..0.0381 mm File mesh of layer/DIELECTRIC_INDEX_14
   1 features {"Sheet": 1}, 6208 vertices, 13136 triangles, top area 10766.8032 mm²
 layer layer/FLEX_2 Copper Internal z -0.0686..-0.0381 mm File hidden
   569 features {"Fill": 3, "Pad": 38, "Trace": 351, "Via": 177}, 43538 vertices, 80988 triangles, top area 6081.0809 mm²
-layer layer/DIELECTRIC_INDEX_18 Dielectric Internal z -0.1956..-0.0686 mm File
+layer layer/DIELECTRIC_INDEX_18 Dielectric Internal z -0.1956..-0.0686 mm File mesh of layer/DIELECTRIC_INDEX_14
   1 features {"Sheet": 1}, 6208 vertices, 13136 triangles, top area 10766.8032 mm²
 layer layer/INT_4 Copper Internal z -0.2261..-0.1956 mm File hidden
   271 features {"Fill": 1, "Pad": 34, "Trace": 59, "Via": 177}, 24098 vertices, 48128 triangles, top area 3984.4022 mm²
-layer layer/DIELECTRIC_INDEX_20 Dielectric Internal z -0.4293..-0.2261 mm File
+layer layer/DIELECTRIC_INDEX_20 Dielectric Internal z -0.4293..-0.2261 mm File mesh of layer/DIELECTRIC_INDEX_12
   1 features {"Sheet": 1}, 3576 vertices, 7496 triangles, top area 10775.7880 mm²
 layer layer/BOTTOM Copper Bottom z -0.4597..-0.4293 mm File
   89 features {"Fill": 1, "Pad": 4, "Trace": 1, "Via": 83}, 12526 vertices, 25384 triangles, top area 3927.1961 mm²

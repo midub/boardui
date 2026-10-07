@@ -5,11 +5,11 @@ use std::fmt;
 
 use boardui_geom::{DVec2, GRID_STEP, Region};
 use boardui_gltf::buffer::{read_u32s, read_vec3, view_bytes};
-use boardui_gltf::json::{FLOAT, Root, UNSIGNED_SHORT};
+use boardui_gltf::json::{FLOAT, Node, Root, UNSIGNED_SHORT};
 use boardui_gltf::metadata::{NO_ROW, PropertyTable, SCHEMA_JSON};
 use boardui_gltf::{
-    Board, ComponentExtras, EXTENSIONS, FeatureKind, Fiducial, Mount, PROFILE_VERSION, Role, Side,
-    encode_id_segment, glb, layer_id, populate,
+    Board, BoardLayer, ComponentExtras, EXTENSIONS, FeatureKind, Fiducial, Mount, PROFILE_VERSION,
+    Role, Side, encode_id_segment, glb, layer_id, populate,
 };
 
 /// How bad an [`Issue`] is.
@@ -465,18 +465,30 @@ impl Validator<'_> {
             );
         }
         let mut ids = HashSet::new();
+        let repeats = self.repeats(board);
         let entries = board
             .layers
             .iter()
-            .map(|l| (&l.id, &l.name, l.node, l.synthesized))
+            .zip(&repeats)
+            .map(|(l, &r)| (&l.id, &l.name, l.node, l.synthesized, Some((l, r))))
             // A synthesized drill layer (spec §6.3) shows in its ID's unencoded `@`.
             .chain(
                 board
                     .drills
                     .iter()
-                    .map(|d| (&d.id, &d.name, d.node, d.id.starts_with("layer/@"))),
+                    .map(|d| (&d.id, &d.name, d.node, d.id.starts_with("layer/@"), None)),
             );
-        for (id, layer_name, index, synthesized) in entries {
+        // Nodes per mesh: a layer or drill mesh is used by no other node, except by later
+        // dielectrics that repeat its sheet.
+        let mut users: HashMap<u32, usize> = HashMap::new();
+        for mesh in root.nodes.iter().filter_map(|n| n.mesh) {
+            *users.entry(mesh).or_default() += 1;
+        }
+        let mut layer_users: HashMap<u32, usize> = HashMap::new();
+        for mesh in board.layers.iter().filter_map(|l| node(l.node)?.mesh) {
+            *layer_users.entry(mesh).or_default() += 1;
+        }
+        for (id, layer_name, index, synthesized, layer) in entries {
             if *id != layer_id(layer_name, synthesized) || !well_formed(id) {
                 self.report.error(format!(
                     "layer ID `{id}` is not the encoded ID of layer `{layer_name}`"
@@ -491,10 +503,24 @@ impl Validator<'_> {
                         self.report
                             .error(format!("the node of `{id}` must be named `{id}`"));
                     }
-                    if !n.is_identity() {
-                        self.report.error(format!(
+                    match layer {
+                        Some((layer, Some(earlier))) => {
+                            self.repeat(&board.layers[earlier], layer, n);
+                        }
+                        _ if !n.is_identity() => self.report.error(format!(
                             "the node of `{id}` must have an identity transform"
-                        ));
+                        )),
+                        _ => {}
+                    }
+                    if let Some(mesh) = n.mesh {
+                        let allowed = match layer {
+                            Some(_) => layer_users[&mesh],
+                            None => 1,
+                        };
+                        if users[&mesh] > allowed {
+                            self.report
+                                .error(format!("the mesh of `{id}` is used by another node"));
+                        }
                     }
                     if !n.children.is_empty() {
                         self.report
@@ -521,6 +547,54 @@ impl Validator<'_> {
             }
         }
         self.z_order(board);
+    }
+
+    /// For each of `board.layers`, the first earlier layer whose node has the same mesh: the
+    /// layer repeats that layer's geometry (spec §4).
+    fn repeats(&self, board: &Board) -> Vec<Option<usize>> {
+        let mut first = HashMap::new();
+        let nodes = &self.root.nodes;
+        (board.layers.iter().enumerate())
+            .map(|(i, l)| {
+                let mesh = nodes.get(l.node as usize)?.mesh?;
+                let earlier = *first.entry(mesh).or_insert(i);
+                (earlier != i).then_some(earlier)
+            })
+            .collect()
+    }
+
+    /// Spec §4: a dielectric may share the mesh of an earlier dielectric, with a node transform
+    /// that only scales and moves along Y, from that layer's Z range onto its own.
+    fn repeat(&mut self, earlier: &BoardLayer, layer: &BoardLayer, node: &Node) {
+        let (id, other) = (&layer.id, &earlier.id);
+        if layer.role != Role::Dielectric || earlier.role != Role::Dielectric {
+            self.report.error(format!(
+                "`{id}` shares the mesh of `{other}`, but only dielectric layers may share one"
+            ));
+            return;
+        }
+        let [x, t, z] = node.translation.unwrap_or_default();
+        let [sx, s, sz] = node.scale.unwrap_or([1.0; 3]);
+        let rotated = node.rotation.is_some_and(|r| r != [0.0, 0.0, 0.0, 1.0]);
+        // The Z ranges map onto each other within float32 precision.
+        let largest = [earlier.z_min, earlier.z_max, layer.z_min, layer.z_max]
+            .iter()
+            .fold(0.0f64, |m, z| m.max(z.abs()));
+        let tolerance = 2.0 * f32_spacing(largest) + 1e-12;
+        let maps = |from: f64, to: f64| (s * from + t - to).abs() <= tolerance;
+        let moved = node.matrix.is_none()
+            && !rotated
+            && [x, z] == [0.0; 2]
+            && [sx, sz] == [1.0; 2]
+            && s > 0.0
+            && maps(earlier.z_min, layer.z_min)
+            && maps(earlier.z_max, layer.z_max);
+        if !moved {
+            self.report.error(format!(
+                "the node of `{id}` shares the mesh of `{other}`: its transform must scale and \
+                 move it along Y only, from the Z range of `{other}` onto its own"
+            ));
+        }
     }
 
     fn z_order(&mut self, board: &Board) {
@@ -899,10 +973,28 @@ impl Validator<'_> {
             .structural_metadata
             .as_ref()
             .expect("checked");
+        let repeats = self.repeats(board);
         let entries = board
             .layers
             .iter()
-            .map(|l| (l.id.as_str(), l.node, l.feature_table, Some(l)))
+            .zip(&repeats)
+            .filter_map(|(l, &repeats)| match repeats {
+                // A layer that repeats another has that layer's table and geometry, checked
+                // there.
+                Some(earlier) => {
+                    let earlier = &board.layers[earlier];
+                    if l.feature_table != earlier.feature_table {
+                        self.report.error(format!(
+                            "`{}` shares the mesh of `{}` but not its feature table",
+                            l.id, earlier.id
+                        ));
+                    }
+                    None
+                }
+                None => Some((l.id.as_str(), l.node, l.feature_table, Some(l))),
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
             .chain(
                 board
                     .drills
@@ -1444,6 +1536,78 @@ mod tests {
         assert_eq!(check(&root, &bin), Vec::<String>::new());
     }
 
+    /// The `stacked-sheets` sample: PREPREG_2 repeats the core's sheet.
+    fn stacked() -> (Root, Vec<u8>) {
+        let xml =
+            include_bytes!("../../../spec/samples/hand-written/stacked-sheets/stacked-sheets.xml");
+        let glb = crate::convert(xml, &crate::Options::default()).unwrap().glb;
+        let (root, bin) = glb::read(&glb).unwrap();
+        (root, bin.to_vec())
+    }
+
+    fn layer<'b>(board: &'b Board, name: &str) -> &'b BoardLayer {
+        board.layers.iter().find(|l| l.name == name).unwrap()
+    }
+
+    #[test]
+    fn dielectrics_may_share_a_mesh_moved_in_z() {
+        let (root, bin) = stacked();
+        assert_eq!(check(&root, &bin), Vec::<String>::new());
+        let b = board(&root);
+        let (core, prepreg) = (layer(&b, "CORE"), layer(&b, "PREPREG_2"));
+        let (core_node, prepreg_node) = (
+            &root.nodes[core.node as usize],
+            &root.nodes[prepreg.node as usize],
+        );
+        assert!(core_node.is_identity());
+        assert_eq!(prepreg_node.mesh, core_node.mesh);
+        assert_eq!(prepreg.feature_table, core.feature_table);
+        let [_, s, _] = prepreg_node.scale.unwrap();
+        assert!((s - 0.2).abs() < 1e-9, "{s}");
+        let other = layer(&b, "PREPREG_1");
+        assert_ne!(root.nodes[other.node as usize].mesh, core_node.mesh);
+    }
+
+    #[test]
+    fn shared_meshes_are_checked() {
+        let (root, bin) = stacked();
+        let b = board(&root);
+        let (core, prepreg) = (layer(&b, "CORE"), layer(&b, "PREPREG_2"));
+
+        let mut moved = root.clone();
+        moved.nodes[prepreg.node as usize].translation = Some([0.0, 0.0, 0.0]);
+        assert_error(&check(&moved, &bin), "must scale and move it along Y only");
+        let mut rotated = root.clone();
+        rotated.nodes[prepreg.node as usize].rotation = Some([0.0, 0.0, 1.0, 0.0]);
+        assert_error(
+            &check(&rotated, &bin),
+            "must scale and move it along Y only",
+        );
+
+        let mut copper = root.clone();
+        copper.nodes[layer(&b, "IN2").node as usize].mesh = root.nodes[core.node as usize].mesh;
+        assert_error(
+            &check(&copper, &bin),
+            "only dielectric layers may share one",
+        );
+
+        let mut tables = root.clone();
+        let mut changed = b.clone();
+        let top = layer(&b, "TOP").feature_table;
+        changed
+            .layers
+            .iter_mut()
+            .find(|l| l.name == "PREPREG_2")
+            .unwrap()
+            .feature_table = top;
+        set_board(&mut tables, &changed);
+        assert_error(&check(&tables, &bin), "but not its feature table");
+
+        let mut drill = root.clone();
+        drill.nodes[b.drills[0].node as usize].mesh = root.nodes[core.node as usize].mesh;
+        assert_error(&check(&drill, &bin), "is used by another node");
+    }
+
     #[test]
     fn extensions_must_be_declared_but_not_required() {
         let (mut root, bin) = sample();
@@ -1664,6 +1828,7 @@ mod tests {
                     color: None,
                     mesh: mesh.finish(),
                     features: vec![row(0), row(1)],
+                    repeats: None,
                 }],
                 drills: Vec::new(),
                 nets: Vec::new(),

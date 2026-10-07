@@ -12,7 +12,7 @@
 //!   with a message if its file is missing, or fails if `BOARDUI_REQUIRE_IPC_TESTCASES` is set
 //!   (CI sets it).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write as _;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -187,6 +187,7 @@ samples! {
     pad_stacks => "pad-stacks",
     pad_stacks_drill_layer => "pad-stacks-drill-layer",
     conductor_core => "conductor-core",
+    stacked_sheets => "stacked-sheets",
     bottom_placement => "bottom-placement",
     paste_layer => "paste-layer",
     drawing_layers => "drawing-layers",
@@ -864,13 +865,19 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         }
     }
     let strings = |table: Option<u32>, name: &str| strings(&root, bin, table, name);
+    // Spec §4: a dielectric that shares the mesh of an earlier one.
+    let mut first_with_mesh = HashMap::new();
     let entries = board
         .layers
         .iter()
         .map(|l| {
+            let shared = root.nodes[l.node as usize].mesh.and_then(|mesh| {
+                let first = *first_with_mesh.entry(mesh).or_insert(&l.id);
+                (first != &l.id).then(|| format!(" mesh of {first}"))
+            });
             (
                 format!(
-                    "layer {} {:?} {:?} z {:.4}..{:.4} mm {:?}{}{}{}",
+                    "layer {} {:?} {:?} z {:.4}..{:.4} mm {:?}{}{}{}{}",
                     l.id,
                     l.role,
                     l.side,
@@ -879,7 +886,8 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
                     l.thickness_source,
                     if l.synthesized { " synthesized" } else { "" },
                     if l.visible { "" } else { " hidden" },
-                    source_colors(&root, l.node)
+                    source_colors(&root, l.node),
+                    shared.unwrap_or_default()
                 ),
                 l.node,
                 l.feature_table,

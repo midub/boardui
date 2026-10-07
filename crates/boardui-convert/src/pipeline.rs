@@ -442,32 +442,38 @@ pub(crate) fn run(
     let mut layers = Vec::with_capacity(stack.layers.len());
     {
         let _step = timings.step("extrude");
+        // A dielectric that repeats an earlier one's sheet, in the same colour, shares its
+        // mesh, scaled and moved in Z (spec §4).
+        let extrudes = |i: usize| {
+            let (z_min, z_max) = (stack.layers[i].z_min, stack.layers[i].z_max);
+            z_min.is_finite() && z_max.is_finite() && z_min < z_max
+        };
+        let mut repeats: Vec<Option<usize>> = (0..finals.len())
+            .map(|i| {
+                same_sheet[i].filter(|&j| colours[i] == colours[j] && extrudes(i) && extrudes(j))
+            })
+            .collect();
         let mut meshes = par::map(&finals, |i, (_, regions)| {
             let layer = &stack.layers[i];
-            extrude(&layer.name, regions, layer.z_min, layer.z_max)
-        });
-        // Repeated dielectric sheets: the earlier sheet's mesh at their own heights.
-        let repeats: Vec<(usize, usize)> = (0..finals.len())
-            .filter_map(|i| Some((i, same_sheet[i]?)))
-            .collect();
-        let repeated = par::map(&repeats, |_, &(i, j)| {
-            let (layer, earlier) = (&stack.layers[i], &stack.layers[j]);
-            let (mesh, messages) = &meshes[j];
-            let heights = (layer.z_min, layer.z_max);
-            // A sheet that failed to mesh fails again, with this layer's warning.
-            let restacked = messages
-                .is_empty()
-                .then(|| mesh.restacked((earlier.z_min, earlier.z_max), heights));
-            match restacked.flatten() {
-                Some(mesh) => (mesh, Vec::new()),
-                None => extrude(&layer.name, &finals[j].1, heights.0, heights.1),
+            match repeats[i] {
+                Some(_) => (LayerMesh::default(), Vec::new()),
+                None => extrude(&layer.name, regions, layer.z_min, layer.z_max),
             }
         });
-        for ((i, _), mesh) in repeats.into_iter().zip(repeated) {
-            meshes[i] = mesh;
+        // A sheet that failed to mesh fails again for each repeat, with its own warning.
+        for i in 0..finals.len() {
+            if let Some(j) = repeats[i]
+                && !meshes[j].1.is_empty()
+            {
+                let layer = &stack.layers[i];
+                meshes[i] = extrude(&layer.name, &finals[j].1, layer.z_min, layer.z_max);
+                repeats[i] = None;
+            }
         }
-        let sources = stack.layers.iter().zip(colours);
-        for (((layer, color), (rows, _)), (mesh, messages)) in sources.zip(finals).zip(meshes) {
+        let sources = stack.layers.iter().zip(colours).zip(repeats);
+        for ((((layer, color), repeats), (rows, _)), (mesh, messages)) in
+            sources.zip(finals).zip(meshes)
+        {
             messages.into_iter().for_each(|m| warnings.push(m));
             layers.push(LayerAsset {
                 name: layer.name.clone(),
@@ -482,6 +488,7 @@ pub(crate) fn run(
                 color,
                 mesh,
                 features: rows,
+                repeats,
             });
         }
     }
@@ -523,9 +530,10 @@ pub(crate) fn run(
         pins_misplaced: components.pins_misplaced,
         ..Stats::default()
     };
+    // The board's geometry: a shared mesh counts for each layer that shows it.
     let meshes = layers
         .iter()
-        .map(|l| (&l.mesh, l.features.len()))
+        .map(|l| (&l.repeats.map_or(l, |j| &layers[j]).mesh, l.features.len()))
         .chain(drill_assets.iter().map(|d| (&d.mesh, d.features.len())));
     for (mesh, rows) in meshes {
         stats.features += rows;
