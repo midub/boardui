@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use boardui_convert::{Conversion, ModelLibrary, Options, convert, validate};
 use boardui_gltf::buffer::{read_u32s, read_vec3, view_bytes};
 use boardui_gltf::metadata::NO_ROW;
-use boardui_gltf::{Board, FeatureKind, Fiducial, Root, glb};
+use boardui_gltf::{Board, FeatureKind, Fiducial, Root, Side, glb};
 
 fn samples_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/samples")
@@ -155,6 +155,7 @@ samples! {
     package_silkscreen => "package-silkscreen",
     user_models => "user-models",
     colours => "colours",
+    panel => "panel",
     testcase1 => "testcase1-RevC-Assembly",
     testcase3 => "testcase3-RevC-Assembly",
     testcase10 => "testcase10-RevC-Assembly",
@@ -167,6 +168,90 @@ samples! {
     kicad_blind_buried_vias => "blind-buried-vias",
     kicad10_antenna => "antenna",
     altium_ldo_pcb => "LDO-PCB",
+}
+
+/// Spec §5, §6.14: an instance's IDs are those of its step converted alone, with the
+/// instance segment; a flipped instance has its features on the counterpart layers.
+#[test]
+fn panel_instances_keep_their_steps_ids() {
+    let path = samples_dir().join("hand-written/panel/panel.xml");
+    let xml = std::fs::read(&path).expect("sample");
+    let convert_step = |step: Option<&str>| {
+        let options = Options {
+            step: step.map(str::to_owned),
+            ..Options::default()
+        };
+        convert(&xml, &options).expect("conversion").glb
+    };
+    let panel = convert_step(None);
+    let board = convert_step(Some("board"));
+    /// The IDs of a converted file's components, nets, pins and features.
+    fn ids(glb: &[u8]) -> Vec<String> {
+        let (root, bin) = glb::read(glb).expect("GLB");
+        let board: Board =
+            serde_json::from_value(root.extensions.board.clone().expect("board")).expect("board");
+        let t = &board.tables;
+        let mut ids = Vec::new();
+        for table in [t.components, t.nets, t.pins] {
+            ids.extend(strings(&root, bin, table, "id"));
+        }
+        let scopes: Vec<String> = match t.instances {
+            Some(table) => strings(&root, bin, Some(table), "id")
+                .iter()
+                .map(|id| format!("{}/", &id["inst/".len()..]))
+                .collect(),
+            None => Vec::new(),
+        };
+        let layers = board.layers.iter().map(|l| (&l.id, l.feature_table));
+        let drills = board.drills.iter().map(|d| (&d.id, d.feature_table));
+        for (layer, table) in layers.chain(drills) {
+            let sources = column(&root, bin, table, "source");
+            let instances = column(&root, bin, table, "instance");
+            for (source, instance) in sources.iter().zip(instances) {
+                let scope = scopes.get(instance as usize).map_or("", String::as_str);
+                ids.push(format!("feat/{scope}{}/{source}", &layer["layer/".len()..]));
+            }
+        }
+        ids
+    }
+    let panel = ids(&panel);
+    let mut alone = ids(&board);
+    // The sheets are the panel's.
+    alone.retain(|id| !id.contains("/@core/") && !id.contains("/@soldermask-"));
+    for id in &alone {
+        let (kind, rest) = id.split_once('/').expect("ID");
+        for instance in ["board-1", "board-5"] {
+            let scoped = format!("{kind}/{instance}/{rest}");
+            assert!(panel.contains(&scoped), "{scoped} is missing");
+        }
+        // board-6 is flipped: its features are on the counterpart layers.
+        let flipped = match rest.split_once('/') {
+            Some((layer, n)) if kind == "feat" => {
+                let layer = match layer {
+                    "TOP" => "BOTTOM",
+                    "BOTTOM" => "TOP",
+                    "TOP_SILK" => "BOT_SILK",
+                    "BOT_SILK" => "TOP_SILK",
+                    "TOP_PASTE" => "BOT_PASTE",
+                    "BOT_PASTE" => "TOP_PASTE",
+                    "@assembly-top" => "@assembly-bottom",
+                    "@assembly-bottom" => "@assembly-top",
+                    other => other,
+                };
+                format!("{layer}/{n}")
+            }
+            _ => rest.to_owned(),
+        };
+        let scoped = format!("{kind}/board-6/{flipped}");
+        assert!(panel.contains(&scoped), "{scoped} is missing");
+    }
+    let count = |instance: &str| panel.iter().filter(|id| id.contains(instance)).count();
+    assert_eq!(count("/board-6/"), count("/board-1/"));
+    assert!(panel.contains(&"net/board-6/GND".to_owned()));
+    assert!(
+        panel.contains(&"feat/TOP/0".to_owned()),
+        "the panel's own IDs have no instance"
+    );
 }
 
 /// Spec §3: the same board in inches, millimetres and microns gives the same geometry.
@@ -270,7 +355,7 @@ fn column(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<u32> {
         return vec![NO_ROW; t.count as usize];
     };
     let bytes = view_bytes(root, bin, p.values).expect("column");
-    if name == "kind" || name == "fiducial" {
+    if name == "kind" || name == "fiducial" || name == "side" {
         bytes[..t.count as usize]
             .iter()
             .map(|&b| u32::from(b))
@@ -284,6 +369,25 @@ fn column(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<u32> {
             .map(|&c| u32::from_le_bytes(c))
             .collect()
     }
+}
+
+/// A `FLOAT64` column of a property table.
+fn floats(root: &Root, bin: &[u8], table: Option<u32>, name: &str) -> Vec<f64> {
+    let tables = &root
+        .extensions
+        .structural_metadata
+        .as_ref()
+        .expect("metadata")
+        .property_tables;
+    let t = &tables[table.expect("table") as usize];
+    let bytes = view_bytes(root, bin, t.properties[name].values).expect("values");
+    bytes
+        .as_chunks::<8>()
+        .0
+        .iter()
+        .take(t.count as usize)
+        .map(|&c| f64::from_le_bytes(c))
+        .collect()
 }
 
 /// A `STRING` column of a property table.
@@ -351,6 +455,32 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         writeln!(out, "  - {w}").unwrap();
     }
     let column = |table: Option<u32>, name: &str| column(&root, bin, table, name);
+    if let Some(table) = board.tables.instances {
+        // Spec §6.14: the placed copies of the panel's steps.
+        let ids = strings(&root, bin, Some(table), "id");
+        let steps = strings(&root, bin, Some(table), "step");
+        let parents = column(Some(table), "parent");
+        let sides = column(Some(table), "side");
+        let [x, y, angle] = ["x", "y", "angle"].map(|c| floats(&root, bin, Some(table), c));
+        writeln!(out, "instances: {}", ids.len()).unwrap();
+        for row in 0..ids.len() {
+            let parent = match parents[row] {
+                NO_ROW => "the converted step",
+                p => ids[p as usize].as_str(),
+            };
+            writeln!(
+                out,
+                "  {} of step {} in {parent} at ({:.4}, {:.4}) mm, {:.4}°, {:?}",
+                ids[row],
+                steps[row],
+                x[row] * 1e3,
+                y[row] * 1e3,
+                angle[row],
+                Side::from_value(sides[row] as u8).expect("side")
+            )
+            .unwrap();
+        }
+    }
     let entries = board
         .layers
         .iter()
@@ -383,6 +513,7 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
         let kinds = column(table, "kind");
         let nets = column(table, "net");
         let fiducials = column(table, "fiducial");
+        let instances = column(table, "instance");
         let mut histogram: BTreeMap<String, usize> = BTreeMap::new();
         for &k in &kinds {
             *histogram
@@ -413,9 +544,13 @@ fn summary(conversion: &Conversion, detailed: bool) -> String {
                     Some(f) => format!("Fiducial({f:?})"),
                     None => format!("{:?}", FeatureKind::from_value(*kind as u8).expect("kind")),
                 };
+                let instance = match instances[row] {
+                    NO_ROW => String::new(),
+                    i => format!(" instance {i}"),
+                };
                 writeln!(
                     out,
-                    "    row {row}: {kind} net {net} area {:.4} mm²",
+                    "    row {row}: {kind} net {net}{instance} area {:.4} mm²",
                     areas.get(&(row as u32)).copied().unwrap_or(0.0) * 1e6
                 )
                 .unwrap();
