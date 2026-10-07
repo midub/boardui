@@ -2,7 +2,8 @@
 // PERF_XML=<file> also converts that file (e.g. the ~200k-feature synthetic board) and
 // records its timings. Results go to <dir>/*.png and <dir>/perf-*.json.
 import { writeFileSync } from 'node:fs';
-import { expect, type Page, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures.js';
 import { openBoard, screenPoint, settle, testCaseFile, viewerCall } from './helpers.js';
 
 const out = process.env.REVIEW_OUT ?? '';

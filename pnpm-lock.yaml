@@ -354,6 +354,9 @@ importers:
       '@boardui/demo-shared':
         specifier: workspace:*
         version: link:../demo-shared
+      '@boardui/models':
+        specifier: workspace:*
+        version: link:../models
       '@boardui/viewer':
         specifier: workspace:*
         version: link:../viewer
@@ -391,6 +394,9 @@ importers:
       '@boardui/demo-shared':
         specifier: workspace:*
         version: link:../demo-shared
+      '@boardui/models':
+        specifier: workspace:*
+        version: link:../models
       '@boardui/react':
         specifier: workspace:*
         version: link:../react
@@ -428,6 +434,9 @@ importers:
       '@boardui/converter':
         specifier: workspace:*
         version: link:../converter
+      '@boardui/models':
+        specifier: workspace:*
+        version: link:../models
       '@boardui/viewer':
         specifier: workspace:*
         version: link:../viewer

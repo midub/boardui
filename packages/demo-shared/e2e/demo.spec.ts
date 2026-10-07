@@ -1,8 +1,9 @@
 // Smoke and screenshot tests of the demo's features on small samples.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { expect, type Page, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { DEMOS } from '../src/frameworks.js';
+import { expect, test } from './fixtures.js';
 import { collectErrors, openBoard, screenPoint, settle, viewerCall } from './helpers.js';
 
 const sample = (path: string) =>

@@ -30,11 +30,16 @@ export function testCaseFile(file: string): string {
   return path;
 }
 
-/** Console errors and uncaught exceptions of a page. */
+/**
+ * Console errors and uncaught exceptions of a page. Chromium's messages about failed requests to
+ * gitlab.com are left out: models that KiCad's library doesn't have answer 404 (`fixtures.ts`).
+ */
 export function collectErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
+    if (message.type() !== 'error') return;
+    if (message.location().url.startsWith('https://gitlab.com/')) return;
+    errors.push(message.text());
   });
   page.on('pageerror', (error) => errors.push(error.message));
   return errors;

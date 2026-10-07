@@ -1,7 +1,7 @@
 // The Pages site: `/boardui/` redirects to the default demo, keeping the query and hash, so that
 // links from before the per-framework demos (`/boardui/?sample=…&stats&spin`) keep working.
-import { expect, test } from '@playwright/test';
 import { DEMOS } from '../src/frameworks.js';
+import { expect, test } from './fixtures.js';
 import { waitForBoard } from './helpers.js';
 
 const demo = DEMOS[0]?.id;
