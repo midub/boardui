@@ -77,5 +77,5 @@ The Khronos step fails on any error or warning except `UNRESERVED_EXTENSION_PREF
 ## Rules
 
 - Only add boards whose licence allows redistribution, and record the source and licence next to each sample.
-- The IPC consortium test cases are test data only. Don't ship them in published packages, release archives or the demo: the demo only links to them, and its build fails if its `dist/` contains one (`packages/demo/scripts/check-dist.mjs`).
+- The IPC consortium test cases are test data only. Don't ship them in published packages, release archives or the demos: the demos only link to them, and their builds fail if the output contains one (`packages/demo-shared/src/build/check-dist.ts`).
 - Keep hand-written samples minimal: one spec rule per file.
