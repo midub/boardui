@@ -5,8 +5,7 @@ source: IPC-2581 rev C, step antenna, ASSEMBLY
 software: KiCad 10.0.6 (KiCad EDA)
 thickness: 1.5900 mm
 counts: 8 features, 278 vertices, 548 triangles, 2 nets, 1 components, 2 pins (2 checked against pads)
-warnings: 11 from the reader, 1 from the converter
-  - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
+warnings: 0 from the reader, 0 from the converter
 layer layer/f.silkscreen Silkscreen Top z 0.8050..0.8150 mm Default
   0 features {}, 0 vertices, 0 triangles, top area -0.0000 mm²
 layer layer/F.Mask Soldermask Top z 0.7600..0.8050 mm File

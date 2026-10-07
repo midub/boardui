@@ -655,6 +655,17 @@ pub struct Component {
     pub location: Point,
     /// `Xform`. Absent: identity.
     pub xform: Xform,
+    /// `NonstandardAttribute`s in document order, such as Allegro's `VALUE` and `TOLERANCE`.
+    pub nonstandard_attributes: Vec<NonstandardAttribute>,
+}
+
+/// `NonstandardAttribute`: a named value the standard has no element for.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NonstandardAttribute {
+    /// `name`.
+    pub name: String,
+    /// `value` as written; `type` (`STRING`, `INTEGER`, …) is not kept.
+    pub value: String,
 }
 
 /// `mountType` of a component.
@@ -712,6 +723,9 @@ pub struct Set {
     pub component_ref: Option<String>,
     /// `ColorRef@id`, if given.
     pub color_ref: Option<String>,
+    /// `NonstandardAttribute`s in document order. KiCad keeps the string of a text it drew as
+    /// outlines in one named `TEXT`.
+    pub nonstandard_attributes: Vec<NonstandardAttribute>,
     /// `Pad`, `Features`, fiducial, `Hole` and `SlotCavity` children in document order.
     pub features: Vec<Feature>,
 }

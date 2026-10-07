@@ -32,7 +32,7 @@ drill layer/DRILL layer/TOP..layer/BOTTOM
   1 features {"Barrel": 1}, 54 vertices, 108 triangles, top area 0.0250 mm²
     row 0: Barrel net 1 area 0.0250 mm²
 components: 3
-bom: 2 with attributes, populate {None: 1, Some(false): 1, Some(true): 1}, names {"Description": 2, "LCSC": 1, "MPN": 2, "Manufacturer": 1, "Power": 1, "Temperature": 1, "Tolerance": 1, "Value": 2}
+bom: 3 with attributes, populate {None: 1, Some(false): 1, Some(true): 1}, names {"Description": 2, "LCSC": 1, "MPN": 2, "Manufacturer": 1, "Power": 1, "TOLERANCE": 1, "Temperature": 1, "Tolerance": 1, "VALUE": 1, "Value": 2}
   R1 at (3.0000, 0.8000, -3.0000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder R0603, populate Some(true), attributes {"Description": "Resistor, 10 kOhm", "LCSC": "C25744", "MPN": "RC0603FR-0710KL", "Manufacturer": "Yageo", "Power": "0.1 W", "Temperature": "-55..155 CEL", "Tolerance": "1%", "Value": "10k"}
-  C1 at (3.0000, 0.8000, -1.2000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder C0402, populate Some(false), attributes {"Description": "from a characteristic: it wins", "MPN": "GRM155R71C104KA88D", "Value": "100nF"}
-  J1 at (3.0000, 0.8000, -4.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder C0402
+  C1 at (3.0000, 0.8000, -1.2000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder C0402, populate Some(false), attributes {"Description": "from a characteristic: it wins", "MPN": "GRM155R71C104KA88D", "TOLERANCE": "10%", "Value": "100nF"}
+  J1 at (3.0000, 0.8000, -4.8000) mm, rotation (0.0000, 0.0000, 0.0000, 1.0000), placeholder C0402, populate None, attributes {"VALUE": "CONN-2"}

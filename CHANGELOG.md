@@ -5,6 +5,21 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
 
 ## [Unreleased]
 
+- **Fewer converter warnings (profile 0.9, still a draft):** the reader no longer warns about
+  data that exporters commonly write but that neither shapes the board nor describes its parts:
+  `Content@roleRef`, `BomRef`, `AvlRef`, `FunctionMode@level`, `Stackup@stackupStatus`,
+  `Step@type`, the stack-up materials' `Conductor` and `Dielectric` properties and
+  `General@comment`, a step's `NonstandardAttribute`s, `Package@pinOneOrientation`,
+  `PickupPoint`, and `Pin@type` and `@electricalType`. A `BOARD_OUTLINE` layer (KiCad's
+  `Edge.Cuts`, Altium's board shape) is no longer reported as not converted: the profile and
+  its cut-outs are the outline. The KiCad samples royalblue54l-feather, miao, antenna and
+  blind-buried-vias now convert without warnings. Two of these become data
+  ([spec §8.2](spec/README.md#82-ext_structural_metadata)):
+  - a component's own `NonstandardAttribute`s join its attributes after the BOM's (Allegro
+    writes a part's `VALUE` and `TOLERANCE` there; the BOM's `VALUE` wins);
+  - text drawn as outlines takes its string from its set's `TEXT` attribute (KiCad), so the
+    viewer's `info()` and the demos' details panel show the string of selected silkscreen text.
+
 - **Component attributes (profile 0.8, still a draft):** the converter reads the BOM, the
   approved vendor list and the exporting software. Each component gets its BOM attributes
   (characteristics such as KiCad's `Value` and `LCSC`, `Description`, `MPN`, `Manufacturer`) in

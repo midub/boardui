@@ -4,8 +4,7 @@ source: crates/boardui-convert/tests/conformance.rs
 source: IPC-2581 rev C, step board, FABRICATION
 thickness: 1.6000 mm
 counts: 3 features, 882 vertices, 1788 triangles, 0 nets, 0 components, 0 pins (0 checked against pads)
-warnings: 0 from the reader, 2 from the converter
-  - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
+warnings: 0 from the reader, 1 from the converter
   - the profile of step `board` has no cutouts; the closed contours inside it were cut out: 3 on layer `Edge.Cuts`
 layer layer/@soldermask-top Soldermask Top z 0.7650..0.8200 mm Default synthesized
   1 features {"Sheet": 1}, 294 vertices, 596 triangles, top area 578.5586 mm²

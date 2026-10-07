@@ -5,8 +5,7 @@ source: IPC-2581 rev C, step RoyalBlue54L-Feather, ASSEMBLY
 software: KiCad 9.0.9 (KiCad EDA)
 thickness: 1.5800 mm
 counts: 4358 features, 457778 vertices, 914384 triangles, 95 nets, 71 components, 352 pins (313 checked against pads)
-warnings: 11 from the reader, 1 from the converter
-  - layers outside the profile's scope were not converted: Edge.Cuts (BOARD_OUTLINE)
+warnings: 0 from the reader, 0 from the converter
 layer layer/User.Comments Documentation Top z 0.9100..0.9200 mm Default hidden
   6 features {"Marking": 6}, 2676 vertices, 5304 triangles, top area 11.6457 mm²
 layer layer/F.Courtyard Courtyard Top z 0.9000..0.9100 mm Default hidden

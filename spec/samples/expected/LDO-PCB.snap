@@ -4,9 +4,8 @@ source: crates/boardui-convert/tests/conformance.rs
 source: IPC-2581 rev A, step LDO-PCB, FULL
 thickness: 0.3912 mm
 counts: 72 features, 9060 vertices, 17924 triangles, 4 nets, 5 components, 17 pins (17 checked against pads)
-warnings: 5 from the reader, 2 from the converter
+warnings: 2 from the reader, 1 from the converter
   - layer `Dielectric 1` has `layerFunction` `CONDUCTOR`, but its side is `NONE` and its stack-up material is `FR-4`; it is converted as a dielectric
-  - layers outside the profile's scope were not converted: BoardShape_LDO-PCB (BOARD_OUTLINE)
 layer layer/Drill%20Drawing%20(Top%20Layer%20-%20Bottom%20Layer) Documentation Top z 0.3356..0.3456 mm Default hidden
   1 features {"Marking": 1}, 480 vertices, 960 triangles, top area 1.4234 mm²
 layer layer/Top%20Component%20Center Documentation Top z 0.3256..0.3356 mm Default hidden

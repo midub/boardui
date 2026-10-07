@@ -28,7 +28,7 @@
         },
         "attributes": {
           "type": "object",
-          "description": "The component's BOM attributes by name (spec §8.2); absent when it has none.",
+          "description": "The component's attributes by name, from its BOM item and its NonstandardAttributes (spec §8.2); absent when it has none.",
           "minProperties": 1,
           "additionalProperties": { "type": "string", "minLength": 1 }
         }

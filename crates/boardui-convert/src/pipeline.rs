@@ -16,7 +16,7 @@ use glam::DAffine2;
 use crate::bom;
 use crate::colours;
 use crate::components::{self, PadRef};
-use crate::outline::Cutouts;
+use crate::outline::{self, Cutouts};
 use crate::padstacks;
 use crate::panel::{self, Flip, Part};
 use crate::shapes::{ShapeConverter, erases, is_stroke, point, texts};
@@ -189,14 +189,15 @@ pub(crate) fn run(
     let mut unpaired = HashSet::new();
     for part in &parts {
         for (name, lf) in part.step.layer_features.iter() {
-            if lf.feature_count() == 0 {
+            let layer = doc.ecad.layers.get(name);
+            // A board outline layer draws the profile and its cut-outs, which the dielectric
+            // takes from the step (spec §6.7).
+            if lf.feature_count() == 0
+                || layer.is_some_and(|l| outline::is_board_outline(&l.function))
+            {
                 continue;
             }
-            let class = doc
-                .ecad
-                .layers
-                .get(name)
-                .map(|l| stackup::classify(&l.function));
+            let class = layer.map(|l| stackup::classify(&l.function));
             let target = match class {
                 Some(LayerClass::Drill) | None => Some(name),
                 Some(_) if part.flipped => flip.layer(name),
@@ -215,13 +216,7 @@ pub(crate) fn run(
             let known = stack.index(target).is_some()
                 || matches!(class, Some(LayerClass::Drill))
                 || matches!(class, Some(LayerClass::Layer(role)) if role.is_optional());
-            let entry = format!(
-                "{name} ({})",
-                doc.ecad
-                    .layers
-                    .get(name)
-                    .map_or("?", |l| l.function.as_str())
-            );
+            let entry = format!("{name} ({})", layer.map_or("?", |l| l.function.as_str()));
             if !known && !skipped.contains(&entry) {
                 skipped.push(entry);
             }
@@ -853,6 +848,12 @@ impl<'a> Context<'a> {
             } else {
                 kind
             };
+            // KiCad draws text as outlines and keeps its string in the set (spec §8.2).
+            if text.is_empty()
+                && let Some(a) = set.nonstandard_attributes.iter().find(|a| a.name == "TEXT")
+            {
+                text.clone_from(&a.value);
+            }
             let component_ref = pin_ref
                 .and_then(|p| p.component_ref.as_ref())
                 .or(set.component_ref.as_ref());

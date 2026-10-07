@@ -126,7 +126,7 @@ How a board is represented in glTF, which metadata it carries and how element ID
 ## Limits
 
 - **Browser conversion:** the WebAssembly converter is 32-bit, so a conversion can use at most 4 GiB of memory. Boards up to about 250,000 features convert in the browser (a 238k-feature board needs 3.1 GB); larger ones need the CLI.
-- **Not modelled** (profile 0.8): embedded components, cavities, rigid-flex. Panels (`StepRepeat`) convert with a full copy of every board they place. Unknown IPC-2581 elements are skipped with a warning.
+- **Not modelled** (profile 0.9): embedded components, cavities, rigid-flex. Panels (`StepRepeat`) convert with a full copy of every board they place. Unknown IPC-2581 elements are skipped with a warning; data that exporters commonly write but that neither shapes the board nor describes its parts (roles, statuses, electrical properties of the stack-up, pick-up points, pin types) is skipped silently.
 - **Component bodies** are the package outline extruded to the component's height (estimated when the file has none), unless you map them to glTF models.
 - **The viewer** needs WebGPU or WebGL2.
 

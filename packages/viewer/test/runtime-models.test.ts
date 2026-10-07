@@ -179,7 +179,7 @@ describe('runtime models', () => {
       mount: 'SMT',
       attributes: {},
     });
-    // The bom-attributes sample (profile 0.8) has an attributes table.
+    // The bom-attributes sample (profile 0.8 and later) has an attributes table.
     seen.length = 0;
     const bytes = readFileSync(
       fileURLToPath(
@@ -195,7 +195,7 @@ describe('runtime models', () => {
       MPN: 'RC0603FR-0710KL',
       LCSC: 'C25744',
     });
-    expect(boards.at(-1)?.profileVersion).toBe('0.8');
+    expect(boards.at(-1)?.profileVersion).toBe('0.9');
   });
 
   it('replace placeholder bodies and pin-1 markers on the same state texels, and revert', async () => {

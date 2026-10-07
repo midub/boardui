@@ -6,9 +6,9 @@ use std::mem::take;
 use super::{Parser, insert, missing_element};
 use crate::{
     Component, DiagnosticKind, Error, Feature, FeatureElement, Features, Fiducial, FiducialKind,
-    Hole, LayerFeature, LayerHole, LayerPad, Marking, Package, PackageDrawing, Pad, PadStack,
-    PadUsage, PadstackDef, PadstackPad, Pin, PinRef, RefKind, Set, SlotCavity, Step, StepRepeat,
-    Table,
+    Hole, LayerFeature, LayerHole, LayerPad, Marking, NonstandardAttribute, Package,
+    PackageDrawing, Pad, PadStack, PadUsage, PadstackDef, PadstackPad, Pin, PinRef, RefKind, Set,
+    SlotCavity, Step, StepRepeat, Table,
 };
 
 /// The `pinOne` KiCad writes for a package whose pin 1 it can't tell.
@@ -21,7 +21,11 @@ impl<R: BufRead> Parser<R> {
             name: self.req_str("name")?,
             ..Step::default()
         };
+        // `BOARD`, `PANEL`, …: the converter tells panels by their `StepRepeat`s.
+        self.ignore_attributes(&["type"]);
         self.children("Step", |p| match p.tag.name() {
+            // Exporter statistics, such as KiCad's `FOOTPRINT_COUNT`.
+            "NonstandardAttribute" => p.skip(),
             "Datum" if p.step.datum.is_none() => {
                 p.step.datum = Some(p.read_point("Datum")?);
                 Ok(())
@@ -241,7 +245,11 @@ impl<R: BufRead> Parser<R> {
             silkscreen: None,
             assembly_drawing: None,
         };
+        // Where pin 1 lies (`LOWER_LEFT`, …, mostly `OTHER`); pin 1 itself is `pinOne`.
+        self.ignore_attributes(&["pinOneOrientation"]);
         self.children("Package", |p| match p.tag.name() {
+            // The pick-and-place machine's pick-up point.
+            "PickupPoint" => p.skip(),
             "Outline" if package.outline.is_some() => p.duplicate("Package"),
             "Outline" => {
                 package.outline = Some(p.read_outline()?);
@@ -300,6 +308,8 @@ impl<R: BufRead> Parser<R> {
     fn read_pin(&mut self) -> Result<Pin, Error> {
         let number = self.req_str("number")?;
         let name = self.opt_str("name");
+        // `THRU`/`SURFACE`/… and `ELECTRICAL`/`MECHANICAL`/…: the pads say what is drawn.
+        self.ignore_attributes(&["type", "electricalType"]);
         let (mut location, mut xform, mut shape) = (None, None, None);
         self.children("Pin", |p| {
             if p.placement("Pin", &mut location, &mut xform)? {
@@ -364,8 +374,12 @@ impl<R: BufRead> Parser<R> {
         let standoff = self.opt_len("standoff")?;
         let height = self.opt_len("height")?;
         let (mut location, mut xform) = (None, None);
+        let mut nonstandard_attributes = Vec::new();
         self.children("Component", |p| {
             if p.placement("Component", &mut location, &mut xform)? {
+                Ok(())
+            } else if p.tag.name() == "NonstandardAttribute" {
+                nonstandard_attributes.push(p.read_nonstandard_attribute()?);
                 Ok(())
             } else {
                 p.unknown("Component")
@@ -381,7 +395,20 @@ impl<R: BufRead> Parser<R> {
             height,
             location: location.unwrap_or_default(),
             xform: xform.unwrap_or_default(),
+            nonstandard_attributes,
         })
+    }
+
+    /// Reads a `NonstandardAttribute`. A missing `name` or `value` is a warning, not an error:
+    /// the attribute is optional data, and an empty one is left out where it is used.
+    fn read_nonstandard_attribute(&mut self) -> Result<NonstandardAttribute, Error> {
+        let attribute = NonstandardAttribute {
+            name: self.str_or("name", ""),
+            value: self.str_or("value", ""),
+        };
+        self.ignore_attributes(&["type"]);
+        self.leaf("NonstandardAttribute")?;
+        Ok(attribute)
     }
 
     /// Reads a `LayerFeature`, merging it into the step's entry for its layer. Source indices
@@ -427,10 +454,16 @@ impl<R: BufRead> Parser<R> {
             plate: self.opt_bool("plate")?.unwrap_or(false),
             component_ref,
             color_ref: None,
+            nonstandard_attributes: Vec::new(),
             features: Vec::new(),
         };
         self.children("Set", |p| {
             let element = match p.tag.name() {
+                "NonstandardAttribute" => {
+                    let attribute = p.read_nonstandard_attribute()?;
+                    set.nonstandard_attributes.push(attribute);
+                    return Ok(());
+                }
                 "Pad" => FeatureElement::Pad(p.read_pad()?),
                 "Features" => FeatureElement::Features(p.read_features()?),
                 "GlobalFiducial" => {

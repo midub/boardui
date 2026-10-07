@@ -1,4 +1,5 @@
-//! Component attributes and the populate flag from the BOM and the AVL (spec §8.2).
+//! Component attributes and the populate flag from the BOM, the AVL and the components'
+//! `NonstandardAttribute`s (spec §8.2).
 
 use std::collections::HashMap;
 
@@ -58,14 +59,27 @@ impl<'a> Bom<'a> {
         }
     }
 
-    /// Sets the populate flag and attributes of every component.
+    /// Sets the populate flag and attributes of every component: its BOM item's attributes,
+    /// then its own, the component's `NonstandardAttribute`s that `attributes` holds on entry.
     pub(crate) fn annotate(&mut self, components: &mut [ComponentAsset]) {
         for c in components {
             let part = self.part(&c.ref_des);
             c.populate = part.populate;
-            c.attributes = part.attributes;
+            let own = std::mem::replace(&mut c.attributes, part.attributes);
+            for (name, value) in own {
+                push_attribute(&mut c.attributes, &name, value);
+            }
         }
     }
+}
+
+/// Appends an attribute, unless its name is already taken (the first value wins) or its name
+/// or value is empty (spec §8.2).
+fn push_attribute(out: &mut Vec<(String, String)>, name: &str, value: String) {
+    if name.trim().is_empty() || value.trim().is_empty() || out.iter().any(|(n, _)| n == name) {
+        return;
+    }
+    out.push((name.to_owned(), value));
 }
 
 /// The attributes of a BOM item (spec §8.2): its characteristics in document order, then
@@ -73,12 +87,7 @@ impl<'a> Bom<'a> {
 /// empty names and values are left out.
 pub(crate) fn attributes(doc: &ipc::Document, item: &ipc::BomItem) -> Vec<(String, String)> {
     let mut out: Vec<(String, String)> = Vec::new();
-    let mut push = |name: &str, value: String| {
-        if name.trim().is_empty() || value.trim().is_empty() || out.iter().any(|(n, _)| n == name) {
-            return;
-        }
-        out.push((name.to_owned(), value));
-    };
+    let mut push = |name: &str, value: String| push_attribute(&mut out, name, value);
     for c in &item.characteristics {
         if let Some(name) = &c.name {
             push(name, characteristic_value(&c.value));
