@@ -1,6 +1,6 @@
 # 0001 Purpose and scope
 
-**Status:** Accepted, 2026-10-06
+**Status:** Accepted, 2026-10-06. The licence point is superseded by [ADR 0015](0015-agpl-plus-commercial-licence.md).
 
 ## Context
 

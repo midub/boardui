@@ -164,7 +164,8 @@ reads them.
 
 ## Licences
 
-The package is MIT. occt-import-js and OpenCascade (in `occt/`, copied from `occt-import-js@0.0.23`
+The package is under boardui's licence (AGPL-3.0-only or commercial, see
+[LICENSING.md](../../LICENSING.md)). occt-import-js and OpenCascade (in `occt/`, copied from `occt-import-js@0.0.23`
 by `scripts/occt.mjs`) are LGPL-2.1 (OpenCascade with its exception): their licence texts are in
 `occt/LICENSE.occt-import-js.txt` and `occt/LICENSE.occt.txt`; ship them with the worker (the
 demos serve them under `licenses/`). The worker loads the unmodified module, so it can be

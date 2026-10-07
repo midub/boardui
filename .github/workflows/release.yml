@@ -93,7 +93,7 @@ jobs:
         run: |
           name=boardui-$VERSION-$TARGET
           mkdir "$name"
-          cp LICENSE README.md "$name/"
+          cp LICENSE LICENSING.md README.md "$name/"
           if [[ "$RUNNER_OS" == Windows ]]; then
             cp "target/$TARGET/release/boardui.exe" "$name/"
             7z a -tzip "$name.zip" "$name" > /dev/null

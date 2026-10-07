@@ -4,7 +4,7 @@ Each record captures one decision from the 3D rewrite design. Format: context, d
 
 | # | Decision | Status |
 |---|---|---|
-| [0001](0001-purpose-and-scope.md) | Hobby project built to product standards; viewer and tooling, no editing | Accepted |
+| [0001](0001-purpose-and-scope.md) | Hobby project built to product standards; viewer and tooling, no editing | Accepted; licence superseded by 0015 |
 | [0002](0002-gltf-is-an-export-with-metadata.md) | glTF is an export with metadata; IPC-2581 stays the source of truth | Accepted |
 | [0003](0003-ipc-2581-only-input.md) | IPC-2581 is the only input format | Accepted |
 | [0004](0004-converter-in-rust.md) | Converter in Rust: native CLI and WebAssembly | Accepted |
@@ -18,3 +18,4 @@ Each record captures one decision from the 3D rewrite design. Format: context, d
 | [0012](0012-spec-format.md) | Spec format | Accepted |
 | [0013](0013-panels.md) | Panels: root step by default, instances with their own IDs and nets, baked geometry | Accepted |
 | [0014](0014-runtime-model-sources.md) | Runtime model sources: models loaded by the viewer from servers (KiCad via GitLab), STEP in `@boardui/models` | Accepted |
+| [0015](0015-agpl-plus-commercial-licence.md) | Licence: AGPL-3.0-only plus a commercial licence; contributions under a CLA | Accepted |

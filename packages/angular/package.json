@@ -3,7 +3,7 @@
   "version": "1.1.1",
   "private": true,
   "description": "Angular wrapper for <board-viewer>: a standalone component with signal inputs and typed outputs, and widgets rendered by Angular.",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/midub/boardui.git",
