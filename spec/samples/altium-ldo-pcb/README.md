@@ -15,4 +15,6 @@ What it exercises:
 - Altium's layout: no `name` on `Stackup`, pads and holes as `PadStack` instances in the `Step` (revision A and B), the core dielectric as a `CONDUCTOR` layer with `materialType="FR-4"` in the stack-up, a `Drill Guide` drill layer and eleven `DOCUMENT` layers (assembly, courtyard, 3D body, component centre).
 - The `.cvg` extension: the conformance test reads `.xml` and `.cvg` inputs.
 
-Known gaps: the reader skips `PadStack`, so the board has no pads, and the dielectric is taken for a third copper layer, which makes the board 1.6 mm thick instead of 0.41 mm.
+The `PadStack` pads, via lands and holes are converted like a revision C file's (spec §6.3): 17 pads with their pins, all on their pads, and 5 vias. The 5 via holes are also on the `Drill Guide` layer; they are drilled once, from that layer, with the padstacks' net. The dielectric is a dielectric (spec §6.4), so the board is 0.39 mm from copper to copper (0.41 mm over the soldermask, as the stack-up says).
+
+The via holes are as wide as the via lands (0.7112 mm, 28 mil), in the `PadStack`s and on the `Drill Guide` layer alike, so the lands are drilled away and only the barrels show. The file says so; the converter doesn't second-guess it.

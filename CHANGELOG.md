@@ -15,8 +15,16 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   ([spec §6.7](spec/README.md#67-dielectric-and-outline)).
 - Placeholder bodies: none for components without pads and without a height (logos, mounting
   holes, mouse bites), nor for one without a height whose outline covers more than half of its
-  board (a carrier's module footprint); the components stay in the metadata. A package without pins no
-  longer gives a warning for its `pinOne` ([spec §6.8](spec/README.md#68-components)).
+  board (a carrier's module footprint); the components stay in the metadata. A package without
+  pins no longer gives a warning for its `pinOne` ([spec §6.8](spec/README.md#68-components)).
+- Altium (revision A and B) files: the `PadStack`s of a step become pads, via lands and holes,
+  with their nets and component pins, so pins are checked against pads. A hole that is also on
+  a drill layer (Altium's `Drill Guide`) is drilled once; a span without a drill layer gets a
+  synthesized `@drill-<from>-<to>` (profile 0.7: drill layers may be synthesized;
+  [spec §5](spec/README.md#5-ids), [§6.3](spec/README.md#63-holes-and-barrels)).
+- A copper-function layer with `side="NONE"` or a non-copper stack-up `materialType` (Altium's
+  core) is a dielectric, with a warning: LDO-PCB is 0.39 mm thick instead of 1.6 mm
+  ([spec §6.4](spec/README.md#64-stack-up)).
 
 ## [1.1.0] - 2026-10-07
 
