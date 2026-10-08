@@ -22,7 +22,7 @@ import {
   DRAWING_ROLES,
   readBoardExtension,
 } from './board-extension.js';
-import { ComponentBatch, ComponentBodies } from './bodies.js';
+import { type BodyGroup, batchBodies, type ComponentBatch, ComponentBodies } from './bodies.js';
 import { FeatureRanges } from './feature-ranges.js';
 import { type ElementKind, featureId, idKind, parseFeatureId } from './ids.js';
 import {
@@ -31,6 +31,7 @@ import {
   parsePropertyTables,
   type StructuralMetadataJson,
 } from './metadata.js';
+import { STATE_ATTRIBUTE } from './state.js';
 
 /** Row reference meaning "none" (spec §8.2). */
 const NONE = 4294967295;
@@ -66,7 +67,7 @@ export interface LayerModel {
   readonly color: string | undefined;
 }
 
-export { ComponentBatch } from './bodies.js';
+export type { ComponentBatch } from './bodies.js';
 
 /** An element resolved to its state texels and bounding box (spec §9). */
 export interface ResolvedElement {
@@ -229,7 +230,7 @@ export class BoardModel {
       const group = new Group();
       group.name = info.id;
       group.visible = kind === 'drill' || (info as BoardLayerJson).visible;
-      const meshes = mergeLayer(info.id, node, ranges);
+      const meshes = mergeLayer(info.id, node, ranges, stateOffset);
       if (meshes.length) group.add(...meshes);
       const layer = {
         id: info.id,
@@ -596,12 +597,12 @@ export class BoardModel {
   }
 
   /**
-   * Groups component meshes by geometry and material into instanced meshes (spec §6.8), and
-   * finds the components whose body is a placeholder: meshes on the node itself with the
+   * Groups component meshes by geometry and material and batches them (spec §6.8, `bodies.ts`),
+   * and finds the components whose body is a placeholder: meshes on the node itself with the
    * materials `boardui/body` and `boardui/pin1` only.
    */
   #batchComponents(nodes: ReadonlyMap<number, Object3D>): ComponentBodies {
-    const groups = new Map<string, { source: Mesh; matrices: Matrix4[]; rows: number[] }>();
+    const groups = new Map<string, BodyGroup & { matrices: Matrix4[]; rows: number[] }>();
     const count = this.components.count;
     const matrices: (Matrix4 | null)[] = new Array(count).fill(null);
     const replaceable = new Uint8Array(count);
@@ -620,7 +621,7 @@ export class BoardModel {
         const key = `${mesh.geometry.uuid}/${material.uuid}`;
         let group = groups.get(key);
         if (!group) {
-          group = { source: mesh, matrices: [], rows: [] };
+          group = { geometry: mesh.geometry, material, matrices: [], rows: [] };
           groups.set(key, group);
         }
         group.matrices.push(mesh.matrixWorld.clone());
@@ -628,16 +629,14 @@ export class BoardModel {
       });
       replaceable[row] = placeholder && meshes > 0 ? 1 : 0;
     }
-    const batches = [...groups.values()].map(
-      ({ source, matrices, rows }) =>
-        new ComponentBatch(
-          source.geometry,
-          source.material as Material,
-          Uint32Array.from(rows),
-          matrices,
-        ),
+    const batches = batchBodies([...groups.values()], this.componentOffset);
+    return new ComponentBodies(
+      this.componentGroup,
+      batches,
+      this.componentOffset,
+      matrices,
+      replaceable,
     );
-    return new ComponentBodies(this.componentGroup, batches, matrices, replaceable);
   }
 }
 
@@ -654,9 +653,15 @@ function sourceKey(instance: number | null, source: number): number {
 
 /**
  * Merges the primitives of a layer node into one mesh per material, with positions in board
- * coordinates and 32-bit indices, and records the feature ranges (spec §8.1).
+ * coordinates, 32-bit indices and each vertex's state texel (its feature ID plus `stateOffset`,
+ * {@link STATE_ATTRIBUTE}), and records the feature ranges (spec §8.1).
  */
-function mergeLayer(id: string, node: Object3D, ranges: FeatureRanges): Mesh[] {
+function mergeLayer(
+  id: string,
+  node: Object3D,
+  ranges: FeatureRanges,
+  stateOffset: number,
+): Mesh[] {
   const byMaterial = new Map<Material, Mesh[]>();
   node.traverse((object) => {
     const mesh = object as Mesh;
@@ -674,7 +679,7 @@ function mergeLayer(id: string, node: Object3D, ranges: FeatureRanges): Mesh[] {
       indexCount += part.geometry.index?.count ?? count;
     }
     const positions = new Float32Array(vertexCount * 3);
-    const featureIds = new Float32Array(vertexCount);
+    const texels = new Float32Array(vertexCount);
     const index = new Uint32Array(indexCount);
     let v = 0;
     let i = 0;
@@ -688,25 +693,26 @@ function mergeLayer(id: string, node: Object3D, ranges: FeatureRanges): Mesh[] {
         point.fromBufferAttribute(position, k);
         if (transform) point.applyMatrix4(part.matrixWorld);
         point.toArray(positions, (v + k) * 3);
-        featureIds[v + k] = ids.getX(k);
+        texels[v + k] = ids.getX(k) + stateOffset;
       }
       const source = geometry.index;
       const count = source?.count ?? position.count;
       for (let k = 0; k < count; k++) {
         index[i + k] = v + (source ? source.getX(k) : k);
       }
-      ranges.scan(featureIds, positions, index, {
-        vertexStart: v,
-        vertexEnd: v + position.count,
-        indexStart: i,
-        indexEnd: i + count,
-      });
+      ranges.scan(
+        texels,
+        positions,
+        index,
+        { vertexStart: v, vertexEnd: v + position.count, indexStart: i, indexEnd: i + count },
+        stateOffset,
+      );
       v += position.count;
       i += count;
     }
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new BufferAttribute(positions, 3));
-    geometry.setAttribute('_feature_id_0', new BufferAttribute(featureIds, 1));
+    geometry.setAttribute(STATE_ATTRIBUTE, new BufferAttribute(texels, 1));
     geometry.setIndex(new BufferAttribute(index, 1));
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();

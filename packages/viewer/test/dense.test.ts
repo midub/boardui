@@ -2,7 +2,7 @@
  * The dense fixture (~110k features): checks that the board stays at one mesh per layer and
  * logs load and picking timings.
  */
-import { Ray, Vector3 } from 'three';
+import { InstancedMesh, Ray, Vector3 } from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { BoardModel } from '../src/board-model.js';
 import { loadGltf } from '../src/load.js';
@@ -45,8 +45,9 @@ describe('dense fixture', () => {
     timings.layerTriangles = triangles;
   });
 
-  it('draws all components in two instanced meshes (body, pin-1 marker)', () => {
-    expect(model.componentBatches.map((b) => b.mesh.count)).toEqual([GRID * GRID, GRID * GRID]);
+  it('draws all components in two merged meshes (body, pin-1 marker)', () => {
+    expect(model.componentBatches.map((b) => b.rows.length)).toEqual([GRID * GRID, GRID * GRID]);
+    expect(model.componentBatches.some((b) => b.mesh instanceof InstancedMesh)).toBe(false);
   });
 
   it('picks with a BVH', async () => {

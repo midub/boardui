@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import {
   BoxGeometry,
   type BufferGeometry,
+  InstancedMesh,
   type Material,
   Matrix4,
   type Mesh,
@@ -201,18 +202,28 @@ describe('runtime models', () => {
   it('replace placeholder bodies and pin-1 markers on the same state texels, and revert', async () => {
     const model = await board();
     const before = model.resolve('cmp/U1')?.box?.clone();
-    const placeholders = model.bodies.placeholders.map((b) => b.mesh.count);
+    const placeholders = model.bodies.placeholders.map((b) => refDes(model, b.rows));
+    // C1 has a user model (see `board`).
+    expect(placeholders).toEqual(['R1 R2 U1 J1', 'R1 R2 U1 J1', 'C1']);
     await run(model, [source('s', (c) => (c.refDes === 'U1' ? 'big' : null), { big: '20' })]);
     const drawn = model.componentBatches.map((b): [string, string] => [
       (b.mesh.material as Material).name,
       refDes(model, b.rows),
     ]);
     // U1's body and pin-1 marker are gone; its model has a batch per material.
-    expect(drawn.filter(([, r]) => r === 'U1')).toEqual([
+    expect(drawn).toEqual([
+      ['boardui/body', 'R1 R2 J1'],
+      ['boardui/pin1', 'R1 R2 J1'],
+      ['user/model', 'C1'],
       ['a', 'U1'],
       ['b', 'U1'],
     ]);
-    expect(drawn.filter(([n]) => n.startsWith('boardui/')).map(([, r]) => r)).not.toContain('U1');
+    // The merged placeholders draw fewer triangles, and the model's batches are instanced.
+    const [body, pin1] = model.bodies.placeholders;
+    expect(body?.mesh.geometry.drawRange.count).toBeLessThan(body?.mesh.geometry.index?.count ?? 0);
+    expect(pin1?.mesh.visible).toBe(true);
+    const models = model.componentBatches.slice(3);
+    expect(models.every((b) => b.mesh instanceof InstancedMesh)).toBe(true);
     const box = model.resolve('cmp/U1')?.box;
     const node = model.bodies.nodeMatrix(model.ids('component').indexOf('cmp/U1'));
     expect(box?.max.y).toBeCloseTo((node?.elements[13] ?? 0) + 0.01, 6);
@@ -221,7 +232,8 @@ describe('runtime models', () => {
     expect(model.bounds.max.y).toBeGreaterThan(0.009);
 
     model.bodies.showModels(false);
-    expect(model.bodies.placeholders.map((b) => b.mesh.count)).toEqual(placeholders);
+    expect(model.bodies.placeholders.map((b) => refDes(model, b.rows))).toEqual(placeholders);
+    expect(body?.mesh.geometry.drawRange.count).toBe(body?.mesh.geometry.index?.count);
     expect(model.componentBatches.some((b) => (b.mesh.material as Material).name === 'a')).toBe(
       false,
     );
@@ -229,7 +241,7 @@ describe('runtime models', () => {
     model.bodies.showModels(true);
     expect(model.bodies.modelCount).toBe(1);
     model.bodies.clearModels();
-    expect(model.bodies.placeholders.map((b) => b.mesh.count)).toEqual(placeholders);
+    expect(model.bodies.placeholders.map((b) => refDes(model, b.rows))).toEqual(placeholders);
   });
 
   it('place a model with the reference’s transform on the component’s node', async () => {
@@ -250,7 +262,9 @@ describe('runtime models', () => {
     await run(model, [s]);
     const batch = model.componentBatches.find((b) => (b.mesh.material as Material).name === 'a');
     const matrix = new Matrix4();
-    batch?.mesh.getMatrixAt(0, matrix);
+    const mesh = batch?.mesh as InstancedMesh;
+    expect(mesh).toBeInstanceOf(InstancedMesh);
+    mesh.getMatrixAt(0, matrix);
     const row = model.ids('component').indexOf('cmp/U1');
     const expected = model.bodies.nodeMatrix(row)?.clone().multiply(transformMatrix(ref));
     expect(matrix.toArray().map((v) => +v.toFixed(9))).toEqual(

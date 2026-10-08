@@ -185,6 +185,14 @@ export class BoardRenderer {
     this.requestRender();
   }
 
+  /**
+   * Compiles what the scene, or `object` in it, would draw now (node materials and pipelines)
+   * without drawing it; resolves when done.
+   */
+  compile(object: Object3D = this.scene): Promise<void> {
+    return this.renderer.compileAsync(object, this.camera, this.scene);
+  }
+
   /** Schedules a frame. */
   requestRender(): void {
     if (!this.#frame) {

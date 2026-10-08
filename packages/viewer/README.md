@@ -156,15 +156,26 @@ component) is switched off or the element is hidden with `hide`.
   (bottom view). The soldermask gets a polygon offset: its bottom face is coplanar with the
   dielectric's top and the copper's bottom (ADR 0006), which z-fought with the dielectric hidden.
 - **Element state.** One RGBA8 texel per feature and per component. A TSL node graph reads it per
-  vertex (feature ID + layer offset) and tints, or discards, the fragment. Hover, selection,
-  highlights and hiding are texel writes. Copper and drill layers get a second, overlay draw that
-  shows tinted features through the translucent soldermask; it is drawn only while the layer has a
-  tint.
-- **Components.** Component nodes that share geometry and material become one `InstancedMesh`; an
-  instanced attribute carries each instance's component row into the same state-texture lookup.
-  Runtime models are batched the same way (`src/bodies.ts`); the placeholder batches they replace
-  draw only their remaining instances.
-- **Picking.** `three-mesh-bvh` BVHs per layer mesh, three's instanced ray cast for components.
+  vertex and tints, or discards, the fragment; the texel's index comes from the geometry (merged
+  layer meshes store each vertex's feature ID plus the layer's offset instead of the feature ID).
+  Hover, selection, highlights and hiding are texel writes. Copper and drill layers get a second,
+  overlay draw that shows tinted features through the translucent soldermask; it is drawn only
+  while the layer has a tint.
+- **Materials.** Meshes that render alike share one node material for the whole board
+  (`src/materials.ts`; runtime models by the material's content, as their loaders make copies of a
+  small palette), so three builds each shader once instead of once per mesh. Each has a normal and
+  an x-ray variant: `setXray` swaps the meshes' materials and changes none, and the other mode is
+  compiled (`compileAsync`) in idle time after loading, after runtime models arrive and after a
+  layer is shown, so toggling x-ray rebuilds nothing.
+- **Components.** The asset's component meshes (placeholder bodies, pin-1 markers, embedded user
+  models) are merged into one static mesh per material, in board coordinates, with each vertex's
+  state texel, so a board draws its bodies with a few meshes however many packages it has; the
+  merged copies cost some memory (testcase1, 1,656 components: 67k vertices). Meshes whose copies
+  would add more than 2¹⁸ vertices stay one `InstancedMesh` each, with the texel per instance.
+  Runtime models are instanced the same way (`src/bodies.ts`); placeholders they replace drop out
+  of the merged index buffer.
+- **Picking.** `three-mesh-bvh` BVHs per layer mesh; for components, a box test per instance, then
+  its triangles (three's instanced ray cast for instanced batches).
   Meshes with 50k triangles or more get their BVH built in Web Workers (`src/bvh.worker.ts`, a pool
   of up to three) from copies of their positions and indices, so loading a dense board doesn't
   block the main thread; smaller ones are built in idle time. Until a layer's BVH arrives, hover

@@ -22,6 +22,7 @@ vi.mock('../src/renderer.js', async () => {
         setBounds() {},
         resize() {},
         requestRender() {},
+        compile: async () => {},
         dispose() {},
         frame(box: Box3, direction?: Vector3) {
           frames.push({ box: box.clone(), direction: direction?.clone() });

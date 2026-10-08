@@ -51,10 +51,11 @@ export class FeatureRanges {
   /**
    * Records the features of one primitive.
    *
-   * @param featureIds `_FEATURE_ID_0` per vertex.
+   * @param featureIds `_FEATURE_ID_0` per vertex, plus `offset`.
    * @param positions Vertex positions, three floats per vertex.
    * @param index Triangle indices into the same vertex buffers.
    * @param span Where the primitive lies in these buffers.
+   * @param offset Added to every feature ID in `featureIds` (the layer's first state texel).
    * @throws if the primitive breaks the layout rules of spec §8.1.
    */
   scan(
@@ -62,11 +63,12 @@ export class FeatureRanges {
     positions: ArrayLike<number>,
     index: ArrayLike<number>,
     span: PrimitiveSpan,
+    offset = 0,
   ): void {
     const { vertexStart, vertexCount, indexStart, indexCount, bounds } = this;
     let current = -1;
     for (let v = span.vertexStart; v < span.vertexEnd; v++) {
-      const feature = featureIds[v] as number;
+      const feature = (featureIds[v] as number) - offset;
       if (feature !== current) {
         this.#checkNext(feature, current, vertexCount, `vertex ${v}`);
         current = feature;
@@ -85,13 +87,11 @@ export class FeatureRanges {
     }
     current = -1;
     for (let i = span.indexStart; i < span.indexEnd; i += 3) {
-      const feature = featureIds[index[i] as number] as number;
-      if (
-        featureIds[index[i + 1] as number] !== feature ||
-        featureIds[index[i + 2] as number] !== feature
-      ) {
+      const id = featureIds[index[i] as number] as number;
+      if (featureIds[index[i + 1] as number] !== id || featureIds[index[i + 2] as number] !== id) {
         throw new Error(`Triangle at index ${i} mixes features (spec §8.1)`);
       }
+      const feature = id - offset;
       if (feature !== current) {
         this.#checkNext(feature, current, indexCount, `index ${i}`);
         current = feature;

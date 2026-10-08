@@ -12,6 +12,12 @@ export type Rgb = readonly [number, number, number];
 /** Alpha value that marks a hidden element. */
 export const HIDDEN_ALPHA = 255;
 
+/**
+ * Geometry attribute (per vertex, or per instance) holding the state texel of the element drawn,
+ * as a float: exact up to 2²⁴, more texels than the texture can have (2048 × 8192).
+ */
+export const STATE_ATTRIBUTE = '_state';
+
 /** Tint used for the element under the pointer. */
 export const HOVER_TINT = { color: [0.05, 0.45, 1] as Rgb, strength: 0.75 };
 /** Tint used for the selected element. */

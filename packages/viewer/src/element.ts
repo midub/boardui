@@ -81,6 +81,23 @@ const MASK_DEPTH_BIAS = 4;
 /** Share of {@link LoadProgress.fraction} taken by the conversion; loading takes the rest. */
 const CONVERT_SHARE = 0.9;
 
+/**
+ * Runs `callback` when the browser is idle (or soon, where it can't tell, without a deadline).
+ */
+function idle(callback: (deadline?: IdleDeadline) => void): void {
+  if (globalThis.requestIdleCallback) globalThis.requestIdleCallback(callback);
+  else setTimeout(callback, 50);
+}
+
+/** Runs `callback` in the next animation frame, after the callbacks requested before. */
+function afterFrame(callback: () => void): void {
+  if (globalThis.requestAnimationFrame) globalThis.requestAnimationFrame(() => callback());
+  else setTimeout(callback, 16);
+}
+
+/** Idle time (ms) left in which `#preparePass` still compiles another mesh (≈ one build). */
+const PREPARE_SLICE_MS = 10;
+
 /** Pointer travel (CSS px) below which a press and release count as a click. */
 const CLICK_SLOP = 4;
 /** `focus(id)` leaves room around the element, as a factor of its size. */
@@ -116,6 +133,10 @@ interface Loaded {
   bvhs: BvhBuilder | null;
   /** Resolves when every pickable layer has its BVH. */
   pickable: Promise<void>;
+  /** Resolves when the last `#prepare` pass has handed every mesh to three. */
+  prepared: Promise<void>;
+  /** Whether a `#prepare` pass is scheduled. */
+  prepareQueued: boolean;
 }
 
 /**
@@ -245,25 +266,22 @@ export class BoardViewerElement extends ElementBase {
     }
     const state = new ElementState(model.stateCount);
     const materials = new BoardMaterials(state);
+    materials.setXray(this.#xray);
     const overlays: Loaded['overlays'] = [];
     for (const layer of model.layers) {
       const copper = !('role' in layer.info) || layer.info.role === 'COPPER';
+      // The mask's bottom face lies on the dielectric and the copper (spec §6.5, ADR 0006): push
+      // it back a little so that the copper wins where they meet (seen from below with the
+      // dielectric hidden). A constant bias only: a slope-scaled one pushes the whole mask
+      // behind the copper (20 µm below its top) in oblique views.
+      const mask = 'role' in layer.info && layer.info.role === 'SOLDERMASK';
       for (const mesh of layer.meshes) {
         const source = mesh.material as Material;
         const xray = copper ? XRAY_COPPER_OPACITY : XRAY_OPACITY;
-        mesh.material = materials.layer(source, layer.stateOffset, xray);
-        if ('role' in layer.info && layer.info.role === 'SOLDERMASK') {
-          // The mask's bottom face lies on the dielectric and the copper (spec §6.5, ADR 0006):
-          // push it back a little so that the copper wins where they meet (seen from below with
-          // the dielectric hidden). A constant bias only: a slope-scaled one pushes the whole
-          // mask behind the copper (20 µm below its top) in oblique views.
-          const material = mesh.material as Material;
-          material.polygonOffset = true;
-          material.polygonOffsetFactor = 0;
-          material.polygonOffsetUnits = MASK_DEPTH_BIAS;
-        }
+        materials.layer(mesh, source, xray, mask ? MASK_DEPTH_BIAS : 0);
         if (copper) {
-          const overlay = new Mesh(mesh.geometry, materials.overlay(source, layer.stateOffset));
+          const overlay = new Mesh(mesh.geometry);
+          materials.overlay(overlay, source);
           overlay.renderOrder = 1; // after the soldermask
           layer.group.add(overlay);
           overlays.push({
@@ -274,14 +292,9 @@ export class BoardViewerElement extends ElementBase {
         }
       }
     }
-    for (const { mesh, rowAttribute } of model.componentBatches) {
-      mesh.material = materials.components(
-        mesh.material as Material,
-        rowAttribute,
-        model.componentOffset,
-      );
+    for (const { mesh } of model.componentBatches) {
+      materials.component(mesh, mesh.material as Material);
     }
-    materials.setXray(this.#xray);
     model.bodies.showModels(this.#modelsShown);
     const pickLayers = model.layers.filter(
       (layer) => !('role' in layer.info) || layer.info.role !== 'SOLDERMASK',
@@ -296,6 +309,8 @@ export class BoardViewerElement extends ElementBase {
       overlays,
       bvhs: null,
       pickable: Promise.resolve(),
+      prepared: Promise.resolve(),
+      prepareQueued: false,
     };
     this.#unload();
     this.#loaded = loaded;
@@ -375,11 +390,13 @@ export class BoardViewerElement extends ElementBase {
 
   /** Shows or hides a layer or drill layer. */
   setLayerVisible(id: string, visible: boolean): void {
-    const layer = this.#model().layer(id);
+    const loaded = this.#require();
+    const layer = loaded.model.layer(id);
     if (!layer) throw new RangeError(`Unknown layer: ${id}`);
     layer.group.visible = visible;
     this.#visibility++;
     this.#requestRender();
+    if (visible) this.#prepare(loaded);
   }
 
   /**
@@ -428,7 +445,7 @@ export class BoardViewerElement extends ElementBase {
    * Turns x-ray mode on or off: every layer and component becomes translucent, copper less so
    * than the rest, so that the copper of both sides shows. Layer visibility stays as it is: inner
    * copper (hidden by default) shows only when switched on, since inner planes would cover the
-   * view of a multilayer board.
+   * view of a multilayer board. Toggling swaps materials prepared after loading, so it is cheap.
    */
   setXray(on: boolean): void {
     this.#xray = on;
@@ -644,6 +661,59 @@ export class BoardViewerElement extends ElementBase {
     // Zoom limits and clipping cover the whole board, hidden layers too.
     renderer.setBounds(loaded.model.bounds);
     renderer.frame(this.#shownBounds(loaded), viewDirection('iso'), false);
+    this.#prepare(loaded);
+  }
+
+  /**
+   * Has three compile the materials of the other x-ray mode for the meshes drawn now, in idle
+   * time after the next frame, so that toggling doesn't stall.
+   */
+  #prepare(loaded: Loaded): void {
+    if (loaded.prepareQueued) return;
+    loaded.prepareQueued = true;
+    void loaded.prepared.then(() =>
+      afterFrame(() =>
+        idle(() => {
+          loaded.prepareQueued = false;
+          loaded.prepared = this.#preparePass(loaded);
+        }),
+      ),
+    );
+  }
+
+  /**
+   * Compiles the other variant of each drawn mesh in idle callbacks, a mesh at a time: three
+   * builds its node material at once and creates its pipeline in the background, so that slow
+   * pipelines don't hold up the rest. three compiles a mesh as it is when `compile` is called,
+   * so the mesh has its other variant for just that call.
+   */
+  #preparePass(loaded: Loaded): Promise<void> {
+    const meshes: Mesh[] = [];
+    loaded.model.root.traverseVisible((object) => {
+      if ((object as Mesh).isMesh) meshes.push(object as Mesh);
+    });
+    return new Promise((resolve) => {
+      const next = (deadline?: IdleDeadline) => {
+        do {
+          const renderer = this.#renderer;
+          const mesh = meshes.shift();
+          if (!mesh || !renderer || this.#loaded !== loaded) {
+            resolve();
+            return;
+          }
+          const variants = loaded.materials.variants(mesh);
+          const other = this.#xray ? variants?.normal : variants?.xray;
+          const current = mesh.material;
+          if (other && other !== current) {
+            mesh.material = other;
+            renderer.compile(mesh).catch(() => {});
+            mesh.material = current;
+          }
+        } while ((deadline?.timeRemaining() ?? 0) > PREPARE_SLICE_MS);
+        idle(next);
+      };
+      next();
+    });
   }
 
   /**
@@ -654,7 +724,7 @@ export class BoardViewerElement extends ElementBase {
     this.#modelRun = null;
     const { model, materials } = loaded;
     const removed = model.bodies.clearModels();
-    for (const batch of removed) materials.release(batch.mesh.material as Material);
+    for (const batch of removed) materials.release(batch.mesh);
     if (removed.length) this.#modelsChanged(loaded);
     if (!this.#modelSources.length) return;
     this.#modelCache ??= new ModelCache();
@@ -665,17 +735,12 @@ export class BoardViewerElement extends ElementBase {
       memory: this.#modelMemory,
       apply: (key, geometry, rows, matrices) => {
         if (this.#modelRun !== run) return;
-        for (const batch of model.bodies.removeModel(key)) {
-          materials.release(batch.mesh.material as Material);
-        }
+        const removed = model.bodies.removeModel(key);
         for (const batch of model.bodies.setModel(key, geometry.parts, rows, matrices)) {
-          batch.mesh.material = materials.components(
-            batch.mesh.material as Material,
-            batch.rowAttribute,
-            model.componentOffset,
-          );
+          materials.component(batch.mesh, batch.mesh.material as Material);
         }
-        materials.setXray(this.#xray);
+        // Released after the new batches took their materials, which may be the same.
+        for (const batch of removed) materials.release(batch.mesh);
       },
       report: (status) => {
         if (this.#modelRun !== run) return;
@@ -689,12 +754,14 @@ export class BoardViewerElement extends ElementBase {
   }
 
   /** Bodies changed (runtime models swapped in or out): bounds, widgets and the frame follow. */
-  #modelsChanged({ model }: Loaded): void {
+  #modelsChanged(loaded: Loaded): void {
+    const { model } = loaded;
     model.updateBounds();
     this.#renderer?.setBounds(model.bounds);
     this.#widgetBoxes.clear();
     this.#visibility++;
     this.#requestRender();
+    this.#prepare(loaded);
   }
 
   /** Bounding box of what is shown; the whole board if nothing is. */
@@ -734,7 +801,6 @@ export class BoardViewerElement extends ElementBase {
       );
       builds.push(build);
     }
-    const idle = globalThis.requestIdleCallback ?? ((callback) => setTimeout(callback, 50));
     builds.push(
       new Promise<void>((resolve) => {
         const next = () => {

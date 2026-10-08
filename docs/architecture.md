@@ -107,14 +107,14 @@ Files kept on disk or served over the network can be large. A dense board approa
 Every element can be hovered, selected, recoloured or hidden, but layers stay merged meshes ([ADR 0008](adr/0008-hybrid-metadata.md), [ADR 0009](adr/0009-viewer-three-js-web-component.md)):
 
 1. **One texel per element.** A small RGBA8 *state texture* has one texel per feature, across all layers (each layer gets an offset). It holds a highlight colour, a blend factor and a hidden flag.
-2. **The shader reads it.** The shader reads `_FEATURE_ID_0` plus the layer offset, looks up the texel, then tints or discards the fragment.
+2. **The shader reads it.** The shader reads the element's texel index from the geometry (when merging a layer, the viewer stores `_FEATURE_ID_0` plus the layer offset), looks up the texel, then tints or discards the fragment. The graph holds nothing per mesh, so meshes that render alike share one material, and x-ray mode swaps each mesh's material for its x-ray variant instead of changing materials.
 3. **Hover.**
    - A BVH ray cast finds the triangle under the cursor.
    - The triangle's vertex gives the feature ID, and the metadata gives the element.
    - The viewer writes one texel; nothing is rebuilt.
 4. **Net highlight.** The viewer writes every texel of the net's features. The feature → net index is built once at load time.
 5. **Feature ranges.** Contiguous features (spec §8.1) let the loader compute each feature's vertex range and bounding box in one pass. These feed widget anchors and "zoom to element".
-6. **Components.** Component nodes that share a mesh are batched (`BatchedMesh` / `InstancedMesh`) per material, and the instance index maps back to the component row. Runtime models (below) are batched the same way, on the same texels, so a component behaves alike whatever body it shows.
+6. **Components.** The asset's component meshes are merged into one static mesh per material, each vertex carrying its component's texel, so the number of meshes doesn't grow with the number of packages; meshes that would cost too much memory as copies, and runtime models (below), are instanced, with the texel per instance. Either way a component uses the same texel, so it behaves alike whatever body it shows.
 
 ### Runtime models
 
