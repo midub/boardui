@@ -301,14 +301,34 @@ pub(crate) fn run(
             || (layer < first && drill.from == first)
             || (layer > last && drill.to == last)
     };
-    let layer_cuts = |layer: usize| -> Vec<Region> {
+    let layer_cuts = |layer: usize| {
+        let drills = &drills;
         hole_list
             .iter()
             .zip(&cuts)
-            .filter(|((d, _), _)| through(layer, &drills[*d]))
-            .filter_map(|(_, cut)| cut.clone())
+            .filter(move |((d, _), _)| through(layer, &drills[*d]))
+            .filter_map(|(_, cut)| cut.as_ref())
+    };
+    // Layers crossed by the same drills have the same cuts: each layer's first layer with
+    // its drills, whose hole cutter and dielectric sheet it shares.
+    let same_cuts: Vec<usize> = {
+        let mut first = HashMap::new();
+        (0..stack.layers.len())
+            .map(|i| {
+                let crossing: Vec<usize> = (0..drills.len())
+                    .filter(|&d| through(i, &drills[d]))
+                    .collect();
+                *first.entry(crossing).or_insert(i)
+            })
             .collect()
     };
+    // The earlier dielectric whose sheet a dielectric repeats, at other heights.
+    let same_sheet: Vec<Option<usize>> = (0..stack.layers.len())
+        .map(|i| {
+            let dielectric = |j: usize| stack.layers[j].role == Role::Dielectric;
+            (0..i).find(|&j| dielectric(i) && dielectric(j) && same_cuts[j] == same_cuts[i])
+        })
+        .collect();
 
     // Board outline and soldermask openings.
     let mut profiles: Vec<Region> = part_outlines.into_iter().flatten().collect();
@@ -359,13 +379,26 @@ pub(crate) fn run(
         let indices: Vec<usize> = (0..stack.layers.len()).collect();
         let mut rows: Vec<Option<Vec<FeatureRow>>> =
             layer_features.into_iter().map(|f| Some(f.rows)).collect();
+        // One hole cutter per set of drills that copper or paste layers are cut with.
+        let mut cutter_layers: Vec<usize> = (0..stack.layers.len())
+            .filter(|&i| matches!(stack.layers[i].role, Role::Copper | Role::Paste))
+            .map(|i| same_cuts[i])
+            .collect();
+        cutter_layers.sort_unstable();
+        cutter_layers.dedup();
+        let cutters = par::map(&cutter_layers, |_, &i| {
+            HoleCutter::new(layer_cuts(i).cloned().collect())
+        });
+        let cutter = |i: usize| {
+            let k = cutter_layers.binary_search(&same_cuts[i]).expect("cutter");
+            &cutters[k]
+        };
         let results = par::map(&indices, |_, &i| {
             let layer = &stack.layers[i];
-            let holes = layer_cuts(i);
             let side = (layer.side == Side::Bottom) as usize;
             match layer.role {
                 Role::Copper | Role::Paste => {
-                    let cutter = HoleCutter::new(holes);
+                    let cutter = cutter(i);
                     let cut: Vec<Region> = regions[i].iter().map(|r| cutter.cut(r)).collect();
                     (None, cut)
                 }
@@ -374,20 +407,20 @@ pub(crate) fn run(
                     (None, regions[i].clone())
                 }
                 Role::Silkscreen => {
-                    let mut clip = holes;
-                    clip.extend(side_openings[side].iter().cloned());
-                    let cutter = HoleCutter::new(clip);
+                    let clip = layer_cuts(i).chain(&side_openings[side]).cloned();
+                    let cutter = HoleCutter::new(clip.collect());
                     let cut: Vec<Region> = regions[i].iter().map(|r| cutter.cut(r)).collect();
                     (None, cut)
                 }
                 Role::Soldermask => {
-                    let mut clip = holes;
-                    clip.extend(side_openings[side].iter().cloned());
-                    let sheet = outline.difference(&Region::union_all(&clip));
+                    let clip = layer_cuts(i).chain(&side_openings[side]);
+                    let sheet = outline.difference(&Region::union_all(clip));
                     (Some(sheet_row()), vec![sheet])
                 }
+                // Extruded from the earlier dielectric's sheet.
+                Role::Dielectric if same_sheet[i].is_some() => (Some(sheet_row()), Vec::new()),
                 Role::Dielectric => {
-                    let sheet = outline.difference(&Region::union_all(&holes));
+                    let sheet = outline.difference(&Region::union_all(layer_cuts(i)));
                     (Some(sheet_row()), vec![sheet])
                 }
             }
@@ -409,10 +442,30 @@ pub(crate) fn run(
     let mut layers = Vec::with_capacity(stack.layers.len());
     {
         let _step = timings.step("extrude");
-        let meshes = par::map(&finals, |i, (_, regions)| {
+        let mut meshes = par::map(&finals, |i, (_, regions)| {
             let layer = &stack.layers[i];
             extrude(&layer.name, regions, layer.z_min, layer.z_max)
         });
+        // Repeated dielectric sheets: the earlier sheet's mesh at their own heights.
+        let repeats: Vec<(usize, usize)> = (0..finals.len())
+            .filter_map(|i| Some((i, same_sheet[i]?)))
+            .collect();
+        let repeated = par::map(&repeats, |_, &(i, j)| {
+            let (layer, earlier) = (&stack.layers[i], &stack.layers[j]);
+            let (mesh, messages) = &meshes[j];
+            let heights = (layer.z_min, layer.z_max);
+            // A sheet that failed to mesh fails again, with this layer's warning.
+            let restacked = messages
+                .is_empty()
+                .then(|| mesh.restacked((earlier.z_min, earlier.z_max), heights));
+            match restacked.flatten() {
+                Some(mesh) => (mesh, Vec::new()),
+                None => extrude(&layer.name, &finals[j].1, heights.0, heights.1),
+            }
+        });
+        for ((i, _), mesh) in repeats.into_iter().zip(repeated) {
+            meshes[i] = mesh;
+        }
         let sources = stack.layers.iter().zip(colours);
         for (((layer, color), (rows, _)), (mesh, messages)) in sources.zip(finals).zip(meshes) {
             messages.into_iter().for_each(|m| warnings.push(m));
