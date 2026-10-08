@@ -179,6 +179,17 @@ impl Transform {
     }
 }
 
+/// The node transform that moves geometry from the board heights `from` to `to`: a scale and
+/// a translation along glTF Y, which is board Z (spec §3, §4).
+fn restack(from: (f64, f64), to: (f64, f64)) -> Transform {
+    let scale = (to.1 - to.0) / (from.1 - from.0);
+    Transform {
+        translation: [0.0, to.0 - scale * from.0, 0.0],
+        scale: [1.0, scale, 1.0],
+        ..Transform::default()
+    }
+}
+
 /// A row of a layer's or drill's feature table (spec §8.2).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FeatureRow {
@@ -224,10 +235,17 @@ pub struct LayerAsset {
     /// Base colour from the source, sRGB; `None` for the role's default (spec §6.10). A
     /// colour equal to the default is written as the default material.
     pub color: Option<[u8; 3]>,
-    /// Geometry; feature IDs are rows of `features`.
+    /// Geometry; feature IDs are rows of `features`. Not written when the layer shares the
+    /// mesh of a layer it [`repeats`](Self::repeats).
     pub mesh: LayerMesh,
     /// The feature table.
     pub features: Vec<FeatureRow>,
+    /// For a dielectric whose sheet is that of an earlier dielectric at other heights: the
+    /// index of that layer in [`BoardAsset::layers`]. If that layer has a mesh, this layer
+    /// shares it, scaled and moved in Z by its node transform, and shares its feature table
+    /// (spec §4); else this layer's own (empty) mesh is written. Both layers must have the
+    /// same features and material, and the earlier one must repeat no other layer.
+    pub repeats: Option<usize>,
 }
 
 /// A drill layer: the barrels of one drill span (spec §6.3).
@@ -396,6 +414,10 @@ pub fn layer_id(name: &str, synthesized: bool) -> String {
 
 impl BoardAsset {
     /// Writes the asset as GLB.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a layer [`repeats`](LayerAsset::repeats) a layer it can't repeat.
     pub fn to_glb(&self) -> Vec<u8> {
         Writer::default().write(self)
     }
@@ -437,14 +459,49 @@ impl Writer {
             attributes: self.attributes_table(asset),
         };
 
-        let mut board_layers = Vec::new();
-        for layer in &asset.layers {
+        let mut board_layers: Vec<BoardLayer> = Vec::new();
+        for (i, layer) in asset.layers.iter().enumerate() {
             let id = layer_id(&layer.name, layer.synthesized);
-            let table = self.feature_table(&id, &layer.features);
             let builtin = BuiltinMaterial::for_role(layer.role);
             let color = layer.color.filter(|&c| c != builtin.base_color());
             let material = self.colored_material(builtin, color);
-            let node = self.layer_node(&id, &layer.mesh, material, table, layer.features.len());
+            // A repeated sheet shares the earlier layer's mesh, if it has one, and its table.
+            let shared = layer.repeats.and_then(|j| {
+                let earlier = &asset.layers[j];
+                let earlier_color = earlier.color.filter(|&c| c != builtin.base_color());
+                assert!(
+                    j < i
+                        && earlier.repeats.is_none()
+                        && layer.role == Role::Dielectric
+                        && earlier.role == Role::Dielectric
+                        && earlier.features == layer.features
+                        && earlier_color == color,
+                    "layer `{}` can't repeat layer `{}` (spec §4)",
+                    layer.name,
+                    earlier.name
+                );
+                Some((j, self.out.root.nodes[board_layers[j].node as usize].mesh?))
+            });
+            let (node, table) = match shared {
+                Some((j, mesh)) => {
+                    let earlier = &asset.layers[j];
+                    let mut node = Node {
+                        mesh: Some(mesh),
+                        ..named(&id)
+                    };
+                    restack((earlier.z_min, earlier.z_max), (layer.z_min, layer.z_max))
+                        .apply(&mut node);
+                    (self.node(node), board_layers[j].feature_table)
+                }
+                None => {
+                    let table = self.feature_table(&id, &layer.features);
+                    let rows = layer.features.len();
+                    (
+                        self.layer_node(&id, &layer.mesh, material, table, rows),
+                        table,
+                    )
+                }
+            };
             self.out.root.nodes[layers as usize].children.push(node);
             board_layers.push(BoardLayer {
                 id,

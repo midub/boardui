@@ -79,7 +79,7 @@ That keeps every dependency pure Rust, so the WASM build needs no C/C++ toolchai
    - Apply negative polarity in document order.
    - Resolve overlaps by priority (spec §6.2). Features go in priority order; each one subtracts the already-claimed area near it (found via the R-tree) and then claims its own.
 4. **Holes and outline.** Subtract the holes from every layer they cross, and build barrels. The board outline, for the dielectric and soldermask sheets, is the union of the step profiles; a profile without `Cutout`s loses the closed contours that a `BOARD_OUTLINE` layer draws inside it, as KiCad writes them (spec §6.7).
-5. **Extrude and triangulate.** Triangulate each region, emit caps and side walls, write features contiguously, and split into primitives of at most 65,535 vertices. Dielectrics crossed by the same drills have the same sheet: it is cut and triangulated once, and its mesh is moved to the other dielectrics' heights.
+5. **Extrude and triangulate.** Triangulate each region, emit caps and side walls, write features contiguously, and split into primitives of at most 65,535 vertices. Dielectrics crossed by the same drills have the same sheet: it is cut and triangulated once, and the other dielectrics share its mesh, scaled and moved in Z by their node transforms (spec §4).
 6. **Components.** Build placeholder bodies, or user models from the mapping file, with one shared mesh per package or model.
 7. **Write.** Emit materials, nodes, meshes, `EXT_mesh_features`, the `EXT_structural_metadata` tables and `BOARDUI_board`, then pack the GLB.
 

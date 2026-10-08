@@ -35,6 +35,12 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
   same drills share one sheet, which is cut and triangulated once and moved to each layer's
   heights; copper layers crossed by the same drills share one hole index. The output is
   unchanged. testcase1-RevC-full (11 dielectrics) converts about 10 % faster in the browser.
+- **Smaller files for boards with several dielectric layers (profile 0.10, still a draft):**
+  a dielectric whose sheet repeats an earlier dielectric's shares that layer's mesh, scaled and
+  moved in Z by its node transform, and its feature table ([spec §4](spec/README.md#4-scene-structure),
+  [ADR 0016](docs/adr/0016-shared-dielectric-sheets.md)). testcase1-RevC-full shrinks from
+  277 MB to 203 MB. `boardui validate` accepts exactly this transform on layer nodes; files of
+  profile 0.9 and older load as before. New sample `stacked-sheets`.
 
 - **Component attributes (profile 0.8, still a draft):** the converter reads the BOM, the
   approved vendor list and the exporting software. Each component gets its BOM attributes

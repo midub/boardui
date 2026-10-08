@@ -1,0 +1,48 @@
+---
+source: crates/boardui-convert/tests/conformance.rs
+---
+source: IPC-2581 rev C, step board, FABRICATION
+thickness: 1.5400 mm
+counts: 18 features, 1178 vertices, 2384 triangles, 1 nets, 0 components, 0 pins (0 checked against pads)
+warnings: 0 from the reader, 0 from the converter
+layer layer/@soldermask-top Soldermask Top z 0.7350..0.7900 mm Default synthesized
+  1 features {"Sheet": 1}, 92 vertices, 192 triangles, top area 39.7210 mm²
+    row 0: Sheet net - area 39.7210 mm²
+layer layer/TOP Copper Top z 0.7350..0.7700 mm File
+  3 features {"Via": 3}, 192 vertices, 384 triangles, top area 0.5521 mm²
+    row 0: Via net 0 area 0.1840 mm²
+    row 1: Via net 0 area 0.1840 mm²
+    row 2: Via net 0 area 0.1840 mm²
+layer layer/PREPREG_1 Dielectric Internal z 0.5350..0.7350 mm File
+  1 features {"Sheet": 1}, 92 vertices, 192 triangles, top area 39.7210 mm²
+    row 0: Sheet net - area 39.7210 mm²
+layer layer/IN1 Copper Internal z 0.5000..0.5350 mm File hidden
+  3 features {"Via": 3}, 192 vertices, 384 triangles, top area 0.5521 mm²
+    row 0: Via net 0 area 0.1840 mm²
+    row 1: Via net 0 area 0.1840 mm²
+    row 2: Via net 0 area 0.1840 mm²
+layer layer/CORE Dielectric Internal z -0.5000..0.5000 mm File
+  1 features {"Sheet": 1}, 64 vertices, 132 triangles, top area 39.8140 mm²
+    row 0: Sheet net - area 39.8140 mm²
+layer layer/IN2 Copper Internal z -0.5350..-0.5000 mm File hidden
+  2 features {"Via": 2}, 128 vertices, 256 triangles, top area 0.3680 mm²
+    row 0: Via net 0 area 0.1840 mm²
+    row 1: Via net 0 area 0.1840 mm²
+layer layer/PREPREG_2 Dielectric Internal z -0.7350..-0.5350 mm File mesh of layer/CORE
+  1 features {"Sheet": 1}, 64 vertices, 132 triangles, top area 39.8140 mm²
+    row 0: Sheet net - area 39.8140 mm²
+layer layer/BOTTOM Copper Bottom z -0.7700..-0.7350 mm File
+  2 features {"Via": 2}, 128 vertices, 256 triangles, top area 0.3680 mm²
+    row 0: Via net 0 area 0.1840 mm²
+    row 1: Via net 0 area 0.1840 mm²
+layer layer/@soldermask-bottom Soldermask Bottom z -0.7900..-0.7350 mm Default synthesized
+  1 features {"Sheet": 1}, 64 vertices, 132 triangles, top area 39.8140 mm²
+    row 0: Sheet net - area 39.8140 mm²
+drill layer/DRILL_TOP-BOTTOM layer/TOP..layer/BOTTOM
+  2 features {"Barrel": 2}, 108 vertices, 216 triangles, top area 0.0501 mm²
+    row 0: Barrel net 0 area 0.0250 mm²
+    row 1: Barrel net 0 area 0.0250 mm²
+drill layer/DRILL_TOP-IN1 layer/TOP..layer/IN1
+  1 features {"Barrel": 1}, 54 vertices, 108 triangles, top area 0.0250 mm²
+    row 0: Barrel net 0 area 0.0250 mm²
+components: 0

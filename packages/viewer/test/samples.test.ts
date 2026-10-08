@@ -1,10 +1,12 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Ray, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 import type { BoardLayerJson } from '../src/board-extension.js';
 import { BoardModel } from '../src/board-model.js';
 import { loadGltf } from '../src/load.js';
+import { Picker } from '../src/picking.js';
 
 // The converter's expected outputs (spec/samples/hand-written/*/*.glb), so the viewer is
 // tested on real assets, including ones that omit empty tables (spec §8.2).
@@ -287,5 +289,41 @@ describe('BOM attributes (spec §8.2–§8.4)', () => {
     expect(r1).not.toHaveProperty('attributes');
     expect(r1).not.toHaveProperty('populate');
     expect(model.describe('board')?.properties.source).not.toHaveProperty('software');
+  });
+});
+
+describe('repeated sheets (spec §4)', () => {
+  it('draws a sheet that shares a mesh at its own heights', async () => {
+    const model = await load('stacked-sheets');
+    for (const name of ['PREPREG_1', 'CORE', 'PREPREG_2']) {
+      const layer = model.layer(`layer/${name}`);
+      if (!layer) throw new Error(`layer/${name} is missing`);
+      const { zMin, zMax } = layer.info as BoardLayerJson;
+      const geometry = layer.meshes[0]?.geometry;
+      expect(geometry?.boundingBox?.min.y).toBeCloseTo(zMin, 8);
+      expect(geometry?.boundingBox?.max.y).toBeCloseTo(zMax, 8);
+      const box = model.resolve(`feat/${name}/0`)?.box;
+      expect(box?.min.y).toBeCloseTo(zMin, 8);
+      expect(box?.max.y).toBeCloseTo(zMax, 8);
+      expect(model.describe(`feat/${name}/0`)?.properties).toMatchObject({ kind: 'SHEET' });
+    }
+    // The prepreg shares the core's mesh and feature table; the upper prepreg has its own.
+    const table = (name: string) => model.layer(`layer/${name}`)?.table;
+    expect(table('PREPREG_2')).toBe(table('CORE'));
+    expect(table('PREPREG_1')).not.toBe(table('CORE'));
+  });
+
+  it('picks a shared sheet at its own heights', async () => {
+    const model = await load('stacked-sheets');
+    const picker = new Picker(model);
+    for (const name of ['PREPREG_1', 'CORE', 'PREPREG_2']) {
+      const info = model.layer(`layer/${name}`)?.info as BoardLayerJson | undefined;
+      const z = info ? (info.zMin + info.zMax) / 2 : Number.NaN;
+      // Towards the board edge at x = 8 mm, from the side, between two vias.
+      const ray = new Ray(new Vector3(0.05, z, -1e-3), new Vector3(-1, 0, 0));
+      const hit = picker.pick(ray);
+      expect(hit && model.idOfTexel(hit.texel)).toBe(`feat/${name}/0`);
+      expect(hit?.point.x).toBeCloseTo(8e-3, 8);
+    }
   });
 });

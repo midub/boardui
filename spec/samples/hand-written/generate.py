@@ -301,6 +301,48 @@ def conductor_core():
     return d
 
 
+def stacked_sheets():
+    """Four copper layers with two through vias and a blind via from TOP to IN1: the core and
+    the lower prepreg are crossed by the same drills, so the prepreg shares the core's sheet
+    mesh, scaled and moved in Z (spec §4); the upper prepreg has its own (spec §6.7)."""
+    d = Doc()
+    d.primitive("VIA", f'<Circle diameter="{d.u(0.6)}"/>')
+    d.layer("TOP", "CONDUCTOR", "TOP")
+    d.layer("PREPREG_1", "DIELPREG", "INTERNAL")
+    d.layer("IN1", "CONDUCTOR", "INTERNAL")
+    d.layer("CORE", "DIELCORE", "INTERNAL")
+    d.layer("IN2", "CONDUCTOR", "INTERNAL")
+    d.layer("PREPREG_2", "DIELPREG", "INTERNAL")
+    d.layer("BOTTOM", "CONDUCTOR", "BOTTOM")
+    d.layer("DRILL_TOP-BOTTOM", "DRILL", "ALL", span=("TOP", "BOTTOM"))
+    d.layer("DRILL_TOP-IN1", "DRILL", "INTERNAL", span=("TOP", "IN1"))
+    stack = [("TOP", 0.035), ("PREPREG_1", 0.2), ("IN1", 0.035), ("CORE", 1.0)]
+    stack += [("IN2", 0.035), ("PREPREG_2", 0.2), ("BOTTOM", 0.035)]
+    rows = "".join(
+        f'<StackupLayer layerOrGroupRef="{name}" thickness="{d.u(t)}" sequence="{i}"/>'
+        for i, (name, t) in enumerate(stack)
+    )
+    d.layers.append(f'<Stackup name="S"><StackupGroup name="G">{rows}</StackupGroup></Stackup>')
+    profile(d, 8, 5)
+    vias = {
+        "DRILL_TOP-BOTTOM": [(2, 2.5), (6, 2.5)],
+        "DRILL_TOP-IN1": [(4, 1.5)],
+    }
+    lands = {"TOP": vias["DRILL_TOP-BOTTOM"] + vias["DRILL_TOP-IN1"]}
+    lands["IN1"] = lands["TOP"]
+    lands["IN2"] = lands["BOTTOM"] = vias["DRILL_TOP-BOTTOM"]
+    for layer, points in lands.items():
+        sets = "".join(f'<Set net="GND" padUsage="VIA">{pad(d, x, y, "VIA")}</Set>' for x, y in points)
+        d.step.append(f'<LayerFeature layerRef="{layer}">{sets}</LayerFeature>')
+    for (layer, points), prefix in zip(vias.items(), "TB"):
+        holes = "".join(
+            f'<Hole name="{prefix}{k}" diameter="{d.u(0.3)}" platingStatus="VIA" plusTol="0" minusTol="0" {d.xy(x, y)}/>'
+            for k, (x, y) in enumerate(points)
+        )
+        d.step.append(f'<LayerFeature layerRef="{layer}"><Set net="GND">{holes}</Set></LayerFeature>')
+    return d
+
+
 def overlap_priority():
     """Pad over trace over plane, and ties in document order (spec §6.2)."""
     d = Doc()
@@ -1609,6 +1651,7 @@ def main():
         "pad-stacks": pad_stacks(),
         "pad-stacks-drill-layer": pad_stacks_drill_layer(),
         "conductor-core": conductor_core(),
+        "stacked-sheets": stacked_sheets(),
         "bottom-placement": bottom_placement(),
         "paste-layer": paste_layer(),
         "drawing-layers": drawing_layers(),

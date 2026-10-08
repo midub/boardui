@@ -1,6 +1,6 @@
 # boardui glTF profile
 
-**Version 0.9 — draft**
+**Version 0.10 — draft**
 
 This document specifies how boardui represents a printed circuit board as a glTF 2.0 asset. The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
@@ -53,8 +53,13 @@ board                         root node
 ```
 
 - The root node MUST be named `board`, with child group nodes `layers`, `drills` and `components`. Group nodes MAY be empty.
-- Layer and drill nodes MUST be named by their layer ID (§5), have identity transforms and hold geometry in board coordinates.
-- Each layer and drill node with geometry has one mesh. A layer without geometry has no mesh (glTF meshes can't be empty).
+- Layer and drill nodes MUST be named by their layer ID (§5), have identity transforms and hold geometry in board coordinates. The one exception is a repeated sheet (below), whose node scales and moves a shared mesh in Z.
+- Each layer and drill node with geometry has one mesh. A layer without geometry has no mesh (glTF meshes can't be empty). A layer or drill mesh MUST NOT be used by any other node, except by repeated sheets.
+- **Repeated sheets** (since 0.10). Dielectric layers crossed by the same holes have the same sheet (§6.7) at different heights. A dielectric layer whose sheet is that of an earlier dielectric layer (in `layers` order) MAY share that layer's mesh instead of having its own ([ADR 0016](../docs/adr/0016-shared-dielectric-sheets.md)):
+  - The mesh belongs to the first layer whose node uses it. That node has an identity transform, and the mesh is in board coordinates at its Z range. Only dielectric layers MAY use the mesh of another layer.
+  - The repeating layer's node uses the same mesh, with a `translation` of `[0, t, 0]` and a `scale` of `[1, s, 1]`, `s > 0` (either is omitted when it is the identity), and no `rotation` or `matrix`. The transform MUST map the first layer's Z range `[zMin₁, zMax₁]` onto the layer's own, within float32 precision: `s · zMin₁ + t = zMin` and `s · zMax₁ + t = zMax`, so `s = (zMax − zMin) / (zMax₁ − zMin₁)`. Its geometry in board coordinates is the mesh transformed by the node.
+  - The repeating layer shares the first layer's feature table too (§8.1, §8.2): both have one row, the sheet. The material is the mesh's, so the two layers have the same colour (§6.10).
+  - Other layers don't repeat in practice (soldermask sheets differ by their openings), so only dielectric sheets are shared. Viewers that merge layer meshes in board coordinates apply the node transform; generic glTF viewers do so anyway.
 - A mesh MAY have several primitives, for example chunks of the same material. Converters SHOULD keep each primitive at or below 65,535 vertices so indices fit `UNSIGNED_SHORT`. A feature MUST NOT span two primitives.
 
 ## 5. Element identifiers
@@ -181,7 +186,7 @@ A feature whose region becomes empty keeps its metadata row (§8.2) and has no v
 
 ### 6.7 Dielectric and outline
 
-Each dielectric layer is one sheet feature (kind `SHEET`): the step profile, including its cutouts, minus holes.
+Each dielectric layer is one sheet feature (kind `SHEET`): the step profile, including its cutouts, minus the holes that cross it. Dielectrics crossed by the same holes have the same sheet, which they MAY share (§4, since 0.10).
 
 **Cut-outs on a board outline layer.** KiCad writes the `Profile` as its outer polygon alone and draws the board's inner contours (holes, slots, the gaps of a panel) only on its `BOARD_OUTLINE` layer, `Edge.Cuts`, as separate `Line`s and `Arc`s. When a step's profile has no `Cutout`, the converter takes them from the step's `BOARD_OUTLINE` layers:
 
@@ -331,7 +336,7 @@ This section describes how the boardui viewer adds models when it shows an asset
 Every primitive of a layer or drill mesh MUST carry exactly one `featureIds` entry with:
 
 - `attribute: 0` (vertex attribute `_FEATURE_ID_0`);
-- `propertyTable`: that layer's feature table;
+- `propertyTable`: that layer's feature table (for a repeated sheet, the table it shares, §4);
 - `featureCount`: the number of distinct feature IDs in the primitive.
 
 Feature IDs are row indices into the layer's feature table:
@@ -355,7 +360,7 @@ Feature IDs are row indices into the layer's feature table:
 | `attributes` | `attribute` | attribute of a component (since 0.8) |
 | `<layer ID>` | `feature` | source feature of that layer (or drill layer) |
 
-- Feature tables are named by their layer ID.
+- Feature tables are named by their layer ID. A repeated sheet's table is the first layer's, with that layer's name (§4); its feature IDs still derive from its own layer (§5).
 - **Empty tables.** `EXT_structural_metadata` property tables need at least one row, and glTF buffer views at least one byte. A table without rows is therefore omitted (and so is its index in `BOARDUI_board`), and so is an optional `STRING` property whose values are all empty (its `noData` is `""`; for example `pin.name` on a board without pin names).
 - **References.** References between tables are row indices (`UINT32`); `4294967295` means none. For example, `feature.net` is a row in `nets`, and `pin.component` is a row in `components`.
 - **Feature ID strings** are not stored. They derive from the layer name and `feature.source` (§5).
@@ -382,7 +387,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 
 ```json
 "BOARDUI_board": {
-  "profileVersion": "0.9",
+  "profileVersion": "0.10",
   "source": {
     "format": "IPC-2581",
     "revision": "C",
@@ -416,6 +421,7 @@ This is a root-level extension ([`schema/BOARDUI_board.schema.json`](schema/BOAR
 
 - `layers` is ordered top to bottom. `thickness` is the copper-to-copper thickness.
 - `tables.*` and `featureTable` are absent for tables without rows (§8.2). `tables.instances` is present only for panels (§6.14).
+- `node` and `featureTable` of a repeated sheet (since 0.10) are its own node, which uses the shared mesh, and the shared table (§4). Two layers have the same `featureTable` only then.
 - `source.software` (since 0.8) is the software that wrote the source file: the `name`, `revision` and `vendor` of `HistoryRecord/FileRevision/SoftwarePackage`, as written. `revision` and `vendor` are absent when empty, and `software` when the file has no `SoftwarePackage`.
 - `role` is one of `COPPER`, `DIELECTRIC`, `SOLDERMASK`, `SILKSCREEN`, `PASTE`, `COURTYARD`, `ASSEMBLY`, `DOCUMENTATION`. `ipcFunction` keeps the source `layerFunction`, and is absent for synthesized layers.
 - `visible` is the suggested default visibility. Inner copper layers and the optional layers (paste and drawings, §6.11, §6.12) default to `false`, all other layers to `true`. Dielectric layers stay visible so that the board is opaque like a real one: with them hidden, the translucent soldermask (§7) would show the other side's copper and components through the board.
@@ -458,7 +464,7 @@ Anchors (for example top-centre of the bounding box) are computed from these.
 `boardui validate <file.glb>` checks the rules of this profile:
 
 - the extensions are declared as in §2;
-- the scene structure follows §4, and IDs are unique and well-formed;
+- the scene structure follows §4, and IDs are unique and well-formed; layer and drill nodes have identity transforms, except repeated sheets, whose transforms map their first layer's Z range onto their own and who share its feature table;
 - feature IDs are contiguous and ascending within primitives;
 - metadata references are in range, and component `extras` match the `components` and `attributes` tables;
 - the `attributes` table is in component order, without empty values or repeated names per component;
@@ -472,7 +478,7 @@ It runs the Khronos validator too, when the `gltf_validator` binary is on `PATH`
 
 ## 11. Versioning
 
-`profileVersion` is `major.minor`. Minor versions only add optional data. Readers MUST reject an unknown major version and SHOULD accept an unknown minor version.
+`profileVersion` is `major.minor`; versions compare as integers, so 0.10 follows 0.9. Minor versions only add optional data; while the profile is a draft (0.x), a minor version may also relax a rule, as 0.10 does for the transforms of repeated sheets (§4). Readers MUST reject an unknown major version and SHOULD accept an unknown minor version.
 
 ## 12. Open questions
 

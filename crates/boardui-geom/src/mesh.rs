@@ -78,41 +78,6 @@ pub struct LayerMesh {
     pub primitives: Vec<Primitive>,
 }
 
-impl LayerMesh {
-    /// The mesh of regions extruded from board height `from.0` to `from.1`
-    /// ([`Region::extrude`](crate::Region::extrude)), moved to the heights `to`: the same
-    /// mesh as extruding the regions from `to.0` to `to.1`, without triangulating them again.
-    ///
-    /// Vertices at height `from.0` move to `to.0`, all others to `to.1`. Returns `None` when
-    /// extrusion rejects either range, or `from.0` and `from.1` are the same in `f32` so that
-    /// bottom and top vertices can't be told apart.
-    pub fn restacked(&self, from: (f64, f64), to: (f64, f64)) -> Option<Self> {
-        let valid =
-            |(z_min, z_max): (f64, f64)| z_min.is_finite() && z_max.is_finite() && z_min < z_max;
-        let (bottom, top) = (from.0 as f32, from.1 as f32);
-        if !valid(from) || !valid(to) || bottom == top {
-            return None;
-        }
-        // Board z is glTF y (spec §3).
-        let z = |y: f32| {
-            if y == bottom {
-                to.0 as f32
-            } else {
-                to.1 as f32
-            }
-        };
-        let mut mesh = self.clone();
-        for p in &mut mesh.primitives {
-            p.positions.iter_mut().for_each(|v| v[1] = z(v[1]));
-            let ranges = p.features.iter_mut().map(|f| (&mut f.min, &mut f.max));
-            for (min, max) in ranges.chain([(&mut p.min, &mut p.max)]) {
-                (min[1], max[1]) = (z(min[1]), z(max[1]));
-            }
-        }
-        Some(mesh)
-    }
-}
-
 /// Builds a [`LayerMesh`] from the prisms of a layer's features (spec §4, §8.1).
 ///
 /// Features are packed greedily into primitives of at most [`MAX_PRIMITIVE_VERTICES`]
@@ -338,45 +303,6 @@ mod tests {
     #[test]
     fn empty_layer_has_no_primitives() {
         assert!(LayerMeshBuilder::new().finish().primitives.is_empty());
-    }
-
-    /// A plate with a hole, extruded from `z_min` to `z_max` as one feature.
-    fn plate(z_min: f64, z_max: f64) -> LayerMesh {
-        let region = rect(0.0, 0.0, 3e-3, 2e-3).difference(&rect(1e-3, 5e-4, 2e-3, 1.5e-3));
-        let mut builder = LayerMeshBuilder::new();
-        builder
-            .push(0, &region.extrude(z_min, z_max).unwrap())
-            .unwrap();
-        builder.finish()
-    }
-
-    #[test]
-    fn restacking_needs_valid_distinct_heights() {
-        let mesh = plate(0.0, 1e-4);
-        assert_eq!(
-            mesh.restacked((0.0, 1e-4), (1e-3, 1.2e-3)),
-            Some(plate(1e-3, 1.2e-3))
-        );
-        assert_eq!(mesh.restacked((0.0, 1e-4), (1e-3, 1e-3)), None);
-        assert_eq!(mesh.restacked((0.0, 1e-4), (0.0, f64::NAN)), None);
-        assert_eq!(mesh.restacked((1e-4, 0.0), (0.0, 1e-4)), None);
-        let thin = plate(1.0, 1.0 + 1e-12);
-        assert_eq!(thin.restacked((1.0, 1.0 + 1e-12), (0.0, 1e-4)), None);
-    }
-
-    proptest! {
-        /// Moving an extruded mesh to other heights gives exactly the mesh extruded there.
-        #[test]
-        fn restacking_equals_extruding_again(
-            z in 0.0..3e-3f64,
-            thickness in 1e-6..1e-3f64,
-            to in 0.0..3e-3f64,
-            to_thickness in 1e-9..1e-3f64,
-        ) {
-            let restacked = plate(z, z + thickness)
-                .restacked((z, z + thickness), (to, to + to_thickness));
-            prop_assert_eq!(restacked, Some(plate(to, to + to_thickness)));
-        }
     }
 
     proptest! {

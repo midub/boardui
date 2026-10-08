@@ -19,3 +19,4 @@ Each record captures one decision from the 3D rewrite design. Format: context, d
 | [0013](0013-panels.md) | Panels: root step by default, instances with their own IDs and nets, baked geometry | Accepted |
 | [0014](0014-runtime-model-sources.md) | Runtime model sources: models loaded by the viewer from servers (KiCad via GitLab), STEP in `@boardui/models` | Accepted |
 | [0015](0015-agpl-plus-commercial-licence.md) | Licence: AGPL-3.0-only plus a commercial licence; contributions under a CLA | Accepted |
+| [0016](0016-shared-dielectric-sheets.md) | Shared dielectric sheets: repeats use the first sheet's mesh, moved in Z, and its feature table (profile 0.10) | Accepted |
