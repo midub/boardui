@@ -1,7 +1,7 @@
 {
   "name": "@boardui/demo-shared",
   "private": true,
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "The framework-independent parts of the boardui demos: samples, loading, panels, styles, build helpers and the e2e suite.",
   "license": "AGPL-3.0-only",
   "type": "module",

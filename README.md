@@ -37,7 +37,7 @@ Prebuilt binaries are attached to every [release](https://github.com/midub/board
 Each archive holds the `boardui` binary, `LICENSE`, `LICENSING.md` and this README; `SHA256SUMS` lists their checksums. For example, on Linux:
 
 ```sh
-v=1.1.1 t=x86_64-unknown-linux-musl
+v=1.2.0 t=x86_64-unknown-linux-musl
 curl -LO https://github.com/midub/boardui/releases/download/v$v/boardui-$v-$t.tar.gz
 curl -LO https://github.com/midub/boardui/releases/download/v$v/SHA256SUMS
 sha256sum --check --ignore-missing SHA256SUMS
@@ -112,7 +112,7 @@ pnpm install && pnpm build          # needs Rust and wasm-bindgen-cli, see below
 pnpm --filter @boardui/converter --filter @boardui/viewer pack --pack-destination ../boardui-packages
 
 cd ../my-app
-npm install three ../boardui-packages/boardui-converter-1.1.1.tgz ../boardui-packages/boardui-viewer-1.1.1.tgz
+npm install three ../boardui-packages/boardui-converter-1.2.0.tgz ../boardui-packages/boardui-viewer-1.2.0.tgz
 ```
 
 For React, also pack `@boardui/react` (`--filter @boardui/react`) and install its tarball; for Angular, `@boardui/angular`; for runtime 3D models (KiCad's libraries, your own model server, STEP and OBJ), `@boardui/models` ([how](packages/models/README.md)).

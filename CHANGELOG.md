@@ -5,6 +5,12 @@ glTF profile has its own version (`profileVersion`, [spec §11](spec/README.md#1
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-27
+
+Demos in React and Angular on new wrapper packages, 3D component models loaded at runtime, a
+faster viewer and converter, and a new licence: AGPL-3.0-only or a commercial licence (1.1.1 and
+earlier stay MIT). The glTF profile goes to 0.10 (still a draft).
+
 - **Faster x-ray and first frame on big boards (viewer):** meshes that render alike share their
   materials, x-ray mode swaps materials prepared after loading instead of rebuilding every
   shader, and the components' placeholder bodies are drawn as a few merged meshes instead of one
@@ -186,7 +192,8 @@ available at the [`v1-angular`](https://github.com/midub/boardui/tree/v1-angular
 - Nothing is published to npm or crates.io; the viewer and converter packages are used from this
   repository.
 
-[Unreleased]: https://github.com/midub/boardui/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/midub/boardui/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/midub/boardui/releases/tag/v1.2.0
 [1.1.1]: https://github.com/midub/boardui/releases/tag/v1.1.1
 [1.1.0]: https://github.com/midub/boardui/releases/tag/v1.1.0
 [1.0.0]: https://github.com/midub/boardui/releases/tag/v1.0.0
