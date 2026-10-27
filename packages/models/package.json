@@ -1,6 +1,6 @@
 {
   "name": "@boardui/models",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "private": true,
   "description": "Runtime component models for <board-viewer>: STEP and OBJ loaders, KiCad's libraries, model mapping files.",
   "license": "AGPL-3.0-only",

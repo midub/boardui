@@ -1,6 +1,6 @@
 {
   "name": "@boardui/converter",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "private": true,
   "description": "Converts IPC-2581 to boardui glTF in the browser (WebAssembly in a Web Worker).",
   "license": "AGPL-3.0-only",
